@@ -45,6 +45,11 @@ services:
       - traefik-public
       - default
 
+  redis:
+    restart: "no"
+    ports:
+      - "6379:6379"
+
   db:
     restart: "no"
     ports:
