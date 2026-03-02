@@ -16,8 +16,11 @@ dependencies = [
     "python-dotenv>=1.0",
     "tenacity>=8.0",
     # backend 패키지 공유 (모델, 설정 재사용)
-    { path = "../backend", editable = true },
+    "app",
 ]
+
+[tool.uv.sources]
+app = { path = "../backend", editable = true }
 
 [project.optional-dependencies]
 dev = [
