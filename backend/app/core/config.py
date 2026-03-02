@@ -97,6 +97,9 @@ class Settings(BaseSettings):
     # AES-256-GCM 암호화 키 (64자 hex = 32바이트)
     ENCRYPTION_KEY: str
 
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = (
