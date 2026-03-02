@@ -9,31 +9,84 @@ export type Body_login_login_access_token = {
     client_secret?: (string | null);
 };
 
-export type HTTPValidationError = {
-    detail?: Array<ValidationError>;
+export type BotCreate = {
+    name: string;
+    bot_type: BotTypeEnum;
+    symbol?: (string | null);
+    base_currency?: (string | null);
+    quote_currency?: (string | null);
+    investment_amount?: (number | string);
+    stop_loss_pct?: (number | string | null);
+    take_profit_pct?: (number | string | null);
+    account_id: string;
 };
 
-export type ItemCreate = {
-    title: string;
-    description?: (string | null);
-};
-
-export type ItemPublic = {
-    title: string;
-    description?: (string | null);
+export type BotPublic = {
+    name: string;
+    bot_type: BotTypeEnum;
+    symbol?: (string | null);
+    base_currency?: (string | null);
+    quote_currency?: (string | null);
+    investment_amount?: string;
+    stop_loss_pct?: (string | null);
+    take_profit_pct?: (string | null);
     id: string;
-    owner_id: string;
-    created_at?: (string | null);
+    account_id: string;
+    status: BotStatusEnum;
+    total_pnl: string;
+    total_pnl_pct: string;
+    created_at: string;
 };
 
-export type ItemsPublic = {
-    data: Array<ItemPublic>;
+export type BotsPublic = {
+    data: Array<BotPublic>;
     count: number;
 };
 
-export type ItemUpdate = {
-    title?: (string | null);
-    description?: (string | null);
+export type BotStatusEnum = 'stopped' | 'pending' | 'running' | 'error' | 'completed';
+
+export type BotTypeEnum = 'spot_grid' | 'position_snowball' | 'rebalancing' | 'spot_dca' | 'algo_orders';
+
+export type BotUpdate = {
+    name?: (string | null);
+    stop_loss_pct?: (number | string | null);
+    take_profit_pct?: (number | string | null);
+};
+
+export type ExchangeAccountCreate = {
+    exchange: ExchangeTypeEnum;
+    label: string;
+    api_key: string;
+    api_secret: string;
+    extra_params?: ({
+    [key: string]: unknown;
+} | null);
+};
+
+export type ExchangeAccountPublic = {
+    exchange: ExchangeTypeEnum;
+    label: string;
+    is_active?: boolean;
+    id: string;
+    is_valid: boolean;
+    last_verified_at: (string | null);
+    created_at: string;
+};
+
+export type ExchangeAccountsPublic = {
+    data: Array<ExchangeAccountPublic>;
+    count: number;
+};
+
+export type ExchangeAccountUpdate = {
+    label?: (string | null);
+    is_active?: (boolean | null);
+};
+
+export type ExchangeTypeEnum = 'binance' | 'upbit' | 'kis' | 'kiwoom';
+
+export type HTTPValidationError = {
+    detail?: Array<ValidationError>;
 };
 
 export type Message = {
@@ -113,37 +166,81 @@ export type ValidationError = {
     };
 };
 
-export type ItemsReadItemsData = {
+export type AccountsReadAccountsData = {
     limit?: number;
     skip?: number;
 };
 
-export type ItemsReadItemsResponse = (ItemsPublic);
+export type AccountsReadAccountsResponse = (ExchangeAccountsPublic);
 
-export type ItemsCreateItemData = {
-    requestBody: ItemCreate;
+export type AccountsCreateAccountData = {
+    requestBody: ExchangeAccountCreate;
 };
 
-export type ItemsCreateItemResponse = (ItemPublic);
+export type AccountsCreateAccountResponse = (ExchangeAccountPublic);
 
-export type ItemsReadItemData = {
+export type AccountsReadAccountData = {
     id: string;
 };
 
-export type ItemsReadItemResponse = (ItemPublic);
+export type AccountsReadAccountResponse = (ExchangeAccountPublic);
 
-export type ItemsUpdateItemData = {
+export type AccountsUpdateAccountData = {
     id: string;
-    requestBody: ItemUpdate;
+    requestBody: ExchangeAccountUpdate;
 };
 
-export type ItemsUpdateItemResponse = (ItemPublic);
+export type AccountsUpdateAccountResponse = (ExchangeAccountPublic);
 
-export type ItemsDeleteItemData = {
+export type AccountsDeleteAccountData = {
     id: string;
 };
 
-export type ItemsDeleteItemResponse = (Message);
+export type AccountsDeleteAccountResponse = (Message);
+
+export type BotsReadBotsData = {
+    limit?: number;
+    skip?: number;
+};
+
+export type BotsReadBotsResponse = (BotsPublic);
+
+export type BotsCreateBotData = {
+    requestBody: BotCreate;
+};
+
+export type BotsCreateBotResponse = (BotPublic);
+
+export type BotsReadBotData = {
+    id: string;
+};
+
+export type BotsReadBotResponse = (BotPublic);
+
+export type BotsUpdateBotData = {
+    id: string;
+    requestBody: BotUpdate;
+};
+
+export type BotsUpdateBotResponse = (BotPublic);
+
+export type BotsDeleteBotData = {
+    id: string;
+};
+
+export type BotsDeleteBotResponse = (Message);
+
+export type BotsStartBotData = {
+    id: string;
+};
+
+export type BotsStartBotResponse = (BotPublic);
+
+export type BotsStopBotData = {
+    id: string;
+};
+
+export type BotsStopBotResponse = (BotPublic);
 
 export type LoginLoginAccessTokenData = {
     formData: Body_login_login_access_token;

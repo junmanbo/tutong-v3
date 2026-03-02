@@ -3,22 +3,22 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { AccountsReadAccountsData, AccountsReadAccountsResponse, AccountsCreateAccountData, AccountsCreateAccountResponse, AccountsReadAccountData, AccountsReadAccountResponse, AccountsUpdateAccountData, AccountsUpdateAccountResponse, AccountsDeleteAccountData, AccountsDeleteAccountResponse, BotsReadBotsData, BotsReadBotsResponse, BotsCreateBotData, BotsCreateBotResponse, BotsReadBotData, BotsReadBotResponse, BotsUpdateBotData, BotsUpdateBotResponse, BotsDeleteBotData, BotsDeleteBotResponse, BotsStartBotData, BotsStartBotResponse, BotsStopBotData, BotsStopBotResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
-export class ItemsService {
+export class AccountsService {
     /**
-     * Read Items
-     * Retrieve items.
+     * Read Accounts
+     * 현재 사용자의 거래소 계좌 목록 조회.
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
-     * @returns ItemsPublic Successful Response
+     * @returns ExchangeAccountsPublic Successful Response
      * @throws ApiError
      */
-    public static readItems(data: ItemsReadItemsData = {}): CancelablePromise<ItemsReadItemsResponse> {
+    public static readAccounts(data: AccountsReadAccountsData = {}): CancelablePromise<AccountsReadAccountsResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/items/',
+            url: '/api/v1/accounts/',
             query: {
                 skip: data.skip,
                 limit: data.limit
@@ -30,17 +30,17 @@ export class ItemsService {
     }
     
     /**
-     * Create Item
-     * Create new item.
+     * Create Account
+     * 거래소 계좌 등록. API Key/Secret은 AES-256-GCM으로 암호화 후 저장.
      * @param data The data for the request.
      * @param data.requestBody
-     * @returns ItemPublic Successful Response
+     * @returns ExchangeAccountPublic Successful Response
      * @throws ApiError
      */
-    public static createItem(data: ItemsCreateItemData): CancelablePromise<ItemsCreateItemResponse> {
+    public static createAccount(data: AccountsCreateAccountData): CancelablePromise<AccountsCreateAccountResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/v1/items/',
+            url: '/api/v1/accounts/',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -50,17 +50,17 @@ export class ItemsService {
     }
     
     /**
-     * Read Item
-     * Get item by ID.
+     * Read Account
+     * 거래소 계좌 단건 조회.
      * @param data The data for the request.
      * @param data.id
-     * @returns ItemPublic Successful Response
+     * @returns ExchangeAccountPublic Successful Response
      * @throws ApiError
      */
-    public static readItem(data: ItemsReadItemData): CancelablePromise<ItemsReadItemResponse> {
+    public static readAccount(data: AccountsReadAccountData): CancelablePromise<AccountsReadAccountResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/items/{id}',
+            url: '/api/v1/accounts/{id}',
             path: {
                 id: data.id
             },
@@ -71,18 +71,18 @@ export class ItemsService {
     }
     
     /**
-     * Update Item
-     * Update an item.
+     * Update Account
+     * 거래소 계좌 정보 수정 (label, is_active).
      * @param data The data for the request.
      * @param data.id
      * @param data.requestBody
-     * @returns ItemPublic Successful Response
+     * @returns ExchangeAccountPublic Successful Response
      * @throws ApiError
      */
-    public static updateItem(data: ItemsUpdateItemData): CancelablePromise<ItemsUpdateItemResponse> {
+    public static updateAccount(data: AccountsUpdateAccountData): CancelablePromise<AccountsUpdateAccountResponse> {
         return __request(OpenAPI, {
-            method: 'PUT',
-            url: '/api/v1/items/{id}',
+            method: 'PATCH',
+            url: '/api/v1/accounts/{id}',
             path: {
                 id: data.id
             },
@@ -95,17 +95,170 @@ export class ItemsService {
     }
     
     /**
-     * Delete Item
-     * Delete an item.
+     * Delete Account
+     * 거래소 계좌 삭제 (soft delete).
      * @param data The data for the request.
      * @param data.id
      * @returns Message Successful Response
      * @throws ApiError
      */
-    public static deleteItem(data: ItemsDeleteItemData): CancelablePromise<ItemsDeleteItemResponse> {
+    public static deleteAccount(data: AccountsDeleteAccountData): CancelablePromise<AccountsDeleteAccountResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/v1/items/{id}',
+            url: '/api/v1/accounts/{id}',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class BotsService {
+    /**
+     * Read Bots
+     * 현재 사용자의 봇 목록 조회.
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns BotsPublic Successful Response
+     * @throws ApiError
+     */
+    public static readBots(data: BotsReadBotsData = {}): CancelablePromise<BotsReadBotsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/bots/',
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Bot
+     * 봇 생성. 플랜 봇 한도 초과 시 403.
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns BotPublic Successful Response
+     * @throws ApiError
+     */
+    public static createBot(data: BotsCreateBotData): CancelablePromise<BotsCreateBotResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/bots/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Bot
+     * 봇 단건 조회.
+     * @param data The data for the request.
+     * @param data.id
+     * @returns BotPublic Successful Response
+     * @throws ApiError
+     */
+    public static readBot(data: BotsReadBotData): CancelablePromise<BotsReadBotResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/bots/{id}',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Bot
+     * 봇 설정 수정 (중지 상태에서만 가능).
+     * @param data The data for the request.
+     * @param data.id
+     * @param data.requestBody
+     * @returns BotPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateBot(data: BotsUpdateBotData): CancelablePromise<BotsUpdateBotResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/bots/{id}',
+            path: {
+                id: data.id
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Bot
+     * 봇 삭제 - soft delete (중지 상태에서만 가능).
+     * @param data The data for the request.
+     * @param data.id
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteBot(data: BotsDeleteBotData): CancelablePromise<BotsDeleteBotResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/bots/{id}',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Start Bot
+     * 봇 시작 (stopped/error → pending). Celery 태스크 디스패치는 bot_engine에서 처리.
+     * @param data The data for the request.
+     * @param data.id
+     * @returns BotPublic Successful Response
+     * @throws ApiError
+     */
+    public static startBot(data: BotsStartBotData): CancelablePromise<BotsStartBotResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/bots/{id}/start',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Stop Bot
+     * 봇 중지 (running/pending → stopped). Redis 중지 신호는 bot_engine에서 처리.
+     * @param data The data for the request.
+     * @param data.id
+     * @returns BotPublic Successful Response
+     * @throws ApiError
+     */
+    public static stopBot(data: BotsStopBotData): CancelablePromise<BotsStopBotResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/bots/{id}/stop',
             path: {
                 id: data.id
             },
