@@ -149,6 +149,9 @@ services:
   bot_engine:
     image: '${DOCKER_IMAGE_BOT_ENGINE?Variable not set}:${TAG-latest}'
     restart: always
+    networks:
+      - traefik-public
+      - default
     build:
       context: .
       dockerfile: bot_engine/Dockerfile

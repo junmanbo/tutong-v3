@@ -1,6 +1,9 @@
+import os
 import uuid
 from typing import Any
 
+import redis as redis_lib
+from celery import Celery
 from fastapi import APIRouter, HTTPException
 
 from app import crud
@@ -130,9 +133,6 @@ def start_bot(
     id: uuid.UUID,
 ) -> Any:
     """봇 시작 (stopped/error → pending) 후 Celery 태스크 디스패치."""
-    import os
-    from celery import Celery
-
     bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
@@ -160,9 +160,6 @@ def stop_bot(
     id: uuid.UUID,
 ) -> Any:
     """봇 중지 요청 — Redis 중지 신호 설정 후 DB 상태 즉시 stopped 업데이트."""
-    import os
-    import redis as redis_lib
-
     bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")

@@ -487,7 +487,7 @@ class TestStartBot:
         bot_id = create_r.json()["id"]
 
         mock_celery = MagicMock()
-        with patch("celery.Celery", return_value=mock_celery):
+        with patch("app.api.routes.bots.Celery", return_value=mock_celery):
             r = client.post(
                 f"{settings.API_V1_STR}/bots/{bot_id}/start",
                 headers=headers,
@@ -508,7 +508,7 @@ class TestStartBot:
         bot_id = create_r.json()["id"]
 
         mock_celery = MagicMock()
-        with patch("celery.Celery", return_value=mock_celery):
+        with patch("app.api.routes.bots.Celery", return_value=mock_celery):
             client.post(
                 f"{settings.API_V1_STR}/bots/{bot_id}/start",
                 headers=headers,
@@ -538,7 +538,7 @@ class TestStartBot:
         db.add(bot)
         db.commit()
 
-        with patch("celery.Celery"):
+        with patch("app.api.routes.bots.Celery"):
             r = client.post(
                 f"{settings.API_V1_STR}/bots/{bot_id}/start",
                 headers=headers,
@@ -566,7 +566,7 @@ class TestStartBot:
         db.commit()
 
         mock_celery = MagicMock()
-        with patch("celery.Celery", return_value=mock_celery):
+        with patch("app.api.routes.bots.Celery", return_value=mock_celery):
             r = client.post(
                 f"{settings.API_V1_STR}/bots/{bot_id}/start",
                 headers=headers,
@@ -577,7 +577,7 @@ class TestStartBot:
         self, client: TestClient, db: Session
     ) -> None:
         _, headers, _ = _setup_user_with_account(client, db)
-        with patch("celery.Celery"):
+        with patch("app.api.routes.bots.Celery"):
             r = client.post(
                 f"{settings.API_V1_STR}/bots/{uuid.uuid4()}/start",
                 headers=headers,
@@ -604,7 +604,7 @@ class TestStartBot:
         db.add(bot)
         db.commit()
 
-        with patch("celery.Celery"):
+        with patch("app.api.routes.bots.Celery"):
             r = client.post(
                 f"{settings.API_V1_STR}/bots/{bot_id}/start",
                 headers=headers,
