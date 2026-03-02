@@ -94,6 +94,9 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
 
+    # AES-256-GCM 암호화 키 (64자 hex = 32바이트)
+    ENCRYPTION_KEY: str
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = (

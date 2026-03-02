@@ -1,10 +1,27 @@
+import json
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
-from app.models import Item, ItemCreate, User, UserCreate, UserUpdate
+from app.models import (
+    Bot,
+    BotCreate,
+    BotUpdate,
+    ExchangeAccount,
+    ExchangeAccountCreate,
+    ExchangeAccountUpdate,
+    SubscriptionStatusEnum,
+    User,
+    UserCreate,
+    UserUpdate,
+    UserSubscription,
+)
+
+
+# ── User ─────────────────────────────────────────────────────────────────────
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
@@ -60,9 +77,198 @@ def authenticate(*, session: Session, email: str, password: str) -> User | None:
     return db_user
 
 
-def create_item(*, session: Session, item_in: ItemCreate, owner_id: uuid.UUID) -> Item:
-    db_item = Item.model_validate(item_in, update={"owner_id": owner_id})
-    session.add(db_item)
+# ── ExchangeAccount ──────────────────────────────────────────────────────────
+
+
+def get_exchange_accounts_by_user(
+    *, session: Session, user_id: uuid.UUID, skip: int = 0, limit: int = 100
+) -> list[ExchangeAccount]:
+    statement = (
+        select(ExchangeAccount)
+        .where(
+            ExchangeAccount.user_id == user_id,
+            ExchangeAccount.deleted_at.is_(None),
+        )
+        .offset(skip)
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
+def get_exchange_account(
+    *, session: Session, account_id: uuid.UUID, user_id: uuid.UUID
+) -> ExchangeAccount | None:
+    statement = select(ExchangeAccount).where(
+        ExchangeAccount.id == account_id,
+        ExchangeAccount.user_id == user_id,
+        ExchangeAccount.deleted_at.is_(None),
+    )
+    return session.exec(statement).first()
+
+
+def count_active_accounts(*, session: Session, user_id: uuid.UUID) -> int:
+    accounts = get_exchange_accounts_by_user(session=session, user_id=user_id)
+    return len(accounts)
+
+
+def create_exchange_account(
+    *,
+    session: Session,
+    account_in: ExchangeAccountCreate,
+    owner_id: uuid.UUID,
+) -> ExchangeAccount:
+    from app.core.config import settings
+    from app.core.crypto import encrypt
+
+    api_key_enc = encrypt(account_in.api_key, settings.ENCRYPTION_KEY)
+    api_secret_enc = encrypt(account_in.api_secret, settings.ENCRYPTION_KEY)
+    extra_params_enc: str | None = None
+    if account_in.extra_params:
+        extra_params_enc = encrypt(
+            json.dumps(account_in.extra_params), settings.ENCRYPTION_KEY
+        )
+
+    account = ExchangeAccount(
+        exchange=account_in.exchange,
+        label=account_in.label,
+        user_id=owner_id,
+        api_key_enc=api_key_enc,
+        api_secret_enc=api_secret_enc,
+        extra_params_enc=extra_params_enc,
+    )
+    session.add(account)
     session.commit()
-    session.refresh(db_item)
-    return db_item
+    session.refresh(account)
+    return account
+
+
+def update_exchange_account(
+    *,
+    session: Session,
+    account: ExchangeAccount,
+    account_in: ExchangeAccountUpdate,
+) -> ExchangeAccount:
+    update_data = account_in.model_dump(exclude_unset=True)
+    account.sqlmodel_update(update_data)
+    account.updated_at = datetime.now(timezone.utc)
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return account
+
+
+def delete_exchange_account(*, session: Session, account: ExchangeAccount) -> None:
+    account.deleted_at = datetime.now(timezone.utc)
+    session.add(account)
+    session.commit()
+
+
+# ── Bot ───────────────────────────────────────────────────────────────────────
+
+
+def get_bots_by_user(
+    *, session: Session, user_id: uuid.UUID, skip: int = 0, limit: int = 100
+) -> list[Bot]:
+    statement = (
+        select(Bot)
+        .where(
+            Bot.user_id == user_id,
+            Bot.deleted_at.is_(None),
+        )
+        .offset(skip)
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
+def get_bot(
+    *, session: Session, bot_id: uuid.UUID, user_id: uuid.UUID
+) -> Bot | None:
+    statement = select(Bot).where(
+        Bot.id == bot_id,
+        Bot.user_id == user_id,
+        Bot.deleted_at.is_(None),
+    )
+    return session.exec(statement).first()
+
+
+def count_active_bots(*, session: Session, user_id: uuid.UUID) -> int:
+    return len(get_bots_by_user(session=session, user_id=user_id))
+
+
+def get_user_bot_limit(*, session: Session, user_id: uuid.UUID) -> int:
+    """사용자 플랜의 봇 최대 한도 반환. -1 은 무제한, 구독 없으면 Free 기본값 1."""
+    statement = select(UserSubscription).where(
+        UserSubscription.user_id == user_id,
+        UserSubscription.status == SubscriptionStatusEnum.active,
+    )
+    subscription = session.exec(statement).first()
+    if subscription is None:
+        return 1
+    return subscription.plan.max_bots
+
+
+def create_bot(
+    *,
+    session: Session,
+    bot_in: BotCreate,
+    owner_id: uuid.UUID,
+) -> Bot:
+    from app.models import BotStatusEnum
+
+    bot = Bot.model_validate(
+        bot_in,
+        update={
+            "user_id": owner_id,
+            "status": BotStatusEnum.stopped,
+        },
+    )
+    session.add(bot)
+    session.commit()
+    session.refresh(bot)
+    return bot
+
+
+def update_bot(
+    *,
+    session: Session,
+    bot: Bot,
+    bot_in: BotUpdate,
+) -> Bot:
+    update_data = bot_in.model_dump(exclude_unset=True)
+    bot.sqlmodel_update(update_data)
+    bot.updated_at = datetime.now(timezone.utc)
+    session.add(bot)
+    session.commit()
+    session.refresh(bot)
+    return bot
+
+
+def delete_bot(*, session: Session, bot: Bot) -> None:
+    bot.deleted_at = datetime.now(timezone.utc)
+    session.add(bot)
+    session.commit()
+
+
+def start_bot(*, session: Session, bot: Bot) -> Bot:
+    from app.models import BotStatusEnum
+
+    bot.status = BotStatusEnum.pending
+    bot.started_at = datetime.now(timezone.utc)
+    bot.updated_at = datetime.now(timezone.utc)
+    session.add(bot)
+    session.commit()
+    session.refresh(bot)
+    return bot
+
+
+def stop_bot(*, session: Session, bot: Bot) -> Bot:
+    from app.models import BotStatusEnum
+
+    bot.status = BotStatusEnum.stopped
+    bot.stopped_at = datetime.now(timezone.utc)
+    bot.updated_at = datetime.now(timezone.utc)
+    session.add(bot)
+    session.commit()
+    session.refresh(bot)
+    return bot
