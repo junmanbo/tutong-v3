@@ -10,9 +10,19 @@ from app.models import (
     BotPublic,
     BotsPublic,
     BotStatusEnum,
+    BotTypeEnum,
     BotUpdate,
     Message,
 )
+
+# Celery task 이름 매핑 (bot_type → task name)
+_BOT_TASK_MAP: dict[BotTypeEnum, str] = {
+    BotTypeEnum.spot_grid: "bot_engine.workers.spot_grid.run",
+    BotTypeEnum.position_snowball: "bot_engine.workers.snowball.run",
+    BotTypeEnum.rebalancing: "bot_engine.workers.rebalancing.run",
+    BotTypeEnum.spot_dca: "bot_engine.workers.spot_dca.run",
+    BotTypeEnum.algo_orders: "bot_engine.workers.algo_orders.run",
+}
 
 router = APIRouter(prefix="/bots", tags=["bots"])
 
@@ -119,7 +129,10 @@ def start_bot(
     current_user: CurrentUser,
     id: uuid.UUID,
 ) -> Any:
-    """봇 시작 (stopped/error → pending). Celery 태스크 디스패치는 bot_engine에서 처리."""
+    """봇 시작 (stopped/error → pending) 후 Celery 태스크 디스패치."""
+    import os
+    from celery import Celery
+
     bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
@@ -128,7 +141,16 @@ def start_bot(
             status_code=409,
             detail=f"Bot cannot be started from status '{bot.status}'",
         )
-    return crud.start_bot(session=session, bot=bot)
+
+    bot = crud.start_bot(session=session, bot=bot)  # → pending
+
+    task_name = _BOT_TASK_MAP.get(bot.bot_type)
+    if task_name:
+        redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        celery_app = Celery(broker=redis_url, backend=redis_url)
+        celery_app.send_task(task_name, kwargs={"bot_id": str(bot.id)})
+
+    return bot
 
 
 @router.post("/{id}/stop", response_model=BotPublic)
@@ -137,7 +159,10 @@ def stop_bot(
     current_user: CurrentUser,
     id: uuid.UUID,
 ) -> Any:
-    """봇 중지 (running/pending → stopped). Redis 중지 신호는 bot_engine에서 처리."""
+    """봇 중지 요청 — Redis 중지 신호 설정 후 DB 상태 즉시 stopped 업데이트."""
+    import os
+    import redis as redis_lib
+
     bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
@@ -146,4 +171,10 @@ def stop_bot(
             status_code=409,
             detail=f"Bot cannot be stopped from status '{bot.status}'",
         )
-    return crud.stop_bot(session=session, bot=bot)
+
+    # Redis 중지 신호 → Worker가 다음 루프에서 감지하고 정상 종료
+    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    r = redis_lib.from_url(redis_url, decode_responses=True)
+    r.set(f"bot:{str(bot.id)}:stop", "1")
+
+    return crud.stop_bot(session=session, bot=bot)  # DB 즉시 stopped

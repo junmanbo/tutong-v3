@@ -98,6 +98,24 @@ services:
       - "1080:1080"
       - "1025:1025"
 
+  bot_engine:
+    restart: "no"
+    build:
+      context: .
+      dockerfile: bot_engine/Dockerfile
+    develop:
+      watch:
+        - path: ./bot_engine
+          action: sync
+          target: /workspace/bot_engine
+          ignore:
+            - ./bot_engine/.venv
+        - path: ./bot_engine/pyproject.toml
+          action: rebuild
+        - path: ./backend/app
+          action: sync
+          target: /workspace/backend/app
+
   frontend:
     restart: "no"
     ports:
