@@ -1,8 +1,8 @@
 # WBS / 개발 일정표 (Work Breakdown Structure)
 
-**프로젝트명:** AutoTrade Platform  
-**문서 버전:** v1.0  
-**작성일:** 2025년  
+**프로젝트명:** AutoTrade Platform
+**문서 버전:** v1.0
+**작성일:** 2025년
 **작성자:** PM
 
 ---
@@ -27,19 +27,19 @@
 ```
 Week 1-2
 ├── [PM] 프로젝트 문서 완성
-│   ├── 기획안 (완료)
-│   ├── 요구사항 명세서 (완료)
-│   ├── 시스템 아키텍처 설계서 (완료)
-│   ├── 기술 스택 정의서 (완료)
-│   ├── UI 설계서 (완료)
+│   ├── 기획안 ✅
+│   ├── 요구사항 명세서 ✅
+│   ├── 시스템 아키텍처 설계서 ✅
+│   ├── 기술 스택 정의서 ✅
+│   ├── UI 설계서 ✅
 │   ├── API 명세서 (작성 필요)
 │   └── DB 설계서 (작성 필요)
 │
 ├── [Dev] 개발 환경 구축
-│   ├── GitHub 레포지토리 생성
-│   ├── 템플릿 클론: git clone fastapi/full-stack-fastapi-template
-│   ├── .env 설정 + docker compose watch 실행 확인
-│   ├── bot_engine/ 디렉토리 추가 (Celery Worker 초기 구조)
+│   ├── GitHub 레포지토리 생성 ✅
+│   ├── 템플릿 클론: git clone fastapi/full-stack-fastapi-template ✅
+│   ├── .env 설정 + docker compose watch 실행 확인 ✅
+│   ├── bot_engine/ 디렉토리 추가 (Celery Worker 초기 구조) ✅
 │   └── CI/CD 파이프라인 기본 구성 (GitHub Actions)
 │
 └── [Design] Figma 와이어프레임 제작
@@ -54,40 +54,48 @@ Week 1-2
 ```
 Week 3-4: 백엔드 기반 (템플릿 확장)
 ├── [BE] 템플릿 제공 확인: 인증 API (로그인/회원가입/비밀번호 재설정) ✅
-├── [BE] models.py — ExchangeAccount, Bot, BotOrder, BotLog 등 SQLModel 모델 추가
-├── [BE] Alembic 마이그레이션 생성 및 적용
-├── [BE] crud.py — Bot, ExchangeAccount CRUD 함수 추가
-├── [BE] core/config.py — REDIS_URL, ENCRYPTION_KEY 등 설정 추가
-└── [BE] compose.yml — Redis + bot_engine 서비스 추가
+├── [BE] models.py — ExchangeAccount, Bot, BotOrder, BotLog 등 SQLModel 모델 추가 ✅
+├── [BE] Alembic 마이그레이션 생성 및 적용 ✅
+├── [BE] crud.py — Bot, ExchangeAccount CRUD 함수 추가 ✅
+├── [BE] core/config.py — REDIS_URL, ENCRYPTION_KEY 등 설정 추가 ✅
+└── [BE] compose.yml — Redis + bot_engine 서비스 추가 ✅
 
 Week 4-5: 계좌 연동
-├── [BE] API Key AES-256-GCM 암호화 유틸 구현 (bot_engine/utils/crypto.py)
-├── [BE] accounts.py — 거래소 계좌 연동 API (등록/조회/삭제)
-├── [BE] 바이낸스 계좌 연동 API
-├── [BE] 업비트 계좌 연동 API
-├── [BE] 한국투자증권 계좌 연동 API
-└── [BE] 계좌 잔고 조회 API
+├── [BE] API Key AES-256-GCM 암호화 유틸 구현 (bot_engine/utils/crypto.py) ✅
+├── [BE] accounts.py — 거래소 계좌 연동 API (등록/조회/삭제) ✅
+├── [BE] 바이낸스 Exchange Adapter 구현 (backend/app/exchange_adapters/) ✅
+├── [BE] 업비트 Exchange Adapter 구현 ✅
+├── [BE] 한국투자증권 Exchange Adapter 구현 ✅
+└── [BE] 계좌 잔고 조회 API (엔드포인트 미구현 — Adapter 클래스만 존재)
 
 Week 5-6: 프론트엔드 기반 (템플릿 확장)
 ├── [FE] 템플릿 제공 확인: 로그인/회원가입/설정 페이지 ✅
-├── [FE] generate-client.sh 실행 → 새 API 타입/클라이언트 자동 생성
-├── [FE] routes/_layout/accounts.tsx — 거래소 계좌 연동 페이지
-├── [FE] routes/_layout/bots.tsx — 봇 목록 페이지 (기본)
-└── [FE] routes/_layout/index.tsx — 대시보드 홈 교체 (잔고 조회)
+├── [FE] generate-client.sh 실행 → 새 API 타입/클라이언트 자동 생성 ✅
+├── [FE] routes/_layout/accounts.tsx — 거래소 계좌 연동 페이지 ✅
+├── [FE] routes/_layout/bots.tsx — 봇 목록 페이지 (기본) ✅
+└── [FE] routes/_layout/index.tsx — 대시보드 홈 교체 (잔고 조회) ✅
+
+── 추가 완료 (Phase 1-1 정리) ──
+├── [BE] bots.py — 봇 CRUD API + 시작/중지 엔드포인트 ✅
+├── [Test] backend API routes 테스트 (accounts, bots) ✅
+├── [Test] backend CRUD 테스트 (accounts, bots) ✅
+├── [Test] bot_engine 유틸리티 테스트 (decimal_utils, crypto) ✅
+├── [FE] Items 예제 코드 전체 삭제 (routes, components, sidebar) ✅
+└── [Dev] compose.yml bot_engine networks 선언 + bots.py import 정리 ✅
 ```
 
 ### Phase 1-2: 봇 엔진 개발 (5~10주)
 
 ```
 Week 5-6: 봇 엔진 기반
-├── [Bot] bot_engine/ 디렉토리 초기화 (pyproject.toml, celery_app.py)
-├── [Bot] Celery Worker 기본 구조 구현 (Broker: Redis)
-├── [Bot] AbstractExchangeAdapter 인터페이스 정의
-├── [Bot] 바이낸스 Exchange Adapter 구현
+├── [Bot] bot_engine/ 디렉토리 초기화 (pyproject.toml, celery_app.py) ✅
+├── [Bot] Celery Worker 기본 구조 구현 (Broker: Redis) ✅
+├── [Bot] AbstractExchangeAdapter 인터페이스 정의 ✅
+├── [Bot] 바이낸스 Exchange Adapter 구현 (bot_engine/exchange_adapters/) — 미구현 (backend adapter 별도)
 │   ├── REST API 연동 (주문, 잔고, 시세)
 │   └── WebSocket 연동 (실시간 가격)
-├── [BE] bots.py — 봇 CRUD API + 시작/중지 엔드포인트
-└── [FE] generate-client.sh 실행 → 봇 관련 타입 자동 생성
+├── [BE] bots.py — 봇 CRUD API + 시작/중지 엔드포인트 ✅
+└── [FE] generate-client.sh 실행 → 봇 관련 타입 자동 생성 ✅
 
 Week 7-8: Spot Grid + DCA 봇
 ├── [Bot] Spot Grid 전략 로직 구현
@@ -179,7 +187,7 @@ Week 13-14: 배포 준비 및 론칭
 ```
 Week  1-2  │ ✅ 설계 문서 완성 / 개발 환경 구축
 Week  4    │ ✅ 회원 인증 / 계좌 연동 API 완성
-Week  6    │ ✅ 기본 대시보드 + 바이낸스 어댑터 완성
+Week  6    │ ✅ 기본 대시보드 + Exchange Adapter 완성 (백엔드 + 프론트 완료)
 Week  8    │ ✅ Spot Grid + DCA 봇 동작 확인
 Week 10    │ ✅ 전체 봇 5종 구현 완료
 Week 12    │ ✅ 업비트 + KIS 연동 완료 / 알림 완성
@@ -211,6 +219,8 @@ Week 14    │ 🚀 MVP 베타 론칭
 | v1.1 | 2025년 | Backend/Bot Engine 기술 스택 변경 반영 — NestJS→FastAPI, BullMQ→Celery, Prisma→SQLAlchemy+Alembic, node-cron→APScheduler | PM |
 | v1.2 | 2025년 | fastapi/full-stack-fastapi-template 기반 전환 — Phase 0 개발환경 구축: 템플릿 클론으로 변경. Phase 1-1 백엔드: 인증 API 구현 제거 (템플릿 제공), models.py/crud.py 확장으로 변경. Phase 1-1 프론트: Next.js 초기화 제거 (템플릿 제공), generate-client.sh + 추가 라우트 작성으로 변경. 리소스 계획: Next.js → Vite+React | PM |
 | v1.3 | 2025년 | 인프라 전략 변경 — Phase 1-4 배포 태스크를 On-premise(홈서버) 기반으로 재작성. AWS Terraform 구성 → Docker Compose 운영 환경 + Nginx + Certbot + Prometheus/Grafana/Loki + GitHub Actions 자동 배포로 교체 | PM |
+| v1.4 | 2026-03-04 | 진행 상황 반영 — Phase 0·1-1 백엔드 완료 표시, Phase 1-2 봇 엔진 기반 완료 표시, 테스트·정리 작업 추가 기록 | Dev |
+| v1.5 | 2026-03-05 | Phase 1-1 프론트엔드 완료 표시 — accounts.tsx, bots.tsx, index.tsx 구현 완료 | Dev |
 
 ---
 

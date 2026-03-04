@@ -431,34 +431,26 @@ test: BinanceAdapter 단위 테스트 추가
 ### 완료
 - [x] 전체 설계 문서 완성
 - [x] 기술 스택 확정 (템플릿 기반)
+- [x] Phase 1-1: 기반 기능 개발 (백엔드 + 봇 엔진 기반 + 프론트엔드)
+- [x] Phase 1-2: 봇 엔진 기반 구조 (Celery Worker, Exchange Adapter 구조)
 
-### 지금 해야 할 작업 (Phase 1-1)
+### Phase 1-1 완료 세부 내역
+1. ✅ 템플릿 클론 및 환경 설정
+2. ✅ 템플릿 예제 코드 정리 (Items 백엔드/프론트 전체 삭제)
+3. ✅ 봇/계좌 모델 추가 + Alembic 마이그레이션
+4. ✅ 거래소 계좌 API 구현 (accounts.py + Exchange Adapters)
+5. ✅ 봇 API 구현 (bots.py + start/stop Celery/Redis 연동)
+6. ✅ 프론트엔드 타입 동기화 (generate-client.sh)
+7. ✅ 프론트엔드 페이지 구현 (accounts.tsx, bots.tsx, index.tsx)
+8. ✅ 테스트 코드 작성 (backend API/CRUD + bot_engine utils)
 
-```
-1. 템플릿 클론 및 환경 설정
-   - .env 작성 (거래소 키, ENCRYPTION_KEY, Redis URL 추가)
-   - compose.yml에 Redis + bot_engine 서비스 추가
-   - docker compose watch 로 전체 서비스 기동 확인
-
-2. 템플릿 예제 코드 정리
-   - items.py 라우터 및 Item 모델/CRUD 삭제
-   - 프로젝트명/타이틀 수정
-
-3. 봇/계좌 모델 추가 (docs/07_DATABASE_DESIGN.md 기준)
-   - models.py에 SQLModel 클래스 추가
-   - alembic revision --autogenerate 로 마이그레이션 생성
-   - alembic upgrade head 적용
-
-4. 거래소 계좌 API 구현
-   - backend/app/api/routes/accounts.py 생성
-   - crud.py에 ExchangeAccount CRUD 추가
-
-5. 봇 API 구현
-   - backend/app/api/routes/bots.py 생성
-   - crud.py에 Bot CRUD + 플랜 한도 체크 추가
-
-6. bash scripts/generate-client.sh → 프론트엔드 타입 동기화
-```
+### 지금 해야 할 작업 (Phase 1-2 계속)
+1. bot_engine/strategies/ — 5가지 봇 전략 로직 구현
+   - spot_dca.py (가장 단순, 먼저 권장)
+   - spot_grid.py
+   - snowball.py, rebalancing.py, algo_orders.py
+2. bot_engine/exchange_adapters/ — bot_engine 전용 어댑터 구현
+3. 계좌 잔고 조회 API 엔드포인트 추가
 
 ---
 
