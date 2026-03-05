@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { type APIRequestContext, expect, test } from "@playwright/test"
 import { findLastEmail } from "./utils/mailcatcher"
 import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser, signUpNewUser } from "./utils/user"
@@ -27,10 +27,26 @@ test("Continue button is visible", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Continue" })).toBeVisible()
 })
 
+async function isMailcatcherAvailable(request: APIRequestContext) {
+  const host = process.env.MAILCATCHER_HOST
+  if (!host) return false
+  try {
+    const res = await request.get(`${host}/messages`, { timeout: 2000 })
+    return res.ok()
+  } catch {
+    return false
+  }
+}
+
 test("User can reset password successfully using the link", async ({
   page,
   request,
 }) => {
+  test.skip(
+    !(await isMailcatcherAvailable(request)),
+    "MailCatcher is not available in this environment",
+  )
+
   const fullName = "Test User"
   const email = randomEmail()
   const password = randomPassword()
@@ -87,6 +103,11 @@ test("Expired or invalid reset link", async ({ page }) => {
 })
 
 test("Weak new password validation", async ({ page, request }) => {
+  test.skip(
+    !(await isMailcatcherAvailable(request)),
+    "MailCatcher is not available in this environment",
+  )
+
   const fullName = "Test User"
   const email = randomEmail()
   const password = randomPassword()
