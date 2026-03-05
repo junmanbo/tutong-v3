@@ -1,3 +1,5 @@
+import asyncio
+import json
 import uuid
 from typing import Any
 
@@ -5,6 +7,10 @@ from fastapi import APIRouter, HTTPException
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep
+from app.core.config import settings
+from app.core.crypto import decrypt
+from app.exchange_adapters.base import BalanceItem
+from app.exchange_adapters.factory import get_adapter
 from app.models import (
     ExchangeAccountCreate,
     ExchangeAccountPublic,
@@ -91,3 +97,55 @@ def delete_account(
         raise HTTPException(status_code=404, detail="Exchange account not found")
     crud.delete_exchange_account(session=session, account=account)
     return Message(message="Exchange account deleted successfully")
+
+
+@router.get("/{id}/balance", response_model=list[BalanceItem])
+def get_account_balance(
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+) -> Any:
+    """거래소 계좌 잔고 조회.
+
+    해당 계좌의 API Key로 거래소에 직접 조회합니다.
+    잔고가 0인 자산은 제외하고 반환합니다.
+    """
+    account = crud.get_exchange_account(
+        session=session, account_id=id, user_id=current_user.id
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Exchange account not found")
+
+    try:
+        api_key = decrypt(account.api_key_enc, settings.ENCRYPTION_KEY)
+        api_secret = decrypt(account.api_secret_enc, settings.ENCRYPTION_KEY)
+        extra_params: dict | None = None
+        if account.extra_params_enc:
+            extra_params = json.loads(
+                decrypt(account.extra_params_enc, settings.ENCRYPTION_KEY)
+            )
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to decrypt account credentials")
+
+    adapter = get_adapter(
+        exchange=account.exchange,
+        api_key=api_key,
+        api_secret=api_secret,
+        extra_params=extra_params,
+    )
+
+    # FastAPI sync endpoint는 threadpool에서 실행 → new_event_loop 사용 가능
+    loop = asyncio.new_event_loop()
+    try:
+        balances = loop.run_until_complete(adapter.get_balance())
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Failed to fetch balance from exchange: {exc}",
+        )
+    finally:
+        loop.run_until_complete(adapter.close())
+        loop.close()
+
+    # 잔고가 있는 자산만 반환
+    return [b for b in balances if b.free > 0 or b.locked > 0]

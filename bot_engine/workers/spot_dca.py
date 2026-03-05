@@ -1,15 +1,19 @@
 """Spot DCA (Dollar-Cost Averaging) 봇 Celery Worker.
 
 전략:
-  - 정해진 주기(interval)마다 정액(amount) 또는 정량(qty) 자동 매수
-  - 시장가 또는 지정가(VWAP 기준) 주문
+  - 정해진 주기(interval_seconds)마다 정액(amount_per_order) 자동 매수
+  - 시장가 또는 지정가 주문
   - 장기 적립식 매수로 평균 매입가 분산
 
 Redis 정지 신호: redis.set(f"bot:{bot_id}:stop", "1")
 """
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+import uuid
+from datetime import datetime, timezone
 
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
@@ -17,10 +21,12 @@ from bot_engine.workers.base import (
     _update_bot_status_running,
     _update_bot_status_stopped,
     clear_stop_signal,
+    get_redis,
     should_stop,
 )
 
 logger = logging.getLogger(__name__)
+UTC = timezone.utc
 
 
 @celery_app.task(
@@ -34,17 +40,28 @@ def run_spot_dca(self, *, bot_id: str) -> None:
     """Spot DCA 봇 실행 Task."""
 
     async def _run() -> None:
-        import asyncio
+        from decimal import Decimal
+
+        from sqlmodel import Session, create_engine, select
+
         from app.core.config import settings
-        from bot_engine.utils.crypto import decrypt
-        from bot_engine.exchange_adapters import get_adapter
-
-        from sqlmodel import Session, select, create_engine
+        from app.exchange_adapters.base import OrderRequest
         from app.models import Bot, ExchangeAccount
+        from bot_engine.exchange_adapters import get_adapter
+        from bot_engine.strategies.spot_dca import (
+            DcaConfig,
+            calc_order_qty,
+            is_completed,
+            should_buy,
+        )
+        from bot_engine.utils.crypto import decrypt
 
+        # ── DB에서 봇/계좌 정보 로드 ────────────────────────────────────────
         engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
         with Session(engine) as session:
-            bot = session.exec(select(Bot).where(Bot.id == __import__("uuid").UUID(bot_id))).first()
+            bot = session.exec(
+                select(Bot).where(Bot.id == uuid.UUID(bot_id))
+            ).first()
             if not bot:
                 logger.error("Bot not found: %s", bot_id)
                 return
@@ -58,51 +75,101 @@ def run_spot_dca(self, *, bot_id: str) -> None:
 
             api_key = decrypt(account.api_key_enc, settings.ENCRYPTION_KEY)
             api_secret = decrypt(account.api_secret_enc, settings.ENCRYPTION_KEY)
-            extra_params = None
+            extra_params: dict | None = None
             if account.extra_params_enc:
-                import json
-                extra_params = json.loads(decrypt(account.extra_params_enc, settings.ENCRYPTION_KEY))
+                extra_params = json.loads(
+                    decrypt(account.extra_params_enc, settings.ENCRYPTION_KEY)
+                )
+            symbol = bot.symbol or "BTC/USDT"
+            bot_config = bot.config or {}
+            exchange = account.exchange
 
+        # ── 설정 파싱 ────────────────────────────────────────────────────────
+        config = DcaConfig.from_dict(symbol, bot_config)
+
+        # ── 어댑터 생성 ──────────────────────────────────────────────────────
         adapter = get_adapter(
-            exchange=account.exchange,
+            exchange=exchange,
             api_key=api_key,
             api_secret=api_secret,
             extra_params=extra_params,
         )
 
         _update_bot_status_running(bot_id=bot_id, celery_task_id=self.request.id)
-        logger.info("Spot DCA bot started: bot_id=%s symbol=%s", bot_id, bot.symbol)
+        logger.info(
+            "Spot DCA bot started: bot_id=%s symbol=%s interval=%ds amount=%s",
+            bot_id, symbol, config.interval_seconds, config.amount_per_order,
+        )
+
+        # ── Redis에서 이전 상태 복원 ─────────────────────────────────────────
+        r = get_redis()
+        state_key = f"bot:{bot_id}:dca_state"
+        state_raw = r.get(state_key)
+        state: dict = json.loads(state_raw) if state_raw else {}
+        order_count: int = state.get("order_count", 0)
+        last_order_time: datetime | None = None
+        if state.get("last_order_time"):
+            last_order_time = datetime.fromisoformat(state["last_order_time"])
 
         try:
-            # TODO: bot.config에서 설정 로드
-            # config = bot.config
-            # {
-            #   "amount_per_order": "100",   # 매수 금액 (USDT)
-            #   "interval_seconds": 86400,   # 매수 주기 (초), 기본 1일
-            #   "order_type": "market",      # "market" | "limit"
-            #   "total_orders": 30,          # 총 매수 횟수 (옵션, 없으면 무한)
-            # }
-            # interval_seconds = int(config.get("interval_seconds", 86400))
-
-            order_count = 0
             while True:
                 if should_stop(bot_id):
                     logger.info("Stop signal received: bot_id=%s", bot_id)
                     clear_stop_signal(bot_id)
                     break
 
-                # TODO: 정기 매수 주문 실행
-                # order = await adapter.place_order(OrderRequest(symbol=bot.symbol, side="buy", ...))
-                # order_count += 1
-                # if total_orders and order_count >= total_orders: break
-                logger.debug("DCA order check: bot_id=%s count=%d", bot_id, order_count)
+                if is_completed(order_count, config.total_orders):
+                    logger.info(
+                        "DCA completed: bot_id=%s total_orders=%d",
+                        bot_id, config.total_orders,
+                    )
+                    break
 
-                await asyncio.sleep(86400)  # TODO: config에서 interval 읽기
+                now = datetime.now(UTC)
+                if should_buy(last_order_time, config.interval_seconds, now):
+                    try:
+                        ticker = await adapter.get_ticker(symbol)
+                        price = ticker.last
+                        qty = calc_order_qty(config.amount_per_order, price, config.step_size)
+
+                        if qty <= Decimal("0"):
+                            logger.warning(
+                                "Calculated qty is zero: bot_id=%s price=%s amount=%s",
+                                bot_id, price, config.amount_per_order,
+                            )
+                        else:
+                            order = await adapter.place_order(
+                                OrderRequest(
+                                    symbol=symbol,
+                                    side="buy",
+                                    order_type=config.order_type,
+                                    quantity=qty,
+                                )
+                            )
+                            order_count += 1
+                            last_order_time = now
+                            r.set(
+                                state_key,
+                                json.dumps({
+                                    "order_count": order_count,
+                                    "last_order_time": now.isoformat(),
+                                }),
+                            )
+                            logger.info(
+                                "DCA order placed: bot_id=%s #%d order_id=%s qty=%s price=%s",
+                                bot_id, order_count, order.order_id, qty, price,
+                            )
+                    except Exception as exc:
+                        logger.error("DCA order error: bot_id=%s error=%s", bot_id, exc)
+
+                # 1분 단위로 stop 신호 확인 (interval이 길어도 빠른 정지 보장)
+                await asyncio.sleep(min(config.interval_seconds, 60))
 
         finally:
             await adapter.close()
+            r.delete(state_key)
 
         _update_bot_status_stopped(bot_id=bot_id)
-        logger.info("Spot DCA bot stopped: bot_id=%s", bot_id)
+        logger.info("Spot DCA bot stopped: bot_id=%s total_orders=%d", bot_id, order_count)
 
     self.run_async(_run())

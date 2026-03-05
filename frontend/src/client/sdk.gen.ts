@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { AccountsReadAccountsData, AccountsReadAccountsResponse, AccountsCreateAccountData, AccountsCreateAccountResponse, AccountsReadAccountData, AccountsReadAccountResponse, AccountsUpdateAccountData, AccountsUpdateAccountResponse, AccountsDeleteAccountData, AccountsDeleteAccountResponse, BotsReadBotsData, BotsReadBotsResponse, BotsCreateBotData, BotsCreateBotResponse, BotsReadBotData, BotsReadBotResponse, BotsUpdateBotData, BotsUpdateBotResponse, BotsDeleteBotData, BotsDeleteBotResponse, BotsStartBotData, BotsStartBotResponse, BotsStopBotData, BotsStopBotResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { AccountsReadAccountsData, AccountsReadAccountsResponse, AccountsCreateAccountData, AccountsCreateAccountResponse, AccountsReadAccountData, AccountsReadAccountResponse, AccountsUpdateAccountData, AccountsUpdateAccountResponse, AccountsDeleteAccountData, AccountsDeleteAccountResponse, AccountsGetAccountBalanceData, AccountsGetAccountBalanceResponse, BotsReadBotsData, BotsReadBotsResponse, BotsCreateBotData, BotsCreateBotResponse, BotsReadBotData, BotsReadBotResponse, BotsUpdateBotData, BotsUpdateBotResponse, BotsDeleteBotData, BotsDeleteBotResponse, BotsStartBotData, BotsStartBotResponse, BotsStopBotData, BotsStopBotResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class AccountsService {
     /**
@@ -106,6 +106,30 @@ export class AccountsService {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/accounts/{id}',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Account Balance
+     * 거래소 계좌 잔고 조회.
+     *
+     * 해당 계좌의 API Key로 거래소에 직접 조회합니다.
+     * 잔고가 0인 자산은 제외하고 반환합니다.
+     * @param data The data for the request.
+     * @param data.id
+     * @returns BalanceItem Successful Response
+     * @throws ApiError
+     */
+    public static getAccountBalance(data: AccountsGetAccountBalanceData): CancelablePromise<AccountsGetAccountBalanceResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/accounts/{id}/balance',
             path: {
                 id: data.id
             },
@@ -228,7 +252,7 @@ export class BotsService {
     
     /**
      * Start Bot
-     * 봇 시작 (stopped/error → pending). Celery 태스크 디스패치는 bot_engine에서 처리.
+     * 봇 시작 (stopped/error → pending) 후 Celery 태스크 디스패치.
      * @param data The data for the request.
      * @param data.id
      * @returns BotPublic Successful Response
@@ -249,7 +273,7 @@ export class BotsService {
     
     /**
      * Stop Bot
-     * 봇 중지 (running/pending → stopped). Redis 중지 신호는 bot_engine에서 처리.
+     * 봇 중지 요청 — Redis 중지 신호 설정 후 DB 상태 즉시 stopped 업데이트.
      * @param data The data for the request.
      * @param data.id
      * @returns BotPublic Successful Response
