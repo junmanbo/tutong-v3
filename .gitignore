@@ -6,3 +6,8 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 .env
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.coverage
