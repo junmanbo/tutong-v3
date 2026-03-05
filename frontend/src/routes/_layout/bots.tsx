@@ -3,8 +3,8 @@ import { createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
 
 import { BotsService } from "@/client"
-import { columns } from "@/components/Bots/columns"
 import AddBot from "@/components/Bots/AddBot"
+import { columns } from "@/components/Bots/columns"
 import { DataTable } from "@/components/Common/DataTable"
 import PendingBots from "@/components/Pending/PendingBots"
 

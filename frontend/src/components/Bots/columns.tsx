@@ -15,7 +15,10 @@ const BOT_TYPE_LABELS: Record<string, string> = {
 
 const STATUS_STYLES: Record<
   BotStatusEnum,
-  { variant: "default" | "secondary" | "destructive" | "outline"; label: string }
+  {
+    variant: "default" | "secondary" | "destructive" | "outline"
+    label: string
+  }
 > = {
   running: { variant: "default", label: "Running" },
   pending: { variant: "outline", label: "Pending" },
@@ -28,9 +31,7 @@ export const columns: ColumnDef<BotPublic>[] = [
   {
     accessorKey: "name",
     header: "Name",
-    cell: ({ row }) => (
-      <span className="font-medium">{row.original.name}</span>
-    ),
+    cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
   },
   {
     accessorKey: "bot_type",

@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type ExchangeAccountCreate, AccountsService } from "@/client"
+import { AccountsService, type ExchangeAccountCreate } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,

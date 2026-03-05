@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type BotCreate, AccountsService, BotsService } from "@/client"
+import { AccountsService, type BotCreate, BotsService } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -53,7 +53,7 @@ const formSchema = z.object({
   investment_amount: z
     .string()
     .min(1, { message: "Investment amount is required" })
-    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+    .refine((val) => !Number.isNaN(parseFloat(val)) && parseFloat(val) > 0, {
       message: "Must be a positive number",
     }),
   account_id: z.string().min(1, { message: "Account is required" }),
