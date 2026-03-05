@@ -1,4 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table"
+import { Link } from "@tanstack/react-router"
 
 import type { BotPublic, BotStatusEnum } from "@/client"
 import { Badge } from "@/components/ui/badge"
@@ -31,7 +32,15 @@ export const columns: ColumnDef<BotPublic>[] = [
   {
     accessorKey: "name",
     header: "Name",
-    cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+    cell: ({ row }) => (
+      <Link
+        to="/bots/$botId"
+        params={{ botId: row.original.id }}
+        className="font-medium hover:underline"
+      >
+        {row.original.name}
+      </Link>
+    ),
   },
   {
     accessorKey: "bot_type",

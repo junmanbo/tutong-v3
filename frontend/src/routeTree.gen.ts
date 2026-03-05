@@ -19,6 +19,7 @@ import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutBotsRouteImport } from './routes/_layout/bots'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutAccountsRouteImport } from './routes/_layout/accounts'
+import { Route as LayoutBotsBotIdRouteImport } from './routes/_layout/bots.$botId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -69,6 +70,11 @@ const LayoutAccountsRoute = LayoutAccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutBotsBotIdRoute = LayoutBotsBotIdRouteImport.update({
+  id: '/$botId',
+  path: '/$botId',
+  getParentRoute: () => LayoutBotsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -78,8 +84,9 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/accounts': typeof LayoutAccountsRoute
   '/admin': typeof LayoutAdminRoute
-  '/bots': typeof LayoutBotsRoute
+  '/bots': typeof LayoutBotsRouteWithChildren
   '/settings': typeof LayoutSettingsRoute
+  '/bots/$botId': typeof LayoutBotsBotIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -88,9 +95,10 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/accounts': typeof LayoutAccountsRoute
   '/admin': typeof LayoutAdminRoute
-  '/bots': typeof LayoutBotsRoute
+  '/bots': typeof LayoutBotsRouteWithChildren
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
+  '/bots/$botId': typeof LayoutBotsBotIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -101,9 +109,10 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_layout/accounts': typeof LayoutAccountsRoute
   '/_layout/admin': typeof LayoutAdminRoute
-  '/_layout/bots': typeof LayoutBotsRoute
+  '/_layout/bots': typeof LayoutBotsRouteWithChildren
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/bots/$botId': typeof LayoutBotsBotIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/bots'
     | '/settings'
+    | '/bots/$botId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/bots'
     | '/settings'
     | '/'
+    | '/bots/$botId'
   id:
     | '__root__'
     | '/_layout'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/_layout/bots'
     | '/_layout/settings'
     | '/_layout/'
+    | '/_layout/bots/$botId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -222,13 +234,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAccountsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/bots/$botId': {
+      id: '/_layout/bots/$botId'
+      path: '/$botId'
+      fullPath: '/bots/$botId'
+      preLoaderRoute: typeof LayoutBotsBotIdRouteImport
+      parentRoute: typeof LayoutBotsRoute
+    }
   }
 }
+
+interface LayoutBotsRouteChildren {
+  LayoutBotsBotIdRoute: typeof LayoutBotsBotIdRoute
+}
+
+const LayoutBotsRouteChildren: LayoutBotsRouteChildren = {
+  LayoutBotsBotIdRoute: LayoutBotsBotIdRoute,
+}
+
+const LayoutBotsRouteWithChildren = LayoutBotsRoute._addFileChildren(
+  LayoutBotsRouteChildren,
+)
 
 interface LayoutRouteChildren {
   LayoutAccountsRoute: typeof LayoutAccountsRoute
   LayoutAdminRoute: typeof LayoutAdminRoute
-  LayoutBotsRoute: typeof LayoutBotsRoute
+  LayoutBotsRoute: typeof LayoutBotsRouteWithChildren
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
 }
@@ -236,7 +267,7 @@ interface LayoutRouteChildren {
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAccountsRoute: LayoutAccountsRoute,
   LayoutAdminRoute: LayoutAdminRoute,
-  LayoutBotsRoute: LayoutBotsRoute,
+  LayoutBotsRoute: LayoutBotsRouteWithChildren,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
 }
