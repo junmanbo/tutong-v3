@@ -5,7 +5,12 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { AccountsService, type BotCreate, BotsService } from "@/client"
+import {
+  AccountsService,
+  type BotCreate,
+  type BotTypeEnum,
+  BotsService,
+} from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -37,6 +42,24 @@ import {
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
+const requiredNumberField = (message: string) =>
+  z
+    .string()
+    .min(1, { message })
+    .refine((val) => !Number.isNaN(Number(val)) && Number(val) > 0, {
+      message: "Must be a positive number",
+    })
+
+const optionalNumberField = z
+  .string()
+  .optional()
+  .refine(
+    (val) => val === undefined || val === "" || !Number.isNaN(Number(val)),
+    {
+      message: "Must be a valid number",
+    },
+  )
+
 const formSchema = z.object({
   name: z
     .string()
@@ -50,13 +73,50 @@ const formSchema = z.object({
     "algo_orders",
   ]),
   symbol: z.string().optional(),
-  investment_amount: z
-    .string()
-    .min(1, { message: "Investment amount is required" })
-    .refine((val) => !Number.isNaN(parseFloat(val)) && parseFloat(val) > 0, {
-      message: "Must be a positive number",
-    }),
+  base_currency: z.string().optional(),
+  quote_currency: z.string().optional(),
+  investment_amount: requiredNumberField("Investment amount is required"),
+  stop_loss_pct: optionalNumberField,
+  take_profit_pct: optionalNumberField,
   account_id: z.string().min(1, { message: "Account is required" }),
+}).superRefine((data, ctx) => {
+  if (data.bot_type === "rebalancing") {
+    if (!data.base_currency?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["base_currency"],
+        message: "Base currency is required for rebalancing",
+      })
+    }
+    if (!data.quote_currency?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["quote_currency"],
+        message: "Quote currency is required for rebalancing",
+      })
+    }
+    if (
+      data.base_currency?.trim() &&
+      data.quote_currency?.trim() &&
+      data.base_currency.trim().toUpperCase() ===
+        data.quote_currency.trim().toUpperCase()
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["quote_currency"],
+        message: "Base and quote currency must be different",
+      })
+    }
+    return
+  }
+
+  if (!data.symbol?.trim()) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["symbol"],
+      message: "Symbol is required for this strategy",
+    })
+  }
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -68,6 +128,19 @@ const BOT_TYPE_OPTIONS = [
   { value: "rebalancing", label: "Rebalancing" },
   { value: "algo_orders", label: "Algo Orders (TWAP)" },
 ]
+
+const BOT_TYPE_DESCRIPTIONS: Record<BotTypeEnum, string> = {
+  spot_grid:
+    "Place repeated buy/sell orders across a configured range. Requires symbol and capital.",
+  position_snowball:
+    "Average down on drawdowns and exit on recovery. Requires symbol and capital.",
+  rebalancing:
+    "Maintain a target asset mix by base/quote allocation. Requires base and quote currencies.",
+  spot_dca:
+    "Buy a fixed amount over time to reduce timing risk. Requires symbol and capital.",
+  algo_orders:
+    "Split large orders into smaller slices over time. Requires symbol and capital.",
+}
 
 const AddBot = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -87,10 +160,15 @@ const AddBot = () => {
       name: "",
       bot_type: undefined,
       symbol: "",
+      base_currency: "",
+      quote_currency: "",
       investment_amount: "",
+      stop_loss_pct: "",
+      take_profit_pct: "",
       account_id: "",
     },
   })
+  const botType = form.watch("bot_type")
 
   const mutation = useMutation({
     mutationFn: (data: BotCreate) =>
@@ -106,10 +184,30 @@ const AddBot = () => {
     },
   })
 
+  const toOptionalNumberString = (value?: string) =>
+    value?.trim() ? value.trim() : undefined
+
+  const toOptionalString = (value?: string) =>
+    value?.trim() ? value.trim() : undefined
+
   const onSubmit = (data: FormData) => {
+    const baseCurrency = toOptionalString(data.base_currency)?.toUpperCase()
+    const quoteCurrency = toOptionalString(data.quote_currency)?.toUpperCase()
+    const symbol =
+      data.bot_type === "rebalancing"
+        ? undefined
+        : toOptionalString(data.symbol)?.toUpperCase()
+
     mutation.mutate({
-      ...data,
-      symbol: data.symbol || undefined,
+      name: data.name.trim(),
+      bot_type: data.bot_type,
+      account_id: data.account_id,
+      symbol,
+      base_currency: baseCurrency,
+      quote_currency: quoteCurrency,
+      investment_amount: data.investment_amount.trim(),
+      stop_loss_pct: toOptionalNumberString(data.stop_loss_pct),
+      take_profit_pct: toOptionalNumberString(data.take_profit_pct),
     })
   }
 
@@ -202,19 +300,64 @@ const AddBot = () => {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="symbol"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Symbol</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. BTC/USDT" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {botType && (
+                <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+                  {BOT_TYPE_DESCRIPTIONS[botType]}
+                </div>
+              )}
+
+              {botType === "rebalancing" ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="base_currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Base Currency{" "}
+                          <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. BTC" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="quote_currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Quote Currency{" "}
+                          <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. USDT" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="symbol"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Symbol <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. BTC/USDT" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
@@ -237,6 +380,45 @@ const AddBot = () => {
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="stop_loss_pct"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stop Loss %</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="optional, e.g. 5"
+                          type="text"
+                          inputMode="decimal"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="take_profit_pct"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Take Profit %</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="optional, e.g. 10"
+                          type="text"
+                          inputMode="decimal"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             <DialogFooter>

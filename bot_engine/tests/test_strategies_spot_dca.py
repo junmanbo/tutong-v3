@@ -82,11 +82,13 @@ class TestShouldBuy:
 
     def test_naive_datetime_treated_as_utc(self):
         """tzinfo 없는 datetime은 UTC로 간주해야 함."""
-        last_naive = datetime.utcnow() - timedelta(seconds=100000)
+        last_naive = (datetime.now(UTC) - timedelta(seconds=100000)).replace(
+            tzinfo=None
+        )
         assert should_buy(last_naive, 86400) is True
 
     def test_naive_datetime_recent_no_buy(self):
-        last_naive = datetime.utcnow() - timedelta(seconds=60)
+        last_naive = (datetime.now(UTC) - timedelta(seconds=60)).replace(tzinfo=None)
         assert should_buy(last_naive, 86400) is False
 
     def test_custom_now_parameter(self):
