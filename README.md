@@ -1,233 +1,125 @@
-# Full Stack FastAPI Template
+# AutoTrade Platform (tutong-v3)
 
-<a href="https://github.com/fastapi/full-stack-fastapi-template/actions?query=workflow%3A%22Test+Docker+Compose%22" target="_blank"><img src="https://github.com/fastapi/full-stack-fastapi-template/workflows/Test%20Docker%20Compose/badge.svg" alt="Test Docker Compose"></a>
-<a href="https://github.com/fastapi/full-stack-fastapi-template/actions?query=workflow%3A%22Test+Backend%22" target="_blank"><img src="https://github.com/fastapi/full-stack-fastapi-template/workflows/Test%20Backend/badge.svg" alt="Test Backend"></a>
-<a href="https://coverage-badge.samuelcolvin.workers.dev/redirect/fastapi/full-stack-fastapi-template" target="_blank"><img src="https://coverage-badge.samuelcolvin.workers.dev/fastapi/full-stack-fastapi-template.svg" alt="Coverage"></a>
+국내 증권사(한국투자증권, 키움증권)와 글로벌 거래소(바이낸스, 업비트)를 하나의 웹 서비스에서 통합 운영하는 자동 매매 플랫폼입니다.  
+`fastapi/full-stack-fastapi-template`를 기반으로 확장했으며, 봇 실행을 위한 독립 `bot_engine` 서비스를 포함합니다.
 
-## Technology Stack and Features
+## 핵심 기능
 
-- ⚡ [**FastAPI**](https://fastapi.tiangolo.com) for the Python backend API.
-  - 🧰 [SQLModel](https://sqlmodel.tiangolo.com) for the Python SQL database interactions (ORM).
-  - 🔍 [Pydantic](https://docs.pydantic.dev), used by FastAPI, for the data validation and settings management.
-  - 💾 [PostgreSQL](https://www.postgresql.org) as the SQL database.
-- 🚀 [React](https://react.dev) for the frontend.
-  - 💃 Using TypeScript, hooks, [Vite](https://vitejs.dev), and other parts of a modern frontend stack.
-  - 🎨 [Tailwind CSS](https://tailwindcss.com) and [shadcn/ui](https://ui.shadcn.com) for the frontend components.
-  - 🤖 An automatically generated frontend client.
-  - 🧪 [Playwright](https://playwright.dev) for End-to-End testing.
-  - 🦇 Dark mode support.
-- 🐋 [Docker Compose](https://www.docker.com) for development and production.
-- 🔒 Secure password hashing by default.
-- 🔑 JWT (JSON Web Token) authentication.
-- 📫 Email based password recovery.
-- 📬 [Mailcatcher](https://mailcatcher.me) for local email testing during development.
-- ✅ Tests with [Pytest](https://pytest.org).
-- 📞 [Traefik](https://traefik.io) as a reverse proxy / load balancer.
-- 🚢 Deployment instructions using Docker Compose, including how to set up a frontend Traefik proxy to handle automatic HTTPS certificates.
-- 🏭 CI (continuous integration) and CD (continuous deployment) based on GitHub Actions.
+- 거래소/증권사 계좌 연동 (API Key 기반)
+- 트레이딩 봇 생성/시작/중지/삭제
+- 5개 봇 전략 지원
+  - `spot_grid`
+  - `snowball`
+  - `rebalancing`
+  - `spot_dca`
+  - `algo_orders`
+- 대시보드에서 자산/봇 상태 조회
+- API Key AES-256-GCM 암호화 저장
 
-### Dashboard Login
+## 시스템 아키텍처
 
-[![API docs](img/login.png)](https://github.com/fastapi/full-stack-fastapi-template)
+- Frontend: Vite + React + TypeScript + TanStack Router/Query + shadcn/ui
+- Backend: FastAPI + SQLModel + Alembic + PostgreSQL
+- Bot Engine: Celery Worker + APScheduler + Redis
+- Exchange Integration:
+  - Binance/Upbit: `ccxt.async_support`
+  - KIS/키움: `httpx` 기반 커스텀 어댑터
 
-### Dashboard - Admin
+## 프로젝트 구조
 
-[![API docs](img/dashboard.png)](https://github.com/fastapi/full-stack-fastapi-template)
-
-### Dashboard - Items
-
-[![API docs](img/dashboard-items.png)](https://github.com/fastapi/full-stack-fastapi-template)
-
-### Dashboard - Dark Mode
-
-[![API docs](img/dashboard-dark.png)](https://github.com/fastapi/full-stack-fastapi-template)
-
-### Interactive API Documentation
-
-[![API docs](img/docs.png)](https://github.com/fastapi/full-stack-fastapi-template)
-
-## How To Use It
-
-You can **just fork or clone** this repository and use it as is.
-
-✨ It just works. ✨
-
-### How to Use a Private Repository
-
-If you want to have a private repository, GitHub won't allow you to simply fork it as it doesn't allow changing the visibility of forks.
-
-But you can do the following:
-
-- Create a new GitHub repo, for example `my-full-stack`.
-- Clone this repository manually, set the name with the name of the project you want to use, for example `my-full-stack`:
-
-```bash
-git clone git@github.com:fastapi/full-stack-fastapi-template.git my-full-stack
+```text
+tutong-v3/
+├── backend/      # FastAPI API 서버
+├── bot_engine/   # Celery 기반 봇 엔진
+├── frontend/     # React SPA
+├── docs/         # 기획/요구사항/아키텍처/DB/가이드 문서
+├── compose.yml
+└── compose.override.yml
 ```
 
-- Enter into the new directory:
+## 빠른 시작 (Docker 권장)
+
+사전 요구사항:
+- Docker + Docker Compose
+
+실행:
 
 ```bash
-cd my-full-stack
+docker compose watch
 ```
 
-- Set the new origin to your new repository, copy it from the GitHub interface, for example:
+주요 로컬 URL:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
+- Swagger: http://localhost:8000/docs
+- Adminer: http://localhost:8080
+- MailCatcher: http://localhost:1080
+- Traefik Dashboard: http://localhost:8090
+
+## 로컬 개발 명령
+
+백엔드:
 
 ```bash
-git remote set-url origin git@github.com:octocat/my-full-stack.git
+cd backend
+uv sync
+uv run fastapi dev app/main.py
+uv run alembic upgrade head
+uv run pytest
+uv run prek run --all-files
 ```
 
-- Add this repo as another "remote" to allow you to get updates later:
+봇 엔진:
 
 ```bash
-git remote add upstream git@github.com:fastapi/full-stack-fastapi-template.git
+cd bot_engine
+uv sync
+uv run celery -A celery_app worker --loglevel=info
 ```
 
-- Push the code to your new repository:
+프론트엔드:
 
 ```bash
-git push -u origin master
+cd frontend
+bun install
+bun run dev
 ```
 
-### Update From the Original Template
-
-After cloning the repository, and after doing changes, you might want to get the latest changes from this original template.
-
-- Make sure you added the original repository as a remote, you can check it with:
+OpenAPI 클라이언트 동기화 (백엔드 API 변경 후):
 
 ```bash
-git remote -v
-
-origin    git@github.com:octocat/my-full-stack.git (fetch)
-origin    git@github.com:octocat/my-full-stack.git (push)
-upstream    git@github.com:fastapi/full-stack-fastapi-template.git (fetch)
-upstream    git@github.com:fastapi/full-stack-fastapi-template.git (push)
+bash scripts/generate-client.sh
 ```
 
-- Pull the latest changes without merging:
+## 개발 원칙 (요약)
 
-```bash
-git pull --no-commit upstream master
-```
+- 템플릿 기본 구조를 유지하고 필요한 영역만 확장
+- SQLModel/CRUD/Router 패턴을 템플릿 스타일에 맞춰 작성
+- 금융 계산은 `Decimal`만 사용 (`float` 계산 금지)
+- 민감 정보(API Key/Secret) 로그 출력 금지
+- API Key는 AES-256-GCM으로 암복호화
 
-This will download the latest changes from this template without committing them, that way you can check everything is right before committing.
+세부 규칙은 [CLAUDE.md](./CLAUDE.md), [docs/09_DEV_GUIDELINES.md](./docs/09_DEV_GUIDELINES.md) 참고.
 
-- If there are conflicts, solve them in your editor.
+## 문서 맵
 
-- Once you are done, commit the changes:
+- [프로젝트 문서 가이드](./docs/00_PROJECT_DOCUMENT_GUIDE.md)
+- [프로젝트 기획안](./docs/01_PROJECT_PROPOSAL.md)
+- [요구사항 명세서](./docs/02_REQUIREMENTS.md)
+- [시스템 아키텍처 설계서](./docs/03_SYSTEM_ARCHITECTURE.md)
+- [기술 스택 정의서](./docs/04_TECH_STACK.md)
+- [UI/UX 설계서](./docs/05_UI_DESIGN_SPEC.md)
+- [데이터베이스 설계서](./docs/07_DATABASE_DESIGN.md)
+- [외부 API 연동 명세서](./docs/08_EXTERNAL_API_INTEGRATION.md)
+- [개발 가이드라인](./docs/09_DEV_GUIDELINES.md)
+- [WBS/개발 일정표](./docs/10_WBS_SCHEDULE.md)
 
-```bash
-git merge --continue
-```
+## 현재 진행 상태 (문서 기준)
 
-### Configure
+- Phase 1-1 (기반 기능): 완료
+- Phase 1-2 (봇 엔진/전략): 핵심 구현 완료
+- 다음 우선순위:
+  - 전략 테스트 커버리지 보강
+  - 봇 생성/상세 UI 고도화
+  - 업비트/KIS 연동 검증 강화
 
-You can then update configs in the `.env` files to customize your configurations.
-
-Before deploying it, make sure you change at least the values for:
-
-- `SECRET_KEY`
-- `FIRST_SUPERUSER_PASSWORD`
-- `POSTGRES_PASSWORD`
-
-You can (and should) pass these as environment variables from secrets.
-
-Read the [deployment.md](./deployment.md) docs for more details.
-
-### Generate Secret Keys
-
-Some environment variables in the `.env` file have a default value of `changethis`.
-
-You have to change them with a secret key, to generate secret keys you can run the following command:
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
-
-Copy the content and use that as password / secret key. And run that again to generate another secure key.
-
-## How To Use It - Alternative With Copier
-
-This repository also supports generating a new project using [Copier](https://copier.readthedocs.io).
-
-It will copy all the files, ask you configuration questions, and update the `.env` files with your answers.
-
-### Install Copier
-
-You can install Copier with:
-
-```bash
-pip install copier
-```
-
-Or better, if you have [`pipx`](https://pipx.pypa.io/), you can run it with:
-
-```bash
-pipx install copier
-```
-
-**Note**: If you have `pipx`, installing copier is optional, you could run it directly.
-
-### Generate a Project With Copier
-
-Decide a name for your new project's directory, you will use it below. For example, `my-awesome-project`.
-
-Go to the directory that will be the parent of your project, and run the command with your project's name:
-
-```bash
-copier copy https://github.com/fastapi/full-stack-fastapi-template my-awesome-project --trust
-```
-
-If you have `pipx` and you didn't install `copier`, you can run it directly:
-
-```bash
-pipx run copier copy https://github.com/fastapi/full-stack-fastapi-template my-awesome-project --trust
-```
-
-**Note** the `--trust` option is necessary to be able to execute a [post-creation script](https://github.com/fastapi/full-stack-fastapi-template/blob/master/.copier/update_dotenv.py) that updates your `.env` files.
-
-### Input Variables
-
-Copier will ask you for some data, you might want to have at hand before generating the project.
-
-But don't worry, you can just update any of that in the `.env` files afterwards.
-
-The input variables, with their default values (some auto generated) are:
-
-- `project_name`: (default: `"FastAPI Project"`) The name of the project, shown to API users (in .env).
-- `stack_name`: (default: `"fastapi-project"`) The name of the stack used for Docker Compose labels and project name (no spaces, no periods) (in .env).
-- `secret_key`: (default: `"changethis"`) The secret key for the project, used for security, stored in .env, you can generate one with the method above.
-- `first_superuser`: (default: `"admin@example.com"`) The email of the first superuser (in .env).
-- `first_superuser_password`: (default: `"changethis"`) The password of the first superuser (in .env).
-- `smtp_host`: (default: "") The SMTP server host to send emails, you can set it later in .env.
-- `smtp_user`: (default: "") The SMTP server user to send emails, you can set it later in .env.
-- `smtp_password`: (default: "") The SMTP server password to send emails, you can set it later in .env.
-- `emails_from_email`: (default: `"info@example.com"`) The email account to send emails from, you can set it later in .env.
-- `postgres_password`: (default: `"changethis"`) The password for the PostgreSQL database, stored in .env, you can generate one with the method above.
-- `sentry_dsn`: (default: "") The DSN for Sentry, if you are using it, you can set it later in .env.
-
-## Backend Development
-
-Backend docs: [backend/README.md](./backend/README.md).
-
-## Frontend Development
-
-Frontend docs: [frontend/README.md](./frontend/README.md).
-
-## Deployment
-
-Deployment docs: [deployment.md](./deployment.md).
-
-## Development
-
-General development docs: [development.md](./development.md).
-
-This includes using Docker Compose, custom local domains, `.env` configurations, etc.
-
-## Release Notes
-
-Check the file [release-notes.md](./release-notes.md).
-
-## License
-
-The Full Stack FastAPI Template is licensed under the terms of the MIT license.
