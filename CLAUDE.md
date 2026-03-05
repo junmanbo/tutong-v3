@@ -433,6 +433,7 @@ test: BinanceAdapter 단위 테스트 추가
 - [x] 기술 스택 확정 (템플릿 기반)
 - [x] Phase 1-1: 기반 기능 개발 (백엔드 + 봇 엔진 기반 + 프론트엔드)
 - [x] Phase 1-2: 봇 엔진 기반 구조 (Celery Worker, Exchange Adapter 구조)
+- [x] Phase 1-2 계속: 봇 전략 로직 구현 + 잔고 조회 API
 
 ### Phase 1-1 완료 세부 내역
 1. ✅ 템플릿 클론 및 환경 설정
@@ -444,13 +445,24 @@ test: BinanceAdapter 단위 테스트 추가
 7. ✅ 프론트엔드 페이지 구현 (accounts.tsx, bots.tsx, index.tsx)
 8. ✅ 테스트 코드 작성 (backend API/CRUD + bot_engine utils)
 
-### 지금 해야 할 작업 (Phase 1-2 계속)
-1. bot_engine/strategies/ — 5가지 봇 전략 로직 구현
-   - spot_dca.py (가장 단순, 먼저 권장)
-   - spot_grid.py
-   - snowball.py, rebalancing.py, algo_orders.py
-2. bot_engine/exchange_adapters/ — bot_engine 전용 어댑터 구현
-3. 계좌 잔고 조회 API 엔드포인트 추가
+### Phase 1-2 완료 세부 내역
+1. ✅ bot_engine/strategies/ — 5가지 봇 전략 순수 함수 구현
+   - spot_dca.py: should_buy, calc_order_qty, is_completed
+   - spot_grid.py: build_grid, on_buy_filled, on_sell_filled
+   - snowball.py: should_add_buy, should_take_profit, calc_avg_price
+   - rebalancing.py: calc_weights, needs_rebalance, calc_rebalance_orders
+   - algo_orders.py: calc_slice_qty, calc_interval, calc_remaining_qty
+2. ✅ bot_engine/workers/ — 5가지 Worker 실제 구현 (TODO → 동작 코드)
+   - Redis 상태 저장 (재시작 복원), 1분 단위 stop 신호 확인
+3. ✅ 계좌 잔고 조회 API: GET /accounts/{id}/balance
+4. ✅ app.core.crypto에 decrypt() 추가 (backend 내부 사용)
+
+### 지금 해야 할 작업 (Phase 1-2 마무리 → Phase 1-3 준비)
+1. 봇 전략 테스트 코드 작성 (bot_engine/strategies/ 커버리지 90%+)
+2. 봇 생성 UI — 봇 타입별 config 입력 폼 (5종 페이지)
+   - 프론트엔드: bots.tsx 확장 (Spot Grid, DCA, Snowball, Rebalancing, Algo)
+3. 봇 상세 / 운영 현황 페이지 (실시간 상태, PnL 표시)
+4. (Phase 1-3 준비) 업비트 / KIS Adapter 동작 검증
 
 ---
 

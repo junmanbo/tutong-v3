@@ -91,38 +91,40 @@ Week 5-6: 봇 엔진 기반
 ├── [Bot] bot_engine/ 디렉토리 초기화 (pyproject.toml, celery_app.py) ✅
 ├── [Bot] Celery Worker 기본 구조 구현 (Broker: Redis) ✅
 ├── [Bot] AbstractExchangeAdapter 인터페이스 정의 ✅
-├── [Bot] 바이낸스 Exchange Adapter 구현 (bot_engine/exchange_adapters/) — 미구현 (backend adapter 별도)
-│   ├── REST API 연동 (주문, 잔고, 시세)
-│   └── WebSocket 연동 (실시간 가격)
+├── [Bot] bot_engine/exchange_adapters/ — backend adapter re-export (path dep) ✅
 ├── [BE] bots.py — 봇 CRUD API + 시작/중지 엔드포인트 ✅
-└── [FE] generate-client.sh 실행 → 봇 관련 타입 자동 생성 ✅
+├── [BE] GET /accounts/{id}/balance — 잔고 조회 API 구현 ✅
+└── [FE] generate-client.sh 실행 → 봇/잔고 관련 타입 자동 생성 ✅
 
 Week 7-8: Spot Grid + DCA 봇
-├── [Bot] Spot Grid 전략 로직 구현
-│   ├── 그리드 레벨 계산 (Arithmetic / Geometric)
-│   ├── 매수/매도 조건 체크
-│   └── 주문 발행 및 체결 처리
-├── [Bot] Spot DCA 전략 로직 구현
-│   ├── APScheduler (AsyncIOScheduler) 연동
-│   └── 정기 매수 주문 발행
-├── [FE] 봇 생성 - Spot Grid 페이지
+├── [Bot] Spot Grid 전략 로직 구현 ✅
+│   ├── 그리드 레벨 계산 (Arithmetic / Geometric) ✅
+│   ├── 체결 감지 (30초 폴링 + get_order) ✅
+│   └── 체결 후 카운터 주문 배치 (on_buy_filled / on_sell_filled) ✅
+├── [Bot] Spot DCA 전략 로직 구현 ✅
+│   ├── 인터벌 기반 매수 타이밍 체크 ✅
+│   └── 시장가/지정가 주문 발행 + Redis 상태 저장 ✅
+├── [FE] 봇 생성 - Spot Grid 페이지  ← 다음 단계
 └── [FE] 봇 생성 - Spot DCA 페이지
 
 Week 8-9: Snowball + Rebalancing 봇
-├── [Bot] Position Snowball 전략 로직 구현
-│   ├── 가격 하락 조건 체크
-│   └── 레이어별 추가 매수 로직
-├── [Bot] Rebalancing Bot 전략 로직 구현
-│   ├── 비중 계산 로직
-│   ├── 시간/편차 기반 트리거
-│   └── 리밸런싱 주문 발행
+├── [Bot] Position Snowball 전략 로직 구현 ✅
+│   ├── 가격 하락 조건 체크 (should_add_buy) ✅
+│   └── 평균 매입가 기반 익절 청산 (should_take_profit) ✅
+├── [Bot] Rebalancing Bot 전략 로직 구현 ✅
+│   ├── 비중 계산 로직 (calc_weights) ✅
+│   ├── 임계값 기반 트리거 (needs_rebalance) ✅
+│   └── 매도 우선 리밸런싱 주문 발행 ✅
 ├── [FE] 봇 생성 - Position Snowball 페이지
 └── [FE] 봇 생성 - Rebalancing Bot 페이지
 
 Week 9-10: Algo Orders + 공통 봇 기능
-├── [Bot] Spot Algo Orders (TWAP) 로직 구현
-├── [Bot] 봇 손절/목표 수익 자동 종료 로직
+├── [Bot] Spot Algo Orders (TWAP) 로직 구현 ✅
+│   ├── 슬라이스 수량 계산 (calc_slice_qty, calc_remaining_qty) ✅
+│   └── 인터벌 계산 + 슬라이스 순차 실행 ✅
+├── [Bot] 봇 손절/목표 수익 자동 종료 로직  ← 다음 단계
 ├── [Bot] 봇 실행 로그 DB 저장
+├── [Bot] strategies/ 테스트 코드 (커버리지 90%+)  ← 다음 단계
 ├── [FE] 봇 생성 - Algo Orders 페이지
 ├── [FE] 봇 목록 페이지
 └── [FE] 봇 상세 / 운영 현황 페이지
@@ -221,6 +223,7 @@ Week 14    │ 🚀 MVP 베타 론칭
 | v1.3 | 2025년 | 인프라 전략 변경 — Phase 1-4 배포 태스크를 On-premise(홈서버) 기반으로 재작성. AWS Terraform 구성 → Docker Compose 운영 환경 + Nginx + Certbot + Prometheus/Grafana/Loki + GitHub Actions 자동 배포로 교체 | PM |
 | v1.4 | 2026-03-04 | 진행 상황 반영 — Phase 0·1-1 백엔드 완료 표시, Phase 1-2 봇 엔진 기반 완료 표시, 테스트·정리 작업 추가 기록 | Dev |
 | v1.5 | 2026-03-05 | Phase 1-1 프론트엔드 완료 표시 — accounts.tsx, bots.tsx, index.tsx 구현 완료 | Dev |
+| v1.6 | 2026-03-05 | Phase 1-2 봇 전략 완료 — 5가지 strategies/ 순수 함수 + workers/ 실제 구현, GET /accounts/{id}/balance 추가 | Dev |
 
 ---
 
