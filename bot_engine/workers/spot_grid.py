@@ -14,14 +14,18 @@ import asyncio
 import json
 import logging
 import uuid
-from dataclasses import asdict
+from decimal import Decimal
 
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
+    _update_bot_total_pnl_pct,
+    calc_change_pct,
     clear_stop_signal,
+    evaluate_risk_limits,
     get_redis,
     should_stop,
 )
@@ -43,8 +47,6 @@ def run_spot_grid(self, *, bot_id: str) -> None:
     """Spot Grid 봇 실행 Task."""
 
     async def _run() -> None:
-        from decimal import Decimal
-
         from sqlmodel import Session, create_engine, select
 
         from app.core.config import settings
@@ -88,6 +90,8 @@ def run_spot_grid(self, *, bot_id: str) -> None:
             symbol = bot.symbol or "BTC/USDT"
             bot_config = bot.config or {}
             exchange = account.exchange
+            stop_loss_pct = bot.stop_loss_pct
+            take_profit_pct = bot.take_profit_pct
 
         # ── 설정 파싱 ────────────────────────────────────────────────────────
         config = GridConfig.from_dict(symbol, bot_config)
@@ -108,6 +112,14 @@ def run_spot_grid(self, *, bot_id: str) -> None:
         # ── 그리드 초기화 ────────────────────────────────────────────────────
         r = get_redis()
         state_key = f"bot:{bot_id}:grid_state"
+        risk_key = f"bot:{bot_id}:grid_risk"
+        risk_raw = r.get(risk_key)
+        risk_state: dict = json.loads(risk_raw) if risk_raw else {}
+        initial_price: Decimal | None = None
+        if risk_state.get("initial_price"):
+            initial_price = Decimal(risk_state["initial_price"])
+        final_status = "stopped"
+        final_reason: str | None = None
 
         # 기존 상태 복원 또는 새 그리드 생성
         state_raw = r.get(state_key)
@@ -130,6 +142,9 @@ def run_spot_grid(self, *, bot_id: str) -> None:
             levels = build_grid(config)
             ticker = await adapter.get_ticker(symbol)
             current_price = ticker.last
+            if initial_price is None and current_price > Decimal("0"):
+                initial_price = current_price
+                r.set(risk_key, json.dumps({"initial_price": str(initial_price)}))
 
             for level in levels:
                 if level.price < current_price:  # 현재가 이하 레벨만 매수 주문
@@ -177,6 +192,31 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                     logger.info("Stop signal received: bot_id=%s", bot_id)
                     clear_stop_signal(bot_id)
                     break
+
+                try:
+                    ticker = await adapter.get_ticker(symbol)
+                    current_price = ticker.last
+                    if initial_price is None and current_price > Decimal("0"):
+                        initial_price = current_price
+                        r.set(risk_key, json.dumps({"initial_price": str(initial_price)}))
+                    if initial_price is not None:
+                        pnl_pct = calc_change_pct(current_price, initial_price)
+                        _update_bot_total_pnl_pct(bot_id=bot_id, pnl_pct=pnl_pct)
+                        risk = evaluate_risk_limits(
+                            change_pct=pnl_pct,
+                            stop_loss_pct=stop_loss_pct,
+                            take_profit_pct=take_profit_pct,
+                        )
+                        if risk:
+                            final_status, final_reason = risk
+                            logger.info(
+                                "Grid auto-stop: bot_id=%s reason=%s",
+                                bot_id,
+                                final_reason,
+                            )
+                            break
+                except Exception as exc:
+                    logger.warning("Grid ticker read failed: bot_id=%s error=%s", bot_id, exc)
 
                 # 미체결 주문 폴링
                 for level in list(levels):
@@ -251,8 +291,12 @@ def run_spot_grid(self, *, bot_id: str) -> None:
         finally:
             await adapter.close()
             r.delete(state_key)
+            r.delete(risk_key)
 
-        _update_bot_status_stopped(bot_id=bot_id)
+        if final_status == "completed":
+            _update_bot_status_completed(bot_id=bot_id, reason=final_reason)
+        else:
+            _update_bot_status_stopped(bot_id=bot_id, reason=final_reason)
         logger.info("Spot Grid bot stopped: bot_id=%s", bot_id)
 
     self.run_async(_run())

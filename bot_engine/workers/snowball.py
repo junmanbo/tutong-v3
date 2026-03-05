@@ -18,9 +18,13 @@ from decimal import Decimal
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
+    _update_bot_total_pnl_pct,
+    calc_change_pct,
     clear_stop_signal,
+    evaluate_risk_limits,
     get_redis,
     should_stop,
 )
@@ -83,6 +87,8 @@ def run_snowball(self, *, bot_id: str) -> None:
             symbol = bot.symbol or "BTC/USDT"
             bot_config = bot.config or {}
             exchange = account.exchange
+            stop_loss_pct = bot.stop_loss_pct
+            take_profit_pct = bot.take_profit_pct
 
         # ── 설정 파싱 ────────────────────────────────────────────────────────
         config = SnowballConfig.from_dict(symbol, bot_config)
@@ -114,6 +120,9 @@ def run_snowball(self, *, bot_id: str) -> None:
                 {"price": str(b.price), "qty": str(b.qty)} for b in buys
             ]))
 
+        final_status = "stopped"
+        final_reason: str | None = None
+
         try:
             # 포지션이 없으면 초기 매수
             if not buys:
@@ -144,6 +153,40 @@ def run_snowball(self, *, bot_id: str) -> None:
                 current_price = tick.price
                 avg_price = calc_avg_price(buys)
                 total_qty = calc_total_qty(buys)
+                if total_qty > Decimal("0") and avg_price > Decimal("0"):
+                    pnl_pct = calc_change_pct(current_price, avg_price)
+                    _update_bot_total_pnl_pct(bot_id=bot_id, pnl_pct=pnl_pct)
+                    risk = evaluate_risk_limits(
+                        change_pct=pnl_pct,
+                        stop_loss_pct=stop_loss_pct,
+                        take_profit_pct=take_profit_pct,
+                    )
+                    if risk:
+                        status, reason = risk
+                        try:
+                            order = await adapter.place_order(
+                                OrderRequest(
+                                    symbol=symbol,
+                                    side="sell",
+                                    order_type="market",
+                                    quantity=total_qty,
+                                )
+                            )
+                            logger.info(
+                                "Snowball risk exit: status=%s price=%s avg=%s qty=%s order_id=%s",
+                                status,
+                                current_price,
+                                avg_price,
+                                total_qty,
+                                order.order_id,
+                            )
+                            buys.clear()
+                            save_state()
+                            final_status = status
+                            final_reason = reason
+                            break
+                        except Exception as exc:
+                            logger.error("Risk exit order error: %s", exc)
 
                 # 익절 조건 확인
                 if total_qty > Decimal("0") and should_take_profit(
@@ -162,6 +205,8 @@ def run_snowball(self, *, bot_id: str) -> None:
                         )
                         buys.clear()
                         save_state()
+                        final_status = "completed"
+                        final_reason = "Snowball strategy take-profit completed"
                         break  # 익절 후 봇 완료
                     except Exception as exc:
                         logger.error("Take profit order error: %s", exc)
@@ -192,7 +237,10 @@ def run_snowball(self, *, bot_id: str) -> None:
             await adapter.close()
             r.delete(state_key)
 
-        _update_bot_status_stopped(bot_id=bot_id)
+        if final_status == "completed":
+            _update_bot_status_completed(bot_id=bot_id, reason=final_reason)
+        else:
+            _update_bot_status_stopped(bot_id=bot_id, reason=final_reason)
         logger.info("Snowball bot stopped: bot_id=%s buys=%d", bot_id, len(buys))
 
     self.run_async(_run())

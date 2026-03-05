@@ -434,6 +434,8 @@ test: BinanceAdapter 단위 테스트 추가
 - [x] Phase 1-1: 기반 기능 개발 (백엔드 + 봇 엔진 기반 + 프론트엔드)
 - [x] Phase 1-2: 봇 엔진 기반 구조 (Celery Worker, Exchange Adapter 구조)
 - [x] Phase 1-2 계속: 봇 전략 로직 구현 + 잔고 조회 API
+- [x] Phase 1-2 마무리(1차): 전략 테스트 보강 + 봇 생성 5종 폼 + 봇 상세/운영 현황 페이지
+- [x] 프론트 E2E 테스트 정리: 템플릿 잔재(items) 제거, 현재 UI 기준 Playwright 정합화
 
 ### Phase 1-1 완료 세부 내역
 1. ✅ 템플릿 클론 및 환경 설정
@@ -457,12 +459,11 @@ test: BinanceAdapter 단위 테스트 추가
 3. ✅ 계좌 잔고 조회 API: GET /accounts/{id}/balance
 4. ✅ app.core.crypto에 decrypt() 추가 (backend 내부 사용)
 
-### 지금 해야 할 작업 (Phase 1-2 마무리 → Phase 1-3 준비)
-1. 봇 전략 테스트 코드 작성 (bot_engine/strategies/ 커버리지 90%+)
-2. 봇 생성 UI — 봇 타입별 config 입력 폼 (5종 페이지)
-   - 프론트엔드: bots.tsx 확장 (Spot Grid, DCA, Snowball, Rebalancing, Algo)
-3. 봇 상세 / 운영 현황 페이지 (실시간 상태, PnL 표시)
-4. (Phase 1-3 준비) 업비트 / KIS Adapter 동작 검증
+### 지금 해야 할 작업 (Phase 1-3 준비)
+1. 업비트 / KIS Adapter 동작 검증 + 테스트 코드 작성
+2. 봇 손절/목표 수익 자동 종료 로직 구현 (Worker 반영)
+3. 봇 실행 로그 DB 저장 및 봇 상세 페이지 로그 탭 연동
+4. 알림 이벤트 트리거(봇 상태/손절/익절) + 알림 설정 화면 연동
 
 ---
 

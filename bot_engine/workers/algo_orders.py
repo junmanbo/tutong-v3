@@ -19,9 +19,13 @@ from decimal import Decimal
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
+    _update_bot_total_pnl_pct,
+    calc_change_pct,
     clear_stop_signal,
+    evaluate_risk_limits,
     get_redis,
     should_stop,
 )
@@ -82,6 +86,8 @@ def run_algo_orders(self, *, bot_id: str) -> None:
             symbol = bot.symbol or "BTC/USDT"
             bot_config = bot.config or {}
             exchange = account.exchange
+            stop_loss_pct = bot.stop_loss_pct
+            take_profit_pct = bot.take_profit_pct
 
         # ── 설정 파싱 ────────────────────────────────────────────────────────
         config = AlgoConfig.from_dict(symbol, bot_config)
@@ -108,6 +114,14 @@ def run_algo_orders(self, *, bot_id: str) -> None:
         state_key = f"bot:{bot_id}:algo_state"
         state_raw = r.get(state_key)
         executed_slices: int = json.loads(state_raw).get("executed_slices", 0) if state_raw else 0
+        initial_price: Decimal | None = None
+        if state_raw:
+            state = json.loads(state_raw)
+            if state.get("initial_price"):
+                initial_price = Decimal(state["initial_price"])
+
+        final_status = "stopped"
+        final_reason: str | None = None
 
         try:
             while True:
@@ -121,7 +135,33 @@ def run_algo_orders(self, *, bot_id: str) -> None:
                         "Algo Orders completed: bot_id=%s slices=%d/%d",
                         bot_id, executed_slices, config.num_slices,
                     )
+                    final_status = "completed"
+                    final_reason = "TWAP slices completed"
                     break
+
+                try:
+                    ticker = await adapter.get_ticker(symbol)
+                    current_price = ticker.last
+                    if initial_price is None and current_price > Decimal("0"):
+                        initial_price = current_price
+                    if initial_price is not None:
+                        pnl_pct = calc_change_pct(current_price, initial_price)
+                        _update_bot_total_pnl_pct(bot_id=bot_id, pnl_pct=pnl_pct)
+                        risk = evaluate_risk_limits(
+                            change_pct=pnl_pct,
+                            stop_loss_pct=stop_loss_pct,
+                            take_profit_pct=take_profit_pct,
+                        )
+                        if risk:
+                            final_status, final_reason = risk
+                            logger.info(
+                                "Algo auto-stop: bot_id=%s reason=%s",
+                                bot_id,
+                                final_reason,
+                            )
+                            break
+                except Exception as exc:
+                    logger.warning("Algo ticker read failed: bot_id=%s error=%s", bot_id, exc)
 
                 # 마지막 슬라이스는 잔여 수량 사용
                 is_last = (executed_slices == config.num_slices - 1)
@@ -150,7 +190,15 @@ def run_algo_orders(self, *, bot_id: str) -> None:
                         )
                     )
                     executed_slices += 1
-                    r.set(state_key, json.dumps({"executed_slices": executed_slices}))
+                    r.set(
+                        state_key,
+                        json.dumps(
+                            {
+                                "executed_slices": executed_slices,
+                                "initial_price": str(initial_price) if initial_price else None,
+                            }
+                        ),
+                    )
                     logger.info(
                         "TWAP slice executed: bot_id=%s %d/%d qty=%s order_id=%s",
                         bot_id, executed_slices, config.num_slices, qty, order.order_id,
@@ -168,7 +216,10 @@ def run_algo_orders(self, *, bot_id: str) -> None:
             await adapter.close()
             r.delete(state_key)
 
-        _update_bot_status_stopped(bot_id=bot_id)
+        if final_status == "completed":
+            _update_bot_status_completed(bot_id=bot_id, reason=final_reason)
+        else:
+            _update_bot_status_stopped(bot_id=bot_id, reason=final_reason)
         logger.info(
             "Algo Orders bot stopped: bot_id=%s executed=%d/%d",
             bot_id, executed_slices, config.num_slices,

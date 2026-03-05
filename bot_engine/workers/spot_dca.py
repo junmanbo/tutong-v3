@@ -18,9 +18,13 @@ from datetime import datetime, timezone
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
+    _update_bot_total_pnl_pct,
+    calc_change_pct,
     clear_stop_signal,
+    evaluate_risk_limits,
     get_redis,
     should_stop,
 )
@@ -83,6 +87,8 @@ def run_spot_dca(self, *, bot_id: str) -> None:
             symbol = bot.symbol or "BTC/USDT"
             bot_config = bot.config or {}
             exchange = account.exchange
+            stop_loss_pct = bot.stop_loss_pct
+            take_profit_pct = bot.take_profit_pct
 
         # ── 설정 파싱 ────────────────────────────────────────────────────────
         config = DcaConfig.from_dict(symbol, bot_config)
@@ -107,9 +113,15 @@ def run_spot_dca(self, *, bot_id: str) -> None:
         state_raw = r.get(state_key)
         state: dict = json.loads(state_raw) if state_raw else {}
         order_count: int = state.get("order_count", 0)
+        initial_price: Decimal | None = None
+        if state.get("initial_price"):
+            initial_price = Decimal(state["initial_price"])
         last_order_time: datetime | None = None
         if state.get("last_order_time"):
             last_order_time = datetime.fromisoformat(state["last_order_time"])
+
+        final_status = "stopped"
+        final_reason: str | None = None
 
         try:
             while True:
@@ -123,6 +135,8 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                         "DCA completed: bot_id=%s total_orders=%d",
                         bot_id, config.total_orders,
                     )
+                    final_status = "completed"
+                    final_reason = "DCA total orders completed"
                     break
 
                 now = datetime.now(UTC)
@@ -130,6 +144,26 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                     try:
                         ticker = await adapter.get_ticker(symbol)
                         price = ticker.last
+                        if initial_price is None and price > Decimal("0"):
+                            initial_price = price
+
+                        if initial_price is not None:
+                            pnl_pct = calc_change_pct(price, initial_price)
+                            _update_bot_total_pnl_pct(bot_id=bot_id, pnl_pct=pnl_pct)
+                            risk = evaluate_risk_limits(
+                                change_pct=pnl_pct,
+                                stop_loss_pct=stop_loss_pct,
+                                take_profit_pct=take_profit_pct,
+                            )
+                            if risk:
+                                final_status, final_reason = risk
+                                logger.info(
+                                    "DCA auto-stop: bot_id=%s reason=%s",
+                                    bot_id,
+                                    final_reason,
+                                )
+                                break
+
                         qty = calc_order_qty(config.amount_per_order, price, config.step_size)
 
                         if qty <= Decimal("0"):
@@ -152,6 +186,7 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                                 state_key,
                                 json.dumps({
                                     "order_count": order_count,
+                                    "initial_price": str(initial_price) if initial_price else None,
                                     "last_order_time": now.isoformat(),
                                 }),
                             )
@@ -169,7 +204,10 @@ def run_spot_dca(self, *, bot_id: str) -> None:
             await adapter.close()
             r.delete(state_key)
 
-        _update_bot_status_stopped(bot_id=bot_id)
+        if final_status == "completed":
+            _update_bot_status_completed(bot_id=bot_id, reason=final_reason)
+        else:
+            _update_bot_status_stopped(bot_id=bot_id, reason=final_reason)
         logger.info("Spot DCA bot stopped: bot_id=%s total_orders=%d", bot_id, order_count)
 
     self.run_async(_run())

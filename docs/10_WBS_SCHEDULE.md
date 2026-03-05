@@ -104,8 +104,8 @@ Week 7-8: Spot Grid + DCA 봇
 ├── [Bot] Spot DCA 전략 로직 구현 ✅
 │   ├── 인터벌 기반 매수 타이밍 체크 ✅
 │   └── 시장가/지정가 주문 발행 + Redis 상태 저장 ✅
-├── [FE] 봇 생성 - Spot Grid 페이지  ← 다음 단계
-└── [FE] 봇 생성 - Spot DCA 페이지
+├── [FE] 봇 생성 UI - Spot Grid/Spot DCA 폼 반영 (bots.tsx 단일 모달) ✅
+└── [FE] 봇 생성 UI - 봇 타입별 입력 분기(5종 공통 확장) ✅
 
 Week 8-9: Snowball + Rebalancing 봇
 ├── [Bot] Position Snowball 전략 로직 구현 ✅
@@ -115,8 +115,8 @@ Week 8-9: Snowball + Rebalancing 봇
 │   ├── 비중 계산 로직 (calc_weights) ✅
 │   ├── 임계값 기반 트리거 (needs_rebalance) ✅
 │   └── 매도 우선 리밸런싱 주문 발행 ✅
-├── [FE] 봇 생성 - Position Snowball 페이지
-└── [FE] 봇 생성 - Rebalancing Bot 페이지
+├── [FE] 봇 생성 UI - Position Snowball 폼 반영 ✅
+└── [FE] 봇 생성 UI - Rebalancing 폼 반영 ✅
 
 Week 9-10: Algo Orders + 공통 봇 기능
 ├── [Bot] Spot Algo Orders (TWAP) 로직 구현 ✅
@@ -124,10 +124,10 @@ Week 9-10: Algo Orders + 공통 봇 기능
 │   └── 인터벌 계산 + 슬라이스 순차 실행 ✅
 ├── [Bot] 봇 손절/목표 수익 자동 종료 로직  ← 다음 단계
 ├── [Bot] 봇 실행 로그 DB 저장
-├── [Bot] strategies/ 테스트 코드 (커버리지 90%+)  ← 다음 단계
-├── [FE] 봇 생성 - Algo Orders 페이지
-├── [FE] 봇 목록 페이지
-└── [FE] 봇 상세 / 운영 현황 페이지
+├── [Bot] strategies/ 테스트 코드 (커버리지 90%+) ✅ (현재 100%)
+├── [FE] 봇 생성 UI - Algo Orders 폼 반영 ✅
+├── [FE] 봇 목록 페이지 ✅
+└── [FE] 봇 상세 / 운영 현황 페이지 ✅
 ```
 
 ### Phase 1-3: 추가 거래소 연동 + 알림 (9~12주)
@@ -224,6 +224,8 @@ Week 14    │ 🚀 MVP 베타 론칭
 | v1.4 | 2026-03-04 | 진행 상황 반영 — Phase 0·1-1 백엔드 완료 표시, Phase 1-2 봇 엔진 기반 완료 표시, 테스트·정리 작업 추가 기록 | Dev |
 | v1.5 | 2026-03-05 | Phase 1-1 프론트엔드 완료 표시 — accounts.tsx, bots.tsx, index.tsx 구현 완료 | Dev |
 | v1.6 | 2026-03-05 | Phase 1-2 봇 전략 완료 — 5가지 strategies/ 순수 함수 + workers/ 실제 구현, GET /accounts/{id}/balance 추가 | Dev |
+| v1.7 | 2026-03-05 | Phase 1-2 진행 반영 — bot_engine/strategies 테스트 보강(커버리지 100%), 봇 생성 UI 5종 입력 분기, 봇 상세/운영 현황 페이지 추가 | Dev |
+| v1.8 | 2026-03-05 | E2E 테스트 정리 — 템플릿 잔재 items.spec.ts 삭제, 로그인/설정/리셋 테스트를 현재 UI 기준으로 정합화, Playwright 전체 51 pass / 2 skip 확인 | Dev |
 
 ---
 

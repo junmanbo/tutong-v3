@@ -19,9 +19,13 @@ from decimal import Decimal
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
+    _update_bot_total_pnl_pct,
+    calc_change_pct,
     clear_stop_signal,
+    evaluate_risk_limits,
     should_stop,
 )
 
@@ -80,6 +84,8 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                 )
             bot_config = bot.config or {}
             exchange = account.exchange
+            stop_loss_pct = bot.stop_loss_pct
+            take_profit_pct = bot.take_profit_pct
 
         # ── 설정 파싱 ────────────────────────────────────────────────────────
         config = RebalancingConfig.from_dict(bot_config)
@@ -97,6 +103,9 @@ def run_rebalancing(self, *, bot_id: str) -> None:
             "Rebalancing bot started: bot_id=%s assets=%s threshold=%s interval=%ds",
             bot_id, list(config.assets.keys()), config.threshold_pct, config.interval_seconds,
         )
+        initial_total_value: Decimal | None = None
+        final_status = "stopped"
+        final_reason: str | None = None
 
         try:
             while True:
@@ -138,6 +147,24 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                          if asset != quote else balances[asset])
                         for asset in balances
                     )
+                    if initial_total_value is None and total_value > Decimal("0"):
+                        initial_total_value = total_value
+                    if initial_total_value is not None and total_value > Decimal("0"):
+                        pnl_pct = calc_change_pct(total_value, initial_total_value)
+                        _update_bot_total_pnl_pct(bot_id=bot_id, pnl_pct=pnl_pct)
+                        risk = evaluate_risk_limits(
+                            change_pct=pnl_pct,
+                            stop_loss_pct=stop_loss_pct,
+                            take_profit_pct=take_profit_pct,
+                        )
+                        if risk:
+                            final_status, final_reason = risk
+                            logger.info(
+                                "Rebalancing auto-stop: bot_id=%s reason=%s",
+                                bot_id,
+                                final_reason,
+                            )
+                            break
 
                     logger.debug(
                         "Rebalancing check: bot_id=%s weights=%s total=%s",
@@ -194,7 +221,10 @@ def run_rebalancing(self, *, bot_id: str) -> None:
         finally:
             await adapter.close()
 
-        _update_bot_status_stopped(bot_id=bot_id)
+        if final_status == "completed":
+            _update_bot_status_completed(bot_id=bot_id, reason=final_reason)
+        else:
+            _update_bot_status_stopped(bot_id=bot_id, reason=final_reason)
         logger.info("Rebalancing bot stopped: bot_id=%s", bot_id)
 
     self.run_async(_run())
