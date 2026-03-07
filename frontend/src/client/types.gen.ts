@@ -27,6 +27,23 @@ export type BotCreate = {
     account_id: string;
 };
 
+export type BotLogPublic = {
+    event_type: string;
+    level?: string;
+    message: string;
+    payload?: {
+        [key: string]: unknown;
+    };
+    id: string;
+    bot_id: string;
+    created_at: string;
+};
+
+export type BotLogsPublic = {
+    data: Array<BotLogPublic>;
+    count: number;
+};
+
 export type BotPublic = {
     name: string;
     bot_type: BotTypeEnum;
@@ -241,6 +258,14 @@ export type BotsDeleteBotData = {
 };
 
 export type BotsDeleteBotResponse = (Message);
+
+export type BotsReadBotLogsData = {
+    id: string;
+    limit?: number;
+    skip?: number;
+};
+
+export type BotsReadBotLogsResponse = (BotLogsPublic);
 
 export type BotsStartBotData = {
     id: string;

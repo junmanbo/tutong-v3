@@ -745,3 +745,68 @@ class TestStopBot:
             f"{settings.API_V1_STR}/bots/{bot_id}/stop", headers=headers2
         )
         assert r.status_code == 404
+
+
+class TestReadBotLogs:
+    def test_read_bot_logs_empty(
+        self, client: TestClient, db: Session
+    ) -> None:
+        _, headers, account_id = _setup_user_with_account(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/bots/",
+            headers=headers,
+            json=_bot_payload(account_id),
+        )
+        bot_id = create_r.json()["id"]
+
+        r = client.get(
+            f"{settings.API_V1_STR}/bots/{bot_id}/logs",
+            headers=headers,
+        )
+        assert r.status_code == 200
+        assert r.json()["count"] == 0
+        assert r.json()["data"] == []
+
+    def test_read_bot_logs_returns_latest_first(
+        self, client: TestClient, db: Session
+    ) -> None:
+        _, headers, account_id = _setup_user_with_account(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/bots/",
+            headers=headers,
+            json=_bot_payload(account_id),
+        )
+        bot_id = uuid.UUID(create_r.json()["id"])
+
+        crud.create_bot_log(
+            session=db,
+            bot_id=bot_id,
+            event_type="a",
+            level="info",
+            message="first",
+        )
+        crud.create_bot_log(
+            session=db,
+            bot_id=bot_id,
+            event_type="b",
+            level="warning",
+            message="second",
+        )
+
+        r = client.get(
+            f"{settings.API_V1_STR}/bots/{bot_id}/logs",
+            headers=headers,
+        )
+        assert r.status_code == 200
+        data = r.json()["data"]
+        assert len(data) == 2
+        assert data[0]["message"] == "second"
+        assert data[1]["message"] == "first"
+
+        # ownership check (different user cannot read)
+        _, headers_other, _ = _setup_user_with_account(client, db)
+        r_other = client.get(
+            f"{settings.API_V1_STR}/bots/{bot_id}/logs",
+            headers=headers_other,
+        )
+        assert r_other.status_code == 404

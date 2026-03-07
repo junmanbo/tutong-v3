@@ -9,6 +9,7 @@ from app.core.security import get_password_hash, verify_password
 from app.models import (
     Bot,
     BotCreate,
+    BotLog,
     BotUpdate,
     ExchangeAccount,
     ExchangeAccountCreate,
@@ -272,3 +273,48 @@ def stop_bot(*, session: Session, bot: Bot) -> Bot:
     session.commit()
     session.refresh(bot)
     return bot
+
+
+def create_bot_log(
+    *,
+    session: Session,
+    bot_id: uuid.UUID,
+    event_type: str,
+    level: str,
+    message: str,
+    payload: dict | None = None,
+) -> BotLog:
+    log = BotLog(
+        bot_id=bot_id,
+        event_type=event_type,
+        level=level,
+        message=message,
+        payload=payload or {},
+    )
+    session.add(log)
+    session.commit()
+    session.refresh(log)
+    return log
+
+
+def get_bot_logs_by_user(
+    *,
+    session: Session,
+    bot_id: uuid.UUID,
+    user_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+) -> list[BotLog]:
+    statement = (
+        select(BotLog)
+        .join(Bot, Bot.id == BotLog.bot_id)
+        .where(
+            BotLog.bot_id == bot_id,
+            Bot.user_id == user_id,
+            Bot.deleted_at.is_(None),
+        )
+        .order_by(BotLog.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())

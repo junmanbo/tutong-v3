@@ -246,6 +246,7 @@ class Bot(BotBase, table=True):
 
     owner: User = Relationship(back_populates="bots")
     account: ExchangeAccount = Relationship(back_populates="bots")
+    logs: list["BotLog"] = Relationship(back_populates="bot")
 
 
 class BotCreate(BotBase):
@@ -269,6 +270,37 @@ class BotPublic(BotBase):
 
 class BotsPublic(SQLModel):
     data: list[BotPublic]
+    count: int
+
+
+class BotLogBase(SQLModel):
+    event_type: str = Field(max_length=50)
+    level: str = Field(default="info", max_length=20)
+    message: str = Field(sa_type=Text())
+    payload: dict = Field(
+        default={},
+        sa_column=Column(JSONB, nullable=False, server_default="{}"),
+    )
+
+
+class BotLog(BotLogBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    bot_id: uuid.UUID = Field(foreign_key="bot.id", ondelete="CASCADE")
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+    bot: Bot = Relationship(back_populates="logs")
+
+
+class BotLogPublic(BotLogBase):
+    id: uuid.UUID
+    bot_id: uuid.UUID
+    created_at: datetime
+
+
+class BotLogsPublic(SQLModel):
+    data: list[BotLogPublic]
     count: int
 
 

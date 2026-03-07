@@ -179,6 +179,69 @@ export const BotCreateSchema = {
     title: 'BotCreate'
 } as const;
 
+export const BotLogPublicSchema = {
+    properties: {
+        event_type: {
+            type: 'string',
+            maxLength: 50,
+            title: 'Event Type'
+        },
+        level: {
+            type: 'string',
+            maxLength: 20,
+            title: 'Level',
+            default: 'info'
+        },
+        message: {
+            type: 'string',
+            title: 'Message'
+        },
+        payload: {
+            additionalProperties: true,
+            type: 'object',
+            title: 'Payload',
+            default: {}
+        },
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        bot_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Bot Id'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        }
+    },
+    type: 'object',
+    required: ['event_type', 'message', 'id', 'bot_id', 'created_at'],
+    title: 'BotLogPublic'
+} as const;
+
+export const BotLogsPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/BotLogPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'BotLogsPublic'
+} as const;
+
 export const BotPublicSchema = {
     properties: {
         name: {

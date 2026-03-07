@@ -117,9 +117,32 @@ bash scripts/generate-client.sh
 ## 현재 진행 상태 (문서 기준)
 
 - Phase 1-1 (기반 기능): 완료
-- Phase 1-2 (봇 엔진/전략): 핵심 구현 완료
-- 다음 우선순위:
-  - 전략 테스트 커버리지 보강
-  - 봇 생성/상세 UI 고도화
-  - 업비트/KIS 연동 검증 강화
+- Phase 1-2 (봇 엔진/전략): 5개 전략 + 자동 종료 로직 + 프론트 화면 고도화 완료
+- Phase 1-3 (추가 연동/알림): 부분 진행
+  - Upbit/KIS 어댑터 검증 테스트 추가 완료
+  - 알림 설정 페이지, 구독/결제 페이지, 대시보드 실데이터 기반 시각화 반영
 
+## 최근 반영 사항 (2026-03-07)
+
+- 봇 생성 화면을 타입별 상세 라우트로 분리:
+  - `/bots/new/spot-grid`
+  - `/bots/new/snowball`
+  - `/bots/new/rebalancing`
+  - `/bots/new/dca`
+  - `/bots/new/algo-orders`
+- 봇 상세 페이지 운영 현황 카드/타임라인 확장
+- 계좌 추가 폼에서 KIS/키움 추가 파라미터 입력(`extra_params`) 지원
+- 설정 페이지 경로 분리:
+  - `/settings/profile`
+  - `/settings/security`
+  - `/settings/notifications`
+- 빌링 경로 분리:
+  - `/billing/plans`
+  - `/billing/history`
+- GitHub Actions 워크플로우 파일 비활성화(`.github/workflows.disabled/`로 이동)
+
+## 다음 우선순위
+
+1. 봇 실행 로그 DB 저장 및 조회 API 구현 (bot detail 실데이터 로그 연동)
+2. 알림 백엔드(이메일 이벤트 트리거) 구현 및 프론트 저장 연동
+3. 대시보드 수익 추이 API(일/주/월 집계) 추가로 차트 정식화

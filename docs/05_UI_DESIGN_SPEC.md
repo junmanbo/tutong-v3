@@ -581,6 +581,7 @@
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
 | v1.0 | 2025년 | 최초 작성 | PM |
+| v1.1 | 2026-03-07 | 구현 반영 — 봇 생성 5종 상세 경로(/bots/new/*) 분리, 봇 상세 운영 카드/타임라인 확장, 설정 경로(/settings/profile, /settings/security, /settings/notifications) 분리, 빌링 경로(/billing/plans, /billing/history) 분리, 계좌 추가 시 KIS/키움 추가 필드 반영 | Dev |
 
 ---
 

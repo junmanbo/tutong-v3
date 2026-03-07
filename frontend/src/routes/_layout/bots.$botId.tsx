@@ -99,6 +99,13 @@ function BotDetailPage() {
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
   })
+  const { data: botLogs, isLoading: logsLoading } = useQuery({
+    queryKey: ["bot-logs", botId],
+    queryFn: () => BotsService.readBotLogs({ id: botId, limit: 100, skip: 0 }),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    enabled: !!bot,
+  })
 
   if (isLoading) {
     return (
@@ -170,8 +177,42 @@ function BotDetailPage() {
     },
   ]
 
-  const recentOrders: TimelineItem[] = []
-  const recentLogs: TimelineItem[] = []
+  const recentOrders: TimelineItem[] = (botLogs?.data ?? [])
+    .filter(
+      (log) =>
+        log.event_type.includes("order")
+        || log.event_type.includes("slice")
+        || log.event_type.includes("filled"),
+    )
+    .slice(0, 20)
+    .map((log) => ({
+      id: log.id,
+      title: log.event_type.split("_").join(" ").toUpperCase(),
+      description: log.message,
+      at: new Date(log.created_at).toLocaleString(),
+      tone:
+        log.level === "error"
+          ? "danger"
+          : log.level === "warning"
+            ? "warning"
+            : "success",
+    }))
+
+  const recentLogs: TimelineItem[] = (botLogs?.data ?? [])
+    .filter((log) => !recentOrders.some((orderLog) => orderLog.id === log.id))
+    .slice(0, 20)
+    .map((log) => ({
+      id: log.id,
+      title: log.event_type.split("_").join(" ").toUpperCase(),
+      description: log.message,
+      at: new Date(log.created_at).toLocaleString(),
+      tone:
+        log.level === "error"
+          ? "danger"
+          : log.level === "warning"
+            ? "warning"
+            : "default",
+    }))
 
   const toneClassName: Record<NonNullable<TimelineItem["tone"]>, string> = {
     default: "border-border bg-background",
@@ -346,7 +387,9 @@ function BotDetailPage() {
             <CardTitle>Recent Orders</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {recentOrders.length === 0 ? (
+            {logsLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : recentOrders.length === 0 ? (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
                 No recent order executions yet.
               </div>
@@ -377,7 +420,10 @@ function BotDetailPage() {
             <CardTitle>Log Timeline</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {[...systemTimeline, ...recentLogs].map((item) => (
+            {logsLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              [...systemTimeline, ...recentLogs].map((item) => (
               <div
                 key={item.id}
                 className={cn(
@@ -396,7 +442,8 @@ function BotDetailPage() {
                   {item.description}
                 </p>
               </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

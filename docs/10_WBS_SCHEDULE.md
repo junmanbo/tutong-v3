@@ -122,36 +122,40 @@ Week 9-10: Algo Orders + 공통 봇 기능
 ├── [Bot] Spot Algo Orders (TWAP) 로직 구현 ✅
 │   ├── 슬라이스 수량 계산 (calc_slice_qty, calc_remaining_qty) ✅
 │   └── 인터벌 계산 + 슬라이스 순차 실행 ✅
-├── [Bot] 봇 손절/목표 수익 자동 종료 로직  ← 다음 단계
-├── [Bot] 봇 실행 로그 DB 저장
+├── [Bot] 봇 손절/목표 수익 자동 종료 로직 ✅
+├── [Bot] 봇 실행 로그 DB 저장 ← 다음 단계
 ├── [Bot] strategies/ 테스트 코드 (커버리지 90%+) ✅ (현재 100%)
 ├── [FE] 봇 생성 UI - Algo Orders 폼 반영 ✅
 ├── [FE] 봇 목록 페이지 ✅
-└── [FE] 봇 상세 / 운영 현황 페이지 ✅
+├── [FE] 봇 상세 / 운영 현황 페이지 ✅
+├── [FE] 봇 생성 UI 5종 상세 라우트 분리 (/bots/new/*) ✅
+├── [FE] 설정 페이지 라우트 분리 (/settings/profile, /settings/security, /settings/notifications) ✅
+├── [FE] 구독/결제 라우트 분리 (/billing/plans, /billing/history) ✅
+└── [FE] 대시보드 차트 실데이터 기반 연동 (accounts/balance, bots) ✅
 ```
 
 ### Phase 1-3: 추가 거래소 연동 + 알림 (9~12주)
 
 ```
 Week 9-10: 업비트 연동
-├── [Bot] 업비트 Exchange Adapter 구현
-│   ├── REST API (주문, 잔고, 시세)
+├── [Bot] 업비트 Exchange Adapter 구현 ✅
+│   ├── REST API (주문, 잔고, 시세) ✅
 │   └── WebSocket (실시간 가격)
-└── [BE] 업비트 연동 테스트
+└── [BE] 업비트 연동 테스트 ✅ (adapter 검증 테스트 추가)
 
 Week 10-11: 한국투자증권 연동
-├── [Bot] KIS OpenAPI Adapter 구현
-│   ├── OAuth 2.0 토큰 발급
-│   ├── 주식 주문 API 연동
+├── [Bot] KIS OpenAPI Adapter 구현 ✅
+│   ├── OAuth 2.0 토큰 발급 ✅
+│   ├── 주식 주문 API 연동 ✅
 │   └── 실시간 시세 WebSocket
-└── [BE] KIS 연동 테스트
+└── [BE] KIS 연동 테스트 ✅ (adapter 검증 테스트 추가)
 
 Week 11-12: 알림 + 대시보드 고도화
 ├── [BE] 이메일 알림 서비스 구현 (SES/SendGrid)
 ├── [BE] 알림 이벤트 트리거 로직
-├── [FE] 알림 설정 페이지
-├── [FE] 대시보드 차트 (수익 추이, 포트폴리오 비중)
-└── [FE] 구독 / 결제 페이지 (PG 연동)
+├── [FE] 알림 설정 페이지 ✅
+├── [FE] 대시보드 차트 (수익 추이, 포트폴리오 비중) ✅
+└── [FE] 구독 / 결제 페이지 (PG 연동 제외 UI 우선) ✅
 ```
 
 ### Phase 1-4: QA 및 배포 (12~14주)
@@ -192,7 +196,7 @@ Week  4    │ ✅ 회원 인증 / 계좌 연동 API 완성
 Week  6    │ ✅ 기본 대시보드 + Exchange Adapter 완성 (백엔드 + 프론트 완료)
 Week  8    │ ✅ Spot Grid + DCA 봇 동작 확인
 Week 10    │ ✅ 전체 봇 5종 구현 완료
-Week 12    │ ✅ 업비트 + KIS 연동 완료 / 알림 완성
+Week 12    │ 🔄 업비트 + KIS 연동/검증 대부분 완료, 알림 백엔드 구현 진행 중
 Week 14    │ 🚀 MVP 베타 론칭
 ```
 
@@ -226,6 +230,8 @@ Week 14    │ 🚀 MVP 베타 론칭
 | v1.6 | 2026-03-05 | Phase 1-2 봇 전략 완료 — 5가지 strategies/ 순수 함수 + workers/ 실제 구현, GET /accounts/{id}/balance 추가 | Dev |
 | v1.7 | 2026-03-05 | Phase 1-2 진행 반영 — bot_engine/strategies 테스트 보강(커버리지 100%), 봇 생성 UI 5종 입력 분기, 봇 상세/운영 현황 페이지 추가 | Dev |
 | v1.8 | 2026-03-05 | E2E 테스트 정리 — 템플릿 잔재 items.spec.ts 삭제, 로그인/설정/리셋 테스트를 현재 UI 기준으로 정합화, Playwright 전체 51 pass / 2 skip 확인 | Dev |
+| v1.9 | 2026-03-07 | 진행 현황 반영 — 봇 손절/목표수익 자동 종료 로직 완료, Upbit/KIS adapter 검증 테스트 추가, 봇 생성 UI 5종 상세 라우트 분리, 설정/구독 경로 분리, 대시보드 실데이터 시각화 반영 | Dev |
+| v2.0 | 2026-03-07 | 운영 변경 반영 — GitHub Actions 워크플로우 비활성화(.github/workflows.disabled로 이동), 배포/CI는 수동 운영 기준으로 임시 전환 | Dev |
 
 ---
 

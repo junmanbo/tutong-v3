@@ -10,6 +10,7 @@ from app import crud
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     BotCreate,
+    BotLogsPublic,
     BotPublic,
     BotsPublic,
     BotStatusEnum,
@@ -55,6 +56,28 @@ def read_bot(
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
     return bot
+
+
+@router.get("/{id}/logs", response_model=BotLogsPublic)
+def read_bot_logs(
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+) -> Any:
+    """봇 실행 로그 조회."""
+    bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    logs = crud.get_bot_logs_by_user(
+        session=session,
+        bot_id=id,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit,
+    )
+    return BotLogsPublic(data=logs, count=len(logs))
 
 
 @router.post("/", response_model=BotPublic, status_code=201)
@@ -143,6 +166,14 @@ def start_bot(
         )
 
     bot = crud.start_bot(session=session, bot=bot)  # → pending
+    crud.create_bot_log(
+        session=session,
+        bot_id=bot.id,
+        event_type="bot_start_requested",
+        level="info",
+        message="Bot start requested by user",
+        payload={"status": bot.status.value},
+    )
 
     task_name = _BOT_TASK_MAP.get(bot.bot_type)
     if task_name:
@@ -173,5 +204,13 @@ def stop_bot(
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     r = redis_lib.from_url(redis_url, decode_responses=True)
     r.set(f"bot:{str(bot.id)}:stop", "1")
-
-    return crud.stop_bot(session=session, bot=bot)  # DB 즉시 stopped
+    stopped_bot = crud.stop_bot(session=session, bot=bot)  # DB 즉시 stopped
+    crud.create_bot_log(
+        session=session,
+        bot_id=stopped_bot.id,
+        event_type="bot_stop_requested",
+        level="info",
+        message="Bot stop requested by user",
+        payload={"status": stopped_bot.status.value},
+    )
+    return stopped_bot

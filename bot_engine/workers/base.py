@@ -11,6 +11,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Any
 
 import redis
 from celery import Task
@@ -55,11 +56,27 @@ class AsyncBotTask(Task):
             exc,
             exc_info=einfo,
         )
+        if bot_id != "unknown":
+            _create_bot_log(
+                bot_id=bot_id,
+                event_type="task_failure",
+                level="error",
+                message=f"Bot task failed: {exc}",
+                payload={"task_id": task_id},
+            )
         _update_bot_status_error(bot_id=bot_id, error_message=str(exc))
 
     def on_success(self, retval, task_id, args, kwargs) -> None:
         bot_id = kwargs.get("bot_id", "unknown")
         logger.info("Bot task completed: bot_id=%s task_id=%s", bot_id, task_id)
+        if bot_id != "unknown":
+            _create_bot_log(
+                bot_id=bot_id,
+                event_type="task_success",
+                level="info",
+                message="Bot task completed successfully",
+                payload={"task_id": task_id},
+            )
 
 
 # ── Redis 정지 신호 ────────────────────────────────────────────────────────────
@@ -117,6 +134,12 @@ def _update_bot_status_error(bot_id: str, error_message: str) -> None:
                 bot.updated_at = datetime.now(UTC)
                 session.add(bot)
                 session.commit()
+                _create_bot_log(
+                    bot_id=bot.id,
+                    event_type="bot_error",
+                    level="error",
+                    message=error_message,
+                )
     except Exception as e:
         logger.error("Failed to update bot status to error: %s", e)
 
@@ -138,6 +161,13 @@ def _update_bot_status_running(bot_id: str, celery_task_id: str) -> None:
                 bot.updated_at = datetime.now(UTC)
                 session.add(bot)
                 session.commit()
+                _create_bot_log(
+                    bot_id=bot.id,
+                    event_type="bot_running",
+                    level="info",
+                    message="Bot is now running",
+                    payload={"celery_task_id": celery_task_id},
+                )
     except Exception as e:
         logger.error("Failed to update bot status to running: %s", e)
 
@@ -161,6 +191,12 @@ def _update_bot_status_stopped(bot_id: str, reason: str | None = None) -> None:
                     bot.error_message = reason
                 session.add(bot)
                 session.commit()
+                _create_bot_log(
+                    bot_id=bot.id,
+                    event_type="bot_stopped",
+                    level="warning" if reason else "info",
+                    message=reason or "Bot stopped",
+                )
     except Exception as e:
         logger.error("Failed to update bot status to stopped: %s", e)
 
@@ -184,6 +220,12 @@ def _update_bot_status_completed(bot_id: str, reason: str | None = None) -> None
                     bot.error_message = reason
                 session.add(bot)
                 session.commit()
+                _create_bot_log(
+                    bot_id=bot.id,
+                    event_type="bot_completed",
+                    level="info",
+                    message=reason or "Bot completed",
+                )
     except Exception as e:
         logger.error("Failed to update bot status to completed: %s", e)
 
@@ -205,6 +247,36 @@ def _update_bot_total_pnl_pct(bot_id: str, pnl_pct: Decimal) -> None:
                 session.commit()
     except Exception as e:
         logger.error("Failed to update bot total_pnl_pct: %s", e)
+
+
+def _create_bot_log(
+    *,
+    bot_id: uuid.UUID | str,
+    event_type: str,
+    level: str,
+    message: str,
+    payload: dict[str, Any] | None = None,
+) -> None:
+    """봇 실행 로그를 DB에 저장."""
+    try:
+        from app.models import BotLog
+
+        resolved_bot_id = (
+            bot_id if isinstance(bot_id, uuid.UUID) else uuid.UUID(str(bot_id))
+        )
+        with _get_db_session() as session:
+            session.add(
+                BotLog(
+                    bot_id=resolved_bot_id,
+                    event_type=event_type,
+                    level=level,
+                    message=message,
+                    payload=payload or {},
+                )
+            )
+            session.commit()
+    except Exception as e:
+        logger.error("Failed to create bot log: %s", e)
 
 
 def calc_change_pct(current_value: Decimal, base_value: Decimal) -> Decimal:
