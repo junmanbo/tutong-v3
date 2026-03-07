@@ -45,9 +45,34 @@ const formSchema = z.object({
     .max(100, { message: "Label must be at most 100 characters" }),
   api_key: z.string().min(1, { message: "API Key is required" }),
   api_secret: z.string().min(1, { message: "API Secret is required" }),
+  kis_cano: z.string().optional(),
+  kis_acnt_prdt_cd: z.string().optional(),
+  kiwoom_account_no: z.string().optional(),
+  use_mock: z.enum(["real", "mock"]).default("real"),
+}).superRefine((data, ctx) => {
+  if (data.exchange === "kis") {
+    if (!data.kis_cano?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["kis_cano"],
+        message: "KIS account number (CANO) is required",
+      })
+    }
+  }
+
+  if (data.exchange === "kiwoom") {
+    if (!data.kiwoom_account_no?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["kiwoom_account_no"],
+        message: "Kiwoom account number is required",
+      })
+    }
+  }
 })
 
-type FormData = z.infer<typeof formSchema>
+type FormData = z.input<typeof formSchema>
+type SubmitData = z.output<typeof formSchema>
 
 const EXCHANGE_OPTIONS = [
   { value: "binance", label: "Binance" },
@@ -61,7 +86,7 @@ const AddAccount = () => {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
-  const form = useForm<FormData>({
+  const form = useForm<FormData, unknown, SubmitData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
     defaultValues: {
@@ -69,8 +94,13 @@ const AddAccount = () => {
       label: "",
       api_key: "",
       api_secret: "",
+      kis_cano: "",
+      kis_acnt_prdt_cd: "01",
+      kiwoom_account_no: "",
+      use_mock: "real",
     },
   })
+  const exchange = form.watch("exchange")
 
   const mutation = useMutation({
     mutationFn: (data: ExchangeAccountCreate) =>
@@ -86,8 +116,31 @@ const AddAccount = () => {
     },
   })
 
-  const onSubmit = (data: FormData) => {
-    mutation.mutate(data)
+  const onSubmit = (data: SubmitData) => {
+    let extra_params: Record<string, unknown> | undefined
+
+    if (data.exchange === "kis") {
+      extra_params = {
+        CANO: data.kis_cano?.trim(),
+        ACNT_PRDT_CD: data.kis_acnt_prdt_cd?.trim() || "01",
+        is_mock: data.use_mock === "mock",
+      }
+    }
+
+    if (data.exchange === "kiwoom") {
+      extra_params = {
+        account_no: data.kiwoom_account_no?.trim(),
+        is_mock: data.use_mock === "mock",
+      }
+    }
+
+    mutation.mutate({
+      exchange: data.exchange,
+      label: data.label,
+      api_key: data.api_key,
+      api_secret: data.api_secret,
+      extra_params,
+    })
   }
 
   return (
@@ -117,7 +170,10 @@ const AddAccount = () => {
                     <FormLabel>
                       Exchange <span className="text-destructive">*</span>
                     </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? ""}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select exchange" />
@@ -193,6 +249,86 @@ const AddAccount = () => {
                   </FormItem>
                 )}
               />
+
+              {exchange === "kis" && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="kis_cano"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          KIS Account Number (CANO){" "}
+                          <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. 12345678" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="kis_acnt_prdt_cd"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Account Product Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="01" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {exchange === "kiwoom" && (
+                <FormField
+                  control={form.control}
+                  name="kiwoom_account_no"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Kiwoom Account Number{" "}
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. 1234567890" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {(exchange === "kis" || exchange === "kiwoom") && (
+                <FormField
+                  control={form.control}
+                  name="use_mock"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Environment</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value ?? "real"}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select environment" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="real">Real</SelectItem>
+                          <SelectItem value="mock">Mock</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <DialogFooter>

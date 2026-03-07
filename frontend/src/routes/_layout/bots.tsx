@@ -1,11 +1,12 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
+import { Link, createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
 
 import { BotsService } from "@/client"
 import AddBot from "@/components/Bots/AddBot"
 import { columns } from "@/components/Bots/columns"
 import { DataTable } from "@/components/Common/DataTable"
+import { Button } from "@/components/ui/button"
 import PendingBots from "@/components/Pending/PendingBots"
 
 function getBotsQueryOptions() {
@@ -46,7 +47,12 @@ function Bots() {
             Create and manage your automated trading bots
           </p>
         </div>
-        <AddBot />
+        <div className="flex items-center gap-2">
+          <Link to="/bots/new">
+            <Button variant="outline">Bot Type Guide</Button>
+          </Link>
+          <AddBot />
+        </div>
       </div>
       <BotsTable />
     </div>

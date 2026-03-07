@@ -17,9 +17,21 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutBotsRouteImport } from './routes/_layout/bots'
+import { Route as LayoutBillingRouteImport } from './routes/_layout/billing'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutAccountsRouteImport } from './routes/_layout/accounts'
+import { Route as LayoutSettingsSecurityRouteImport } from './routes/_layout/settings.security'
+import { Route as LayoutSettingsProfileRouteImport } from './routes/_layout/settings.profile'
+import { Route as LayoutSettingsNotificationsRouteImport } from './routes/_layout/settings.notifications'
+import { Route as LayoutBotsNewRouteImport } from './routes/_layout/bots.new'
 import { Route as LayoutBotsBotIdRouteImport } from './routes/_layout/bots.$botId'
+import { Route as LayoutBillingPlansRouteImport } from './routes/_layout/billing.plans'
+import { Route as LayoutBillingHistoryRouteImport } from './routes/_layout/billing.history'
+import { Route as LayoutBotsNewSpotGridRouteImport } from './routes/_layout/bots.new.spot-grid'
+import { Route as LayoutBotsNewSnowballRouteImport } from './routes/_layout/bots.new.snowball'
+import { Route as LayoutBotsNewRebalancingRouteImport } from './routes/_layout/bots.new.rebalancing'
+import { Route as LayoutBotsNewDcaRouteImport } from './routes/_layout/bots.new.dca'
+import { Route as LayoutBotsNewAlgoOrdersRouteImport } from './routes/_layout/bots.new.algo-orders'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -60,6 +72,11 @@ const LayoutBotsRoute = LayoutBotsRouteImport.update({
   path: '/bots',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutBillingRoute = LayoutBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutAdminRoute = LayoutAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -70,10 +87,67 @@ const LayoutAccountsRoute = LayoutAccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutSettingsSecurityRoute = LayoutSettingsSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => LayoutSettingsRoute,
+} as any)
+const LayoutSettingsProfileRoute = LayoutSettingsProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => LayoutSettingsRoute,
+} as any)
+const LayoutSettingsNotificationsRoute =
+  LayoutSettingsNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => LayoutSettingsRoute,
+  } as any)
+const LayoutBotsNewRoute = LayoutBotsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => LayoutBotsRoute,
+} as any)
 const LayoutBotsBotIdRoute = LayoutBotsBotIdRouteImport.update({
   id: '/$botId',
   path: '/$botId',
   getParentRoute: () => LayoutBotsRoute,
+} as any)
+const LayoutBillingPlansRoute = LayoutBillingPlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => LayoutBillingRoute,
+} as any)
+const LayoutBillingHistoryRoute = LayoutBillingHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => LayoutBillingRoute,
+} as any)
+const LayoutBotsNewSpotGridRoute = LayoutBotsNewSpotGridRouteImport.update({
+  id: '/spot-grid',
+  path: '/spot-grid',
+  getParentRoute: () => LayoutBotsNewRoute,
+} as any)
+const LayoutBotsNewSnowballRoute = LayoutBotsNewSnowballRouteImport.update({
+  id: '/snowball',
+  path: '/snowball',
+  getParentRoute: () => LayoutBotsNewRoute,
+} as any)
+const LayoutBotsNewRebalancingRoute =
+  LayoutBotsNewRebalancingRouteImport.update({
+    id: '/rebalancing',
+    path: '/rebalancing',
+    getParentRoute: () => LayoutBotsNewRoute,
+  } as any)
+const LayoutBotsNewDcaRoute = LayoutBotsNewDcaRouteImport.update({
+  id: '/dca',
+  path: '/dca',
+  getParentRoute: () => LayoutBotsNewRoute,
+} as any)
+const LayoutBotsNewAlgoOrdersRoute = LayoutBotsNewAlgoOrdersRouteImport.update({
+  id: '/algo-orders',
+  path: '/algo-orders',
+  getParentRoute: () => LayoutBotsNewRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -84,9 +158,21 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/accounts': typeof LayoutAccountsRoute
   '/admin': typeof LayoutAdminRoute
+  '/billing': typeof LayoutBillingRouteWithChildren
   '/bots': typeof LayoutBotsRouteWithChildren
-  '/settings': typeof LayoutSettingsRoute
+  '/settings': typeof LayoutSettingsRouteWithChildren
+  '/billing/history': typeof LayoutBillingHistoryRoute
+  '/billing/plans': typeof LayoutBillingPlansRoute
   '/bots/$botId': typeof LayoutBotsBotIdRoute
+  '/bots/new': typeof LayoutBotsNewRouteWithChildren
+  '/settings/notifications': typeof LayoutSettingsNotificationsRoute
+  '/settings/profile': typeof LayoutSettingsProfileRoute
+  '/settings/security': typeof LayoutSettingsSecurityRoute
+  '/bots/new/algo-orders': typeof LayoutBotsNewAlgoOrdersRoute
+  '/bots/new/dca': typeof LayoutBotsNewDcaRoute
+  '/bots/new/rebalancing': typeof LayoutBotsNewRebalancingRoute
+  '/bots/new/snowball': typeof LayoutBotsNewSnowballRoute
+  '/bots/new/spot-grid': typeof LayoutBotsNewSpotGridRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -95,10 +181,22 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/accounts': typeof LayoutAccountsRoute
   '/admin': typeof LayoutAdminRoute
+  '/billing': typeof LayoutBillingRouteWithChildren
   '/bots': typeof LayoutBotsRouteWithChildren
-  '/settings': typeof LayoutSettingsRoute
+  '/settings': typeof LayoutSettingsRouteWithChildren
   '/': typeof LayoutIndexRoute
+  '/billing/history': typeof LayoutBillingHistoryRoute
+  '/billing/plans': typeof LayoutBillingPlansRoute
   '/bots/$botId': typeof LayoutBotsBotIdRoute
+  '/bots/new': typeof LayoutBotsNewRouteWithChildren
+  '/settings/notifications': typeof LayoutSettingsNotificationsRoute
+  '/settings/profile': typeof LayoutSettingsProfileRoute
+  '/settings/security': typeof LayoutSettingsSecurityRoute
+  '/bots/new/algo-orders': typeof LayoutBotsNewAlgoOrdersRoute
+  '/bots/new/dca': typeof LayoutBotsNewDcaRoute
+  '/bots/new/rebalancing': typeof LayoutBotsNewRebalancingRoute
+  '/bots/new/snowball': typeof LayoutBotsNewSnowballRoute
+  '/bots/new/spot-grid': typeof LayoutBotsNewSpotGridRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,10 +207,22 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_layout/accounts': typeof LayoutAccountsRoute
   '/_layout/admin': typeof LayoutAdminRoute
+  '/_layout/billing': typeof LayoutBillingRouteWithChildren
   '/_layout/bots': typeof LayoutBotsRouteWithChildren
-  '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/settings': typeof LayoutSettingsRouteWithChildren
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/billing/history': typeof LayoutBillingHistoryRoute
+  '/_layout/billing/plans': typeof LayoutBillingPlansRoute
   '/_layout/bots/$botId': typeof LayoutBotsBotIdRoute
+  '/_layout/bots/new': typeof LayoutBotsNewRouteWithChildren
+  '/_layout/settings/notifications': typeof LayoutSettingsNotificationsRoute
+  '/_layout/settings/profile': typeof LayoutSettingsProfileRoute
+  '/_layout/settings/security': typeof LayoutSettingsSecurityRoute
+  '/_layout/bots/new/algo-orders': typeof LayoutBotsNewAlgoOrdersRoute
+  '/_layout/bots/new/dca': typeof LayoutBotsNewDcaRoute
+  '/_layout/bots/new/rebalancing': typeof LayoutBotsNewRebalancingRoute
+  '/_layout/bots/new/snowball': typeof LayoutBotsNewSnowballRoute
+  '/_layout/bots/new/spot-grid': typeof LayoutBotsNewSpotGridRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -124,9 +234,21 @@ export interface FileRouteTypes {
     | '/signup'
     | '/accounts'
     | '/admin'
+    | '/billing'
     | '/bots'
     | '/settings'
+    | '/billing/history'
+    | '/billing/plans'
     | '/bots/$botId'
+    | '/bots/new'
+    | '/settings/notifications'
+    | '/settings/profile'
+    | '/settings/security'
+    | '/bots/new/algo-orders'
+    | '/bots/new/dca'
+    | '/bots/new/rebalancing'
+    | '/bots/new/snowball'
+    | '/bots/new/spot-grid'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -135,10 +257,22 @@ export interface FileRouteTypes {
     | '/signup'
     | '/accounts'
     | '/admin'
+    | '/billing'
     | '/bots'
     | '/settings'
     | '/'
+    | '/billing/history'
+    | '/billing/plans'
     | '/bots/$botId'
+    | '/bots/new'
+    | '/settings/notifications'
+    | '/settings/profile'
+    | '/settings/security'
+    | '/bots/new/algo-orders'
+    | '/bots/new/dca'
+    | '/bots/new/rebalancing'
+    | '/bots/new/snowball'
+    | '/bots/new/spot-grid'
   id:
     | '__root__'
     | '/_layout'
@@ -148,10 +282,22 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_layout/accounts'
     | '/_layout/admin'
+    | '/_layout/billing'
     | '/_layout/bots'
     | '/_layout/settings'
     | '/_layout/'
+    | '/_layout/billing/history'
+    | '/_layout/billing/plans'
     | '/_layout/bots/$botId'
+    | '/_layout/bots/new'
+    | '/_layout/settings/notifications'
+    | '/_layout/settings/profile'
+    | '/_layout/settings/security'
+    | '/_layout/bots/new/algo-orders'
+    | '/_layout/bots/new/dca'
+    | '/_layout/bots/new/rebalancing'
+    | '/_layout/bots/new/snowball'
+    | '/_layout/bots/new/spot-grid'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -220,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutBotsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/billing': {
+      id: '/_layout/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof LayoutBillingRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/admin': {
       id: '/_layout/admin'
       path: '/admin'
@@ -234,6 +387,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAccountsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/settings/security': {
+      id: '/_layout/settings/security'
+      path: '/security'
+      fullPath: '/settings/security'
+      preLoaderRoute: typeof LayoutSettingsSecurityRouteImport
+      parentRoute: typeof LayoutSettingsRoute
+    }
+    '/_layout/settings/profile': {
+      id: '/_layout/settings/profile'
+      path: '/profile'
+      fullPath: '/settings/profile'
+      preLoaderRoute: typeof LayoutSettingsProfileRouteImport
+      parentRoute: typeof LayoutSettingsRoute
+    }
+    '/_layout/settings/notifications': {
+      id: '/_layout/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof LayoutSettingsNotificationsRouteImport
+      parentRoute: typeof LayoutSettingsRoute
+    }
+    '/_layout/bots/new': {
+      id: '/_layout/bots/new'
+      path: '/new'
+      fullPath: '/bots/new'
+      preLoaderRoute: typeof LayoutBotsNewRouteImport
+      parentRoute: typeof LayoutBotsRoute
+    }
     '/_layout/bots/$botId': {
       id: '/_layout/bots/$botId'
       path: '/$botId'
@@ -241,34 +422,137 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutBotsBotIdRouteImport
       parentRoute: typeof LayoutBotsRoute
     }
+    '/_layout/billing/plans': {
+      id: '/_layout/billing/plans'
+      path: '/plans'
+      fullPath: '/billing/plans'
+      preLoaderRoute: typeof LayoutBillingPlansRouteImport
+      parentRoute: typeof LayoutBillingRoute
+    }
+    '/_layout/billing/history': {
+      id: '/_layout/billing/history'
+      path: '/history'
+      fullPath: '/billing/history'
+      preLoaderRoute: typeof LayoutBillingHistoryRouteImport
+      parentRoute: typeof LayoutBillingRoute
+    }
+    '/_layout/bots/new/spot-grid': {
+      id: '/_layout/bots/new/spot-grid'
+      path: '/spot-grid'
+      fullPath: '/bots/new/spot-grid'
+      preLoaderRoute: typeof LayoutBotsNewSpotGridRouteImport
+      parentRoute: typeof LayoutBotsNewRoute
+    }
+    '/_layout/bots/new/snowball': {
+      id: '/_layout/bots/new/snowball'
+      path: '/snowball'
+      fullPath: '/bots/new/snowball'
+      preLoaderRoute: typeof LayoutBotsNewSnowballRouteImport
+      parentRoute: typeof LayoutBotsNewRoute
+    }
+    '/_layout/bots/new/rebalancing': {
+      id: '/_layout/bots/new/rebalancing'
+      path: '/rebalancing'
+      fullPath: '/bots/new/rebalancing'
+      preLoaderRoute: typeof LayoutBotsNewRebalancingRouteImport
+      parentRoute: typeof LayoutBotsNewRoute
+    }
+    '/_layout/bots/new/dca': {
+      id: '/_layout/bots/new/dca'
+      path: '/dca'
+      fullPath: '/bots/new/dca'
+      preLoaderRoute: typeof LayoutBotsNewDcaRouteImport
+      parentRoute: typeof LayoutBotsNewRoute
+    }
+    '/_layout/bots/new/algo-orders': {
+      id: '/_layout/bots/new/algo-orders'
+      path: '/algo-orders'
+      fullPath: '/bots/new/algo-orders'
+      preLoaderRoute: typeof LayoutBotsNewAlgoOrdersRouteImport
+      parentRoute: typeof LayoutBotsNewRoute
+    }
   }
 }
 
+interface LayoutBillingRouteChildren {
+  LayoutBillingHistoryRoute: typeof LayoutBillingHistoryRoute
+  LayoutBillingPlansRoute: typeof LayoutBillingPlansRoute
+}
+
+const LayoutBillingRouteChildren: LayoutBillingRouteChildren = {
+  LayoutBillingHistoryRoute: LayoutBillingHistoryRoute,
+  LayoutBillingPlansRoute: LayoutBillingPlansRoute,
+}
+
+const LayoutBillingRouteWithChildren = LayoutBillingRoute._addFileChildren(
+  LayoutBillingRouteChildren,
+)
+
+interface LayoutBotsNewRouteChildren {
+  LayoutBotsNewAlgoOrdersRoute: typeof LayoutBotsNewAlgoOrdersRoute
+  LayoutBotsNewDcaRoute: typeof LayoutBotsNewDcaRoute
+  LayoutBotsNewRebalancingRoute: typeof LayoutBotsNewRebalancingRoute
+  LayoutBotsNewSnowballRoute: typeof LayoutBotsNewSnowballRoute
+  LayoutBotsNewSpotGridRoute: typeof LayoutBotsNewSpotGridRoute
+}
+
+const LayoutBotsNewRouteChildren: LayoutBotsNewRouteChildren = {
+  LayoutBotsNewAlgoOrdersRoute: LayoutBotsNewAlgoOrdersRoute,
+  LayoutBotsNewDcaRoute: LayoutBotsNewDcaRoute,
+  LayoutBotsNewRebalancingRoute: LayoutBotsNewRebalancingRoute,
+  LayoutBotsNewSnowballRoute: LayoutBotsNewSnowballRoute,
+  LayoutBotsNewSpotGridRoute: LayoutBotsNewSpotGridRoute,
+}
+
+const LayoutBotsNewRouteWithChildren = LayoutBotsNewRoute._addFileChildren(
+  LayoutBotsNewRouteChildren,
+)
+
 interface LayoutBotsRouteChildren {
   LayoutBotsBotIdRoute: typeof LayoutBotsBotIdRoute
+  LayoutBotsNewRoute: typeof LayoutBotsNewRouteWithChildren
 }
 
 const LayoutBotsRouteChildren: LayoutBotsRouteChildren = {
   LayoutBotsBotIdRoute: LayoutBotsBotIdRoute,
+  LayoutBotsNewRoute: LayoutBotsNewRouteWithChildren,
 }
 
 const LayoutBotsRouteWithChildren = LayoutBotsRoute._addFileChildren(
   LayoutBotsRouteChildren,
 )
 
+interface LayoutSettingsRouteChildren {
+  LayoutSettingsNotificationsRoute: typeof LayoutSettingsNotificationsRoute
+  LayoutSettingsProfileRoute: typeof LayoutSettingsProfileRoute
+  LayoutSettingsSecurityRoute: typeof LayoutSettingsSecurityRoute
+}
+
+const LayoutSettingsRouteChildren: LayoutSettingsRouteChildren = {
+  LayoutSettingsNotificationsRoute: LayoutSettingsNotificationsRoute,
+  LayoutSettingsProfileRoute: LayoutSettingsProfileRoute,
+  LayoutSettingsSecurityRoute: LayoutSettingsSecurityRoute,
+}
+
+const LayoutSettingsRouteWithChildren = LayoutSettingsRoute._addFileChildren(
+  LayoutSettingsRouteChildren,
+)
+
 interface LayoutRouteChildren {
   LayoutAccountsRoute: typeof LayoutAccountsRoute
   LayoutAdminRoute: typeof LayoutAdminRoute
+  LayoutBillingRoute: typeof LayoutBillingRouteWithChildren
   LayoutBotsRoute: typeof LayoutBotsRouteWithChildren
-  LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutSettingsRoute: typeof LayoutSettingsRouteWithChildren
   LayoutIndexRoute: typeof LayoutIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAccountsRoute: LayoutAccountsRoute,
   LayoutAdminRoute: LayoutAdminRoute,
+  LayoutBillingRoute: LayoutBillingRouteWithChildren,
   LayoutBotsRoute: LayoutBotsRouteWithChildren,
-  LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutSettingsRoute: LayoutSettingsRouteWithChildren,
   LayoutIndexRoute: LayoutIndexRoute,
 }
 

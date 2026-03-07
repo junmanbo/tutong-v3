@@ -1,4 +1,4 @@
-import { Bot, Home, Users, Wallet } from "lucide-react"
+import { Bot, CreditCard, Home, Settings, Users, Wallet } from "lucide-react"
 
 import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
@@ -14,8 +14,10 @@ import { User } from "./User"
 
 const baseItems: Item[] = [
   { icon: Home, title: "Dashboard", path: "/" },
-  { icon: Wallet, title: "Accounts", path: "/accounts" },
   { icon: Bot, title: "Bots", path: "/bots" },
+  { icon: Wallet, title: "Accounts", path: "/accounts" },
+  { icon: CreditCard, title: "Billing", path: "/billing" },
+  { icon: Settings, title: "Settings", path: "/settings" },
 ]
 
 export function AppSidebar() {

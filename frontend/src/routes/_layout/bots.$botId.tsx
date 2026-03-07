@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, RefreshCw } from "lucide-react"
+import {
+  Activity,
+  ArrowLeft,
+  Clock3,
+  ListOrdered,
+  RefreshCw,
+  ScrollText,
+  TrendingUp,
+} from "lucide-react"
 
 import { BotsService, type BotStatusEnum } from "@/client"
 import { Badge } from "@/components/ui/badge"
@@ -46,6 +54,34 @@ function ValueRow({ label, value }: { label: string; value: string }) {
       <span className="font-mono text-sm">{value}</span>
     </div>
   )
+}
+
+function formatSignedNumber(value: number, unit = "") {
+  const prefix = value >= 0 ? "+" : ""
+  return `${prefix}${value.toFixed(2)}${unit}`
+}
+
+function formatDurationFrom(isoDate: string) {
+  const startedAt = new Date(isoDate).getTime()
+  const now = Date.now()
+
+  if (Number.isNaN(startedAt)) {
+    return "-"
+  }
+
+  const diff = Math.max(0, now - startedAt)
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+  return `${hours}h ${minutes}m`
+}
+
+type TimelineItem = {
+  id: string
+  title: string
+  description: string
+  at: string
+  tone?: "default" | "success" | "warning" | "danger"
 }
 
 function BotDetailPage() {
@@ -101,6 +137,48 @@ function BotDetailPage() {
   const statusMeta = STATUS_STYLES[bot.status]
   const pnlPct = Number(bot.total_pnl_pct ?? "0")
   const pnlValue = Number(bot.total_pnl ?? "0")
+  const lastSyncedAt = new Date().toLocaleTimeString()
+
+  const systemTimeline: TimelineItem[] = [
+    {
+      id: "created",
+      title: "Bot created",
+      description: "Initial configuration saved and ready for operation.",
+      at: new Date(bot.created_at).toLocaleString(),
+      tone: "default",
+    },
+    {
+      id: "status",
+      title: `Status: ${statusMeta.label}`,
+      description:
+        bot.status === "running"
+          ? "Bot is actively processing strategy cycles."
+          : bot.status === "pending"
+            ? "Bot start requested and waiting for worker pickup."
+            : bot.status === "error"
+              ? "Bot requires manual check before restarting."
+              : "Bot is currently not processing new cycles.",
+      at: `Last synced ${lastSyncedAt}`,
+      tone:
+        bot.status === "running"
+          ? "success"
+          : bot.status === "pending"
+            ? "warning"
+            : bot.status === "error"
+              ? "danger"
+              : "default",
+    },
+  ]
+
+  const recentOrders: TimelineItem[] = []
+  const recentLogs: TimelineItem[] = []
+
+  const toneClassName: Record<NonNullable<TimelineItem["tone"]>, string> = {
+    default: "border-border bg-background",
+    success: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900",
+    warning: "border-amber-200 bg-amber-50/60 dark:border-amber-900",
+    danger: "border-red-200 bg-red-50/60 dark:border-red-900",
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -136,6 +214,77 @@ function BotDetailPage() {
         </CardHeader>
       </Card>
 
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
+            <TrendingUp className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p
+              className={cn(
+                "text-2xl font-semibold font-mono",
+                pnlValue > 0
+                  ? "text-green-600"
+                  : pnlValue < 0
+                    ? "text-destructive"
+                    : "text-foreground",
+              )}
+            >
+              {formatSignedNumber(pnlValue)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              ROI {formatSignedNumber(pnlPct, "%")}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Run Time</CardTitle>
+            <Clock3 className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold font-mono">
+              {formatDurationFrom(bot.created_at)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Since bot creation
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Current Status</CardTitle>
+            <Activity className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+            <p className="text-xs text-muted-foreground mt-2">
+              Updated every 5 seconds
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Risk Limits</CardTitle>
+            <ListOrdered className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <p className="text-sm">
+              Stop Loss:{" "}
+              <span className="font-mono">{bot.stop_loss_pct ?? "-"}</span>
+            </p>
+            <p className="text-sm">
+              Take Profit:{" "}
+              <span className="font-mono">{bot.take_profit_pct ?? "-"}</span>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -161,6 +310,8 @@ function BotDetailPage() {
               label="Created At"
               value={new Date(bot.created_at).toLocaleString()}
             />
+            <Separator />
+            <ValueRow label="Last Synced" value={lastSyncedAt} />
           </CardContent>
         </Card>
 
@@ -188,7 +339,67 @@ function BotDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Orders</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentOrders.length === 0 ? (
+              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                No recent order executions yet.
+              </div>
+            ) : (
+              recentOrders.map((item) => (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "rounded-md border p-3",
+                    toneClassName[item.tone ?? "default"],
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{item.title}</p>
+                    <p className="text-xs text-muted-foreground">{item.at}</p>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {item.description}
+                  </p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Log Timeline</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {[...systemTimeline, ...recentLogs].map((item) => (
+              <div
+                key={item.id}
+                className={cn(
+                  "rounded-md border p-3",
+                  toneClassName[item.tone ?? "default"],
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <ScrollText className="size-4 text-muted-foreground" />
+                    <p className="text-sm font-medium">{item.title}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{item.at}</p>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
-
