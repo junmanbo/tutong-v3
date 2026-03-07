@@ -121,6 +121,32 @@ export type NewPassword = {
     new_password: string;
 };
 
+export type NotificationSettingsPublic = {
+    email_enabled?: boolean;
+    telegram_enabled?: boolean;
+    telegram_chat_id?: (string | null);
+    notify_bot_start?: boolean;
+    notify_bot_stop?: boolean;
+    notify_bot_error?: boolean;
+    notify_take_profit?: boolean;
+    notify_stop_loss?: boolean;
+    notify_account_error?: boolean;
+    user_id: string;
+    updated_at: string;
+};
+
+export type NotificationSettingsUpdate = {
+    email_enabled?: (boolean | null);
+    telegram_enabled?: (boolean | null);
+    telegram_chat_id?: (string | null);
+    notify_bot_start?: (boolean | null);
+    notify_bot_stop?: (boolean | null);
+    notify_bot_error?: (boolean | null);
+    notify_take_profit?: (boolean | null);
+    notify_stop_loss?: (boolean | null);
+    notify_account_error?: (boolean | null);
+};
+
 export type PrivateUserCreate = {
     email: string;
     password: string;
@@ -304,6 +330,14 @@ export type LoginRecoverPasswordHtmlContentData = {
 };
 
 export type LoginRecoverPasswordHtmlContentResponse = (string);
+
+export type NotificationsReadNotificationSettingsResponse = (NotificationSettingsPublic);
+
+export type NotificationsUpdateNotificationSettingsData = {
+    requestBody: NotificationSettingsUpdate;
+};
+
+export type NotificationsUpdateNotificationSettingsResponse = (NotificationSettingsPublic);
 
 export type PrivateCreateUserData = {
     requestBody: PrivateUserCreate;

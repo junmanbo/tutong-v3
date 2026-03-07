@@ -3,7 +3,7 @@ import json
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep
@@ -17,6 +17,10 @@ from app.models import (
     ExchangeAccountsPublic,
     ExchangeAccountUpdate,
     Message,
+)
+from app.notifications import (
+    EVENT_ACCOUNT_API_ERROR,
+    queue_notification_event,
 )
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
@@ -103,6 +107,7 @@ def delete_account(
 def get_account_balance(
     session: SessionDep,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
     id: uuid.UUID,
 ) -> Any:
     """거래소 계좌 잔고 조회.
@@ -125,6 +130,15 @@ def get_account_balance(
                 decrypt(account.extra_params_enc, settings.ENCRYPTION_KEY)
             )
     except Exception:
+        queue_notification_event(
+            session=session,
+            user_id=current_user.id,
+            event_type=EVENT_ACCOUNT_API_ERROR,
+            title=f"[AutoTrade] Account credential error: {account.label}",
+            body=f"Failed to decrypt credentials for account '{account.label}'.",
+            payload={"account_id": str(account.id), "exchange": account.exchange.value},
+            background_tasks=background_tasks,
+        )
         raise HTTPException(status_code=500, detail="Failed to decrypt account credentials")
 
     adapter = get_adapter(
@@ -139,6 +153,15 @@ def get_account_balance(
     try:
         balances = loop.run_until_complete(adapter.get_balance())
     except Exception as exc:
+        queue_notification_event(
+            session=session,
+            user_id=current_user.id,
+            event_type=EVENT_ACCOUNT_API_ERROR,
+            title=f"[AutoTrade] Account API error: {account.label}",
+            body=f"Exchange API call failed for account '{account.label}': {exc}",
+            payload={"account_id": str(account.id), "exchange": account.exchange.value},
+            background_tasks=background_tasks,
+        )
         raise HTTPException(
             status_code=503,
             detail=f"Failed to fetch balance from exchange: {exc}",

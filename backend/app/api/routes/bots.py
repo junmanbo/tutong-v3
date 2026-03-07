@@ -4,7 +4,7 @@ from typing import Any
 
 import redis as redis_lib
 from celery import Celery
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep
@@ -17,6 +17,11 @@ from app.models import (
     BotTypeEnum,
     BotUpdate,
     Message,
+)
+from app.notifications import (
+    EVENT_BOT_START,
+    EVENT_BOT_STOP,
+    queue_notification_event,
 )
 
 # Celery task 이름 매핑 (bot_type → task name)
@@ -153,6 +158,7 @@ def delete_bot(
 def start_bot(
     session: SessionDep,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
     id: uuid.UUID,
 ) -> Any:
     """봇 시작 (stopped/error → pending) 후 Celery 태스크 디스패치."""
@@ -174,6 +180,16 @@ def start_bot(
         message="Bot start requested by user",
         payload={"status": bot.status.value},
     )
+    queue_notification_event(
+        session=session,
+        user_id=current_user.id,
+        bot_id=bot.id,
+        event_type=EVENT_BOT_START,
+        title=f"[AutoTrade] Bot start requested: {bot.name}",
+        body=f"Bot '{bot.name}' start was requested and moved to pending status.",
+        payload={"status": bot.status.value},
+        background_tasks=background_tasks,
+    )
 
     task_name = _BOT_TASK_MAP.get(bot.bot_type)
     if task_name:
@@ -188,6 +204,7 @@ def start_bot(
 def stop_bot(
     session: SessionDep,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
     id: uuid.UUID,
 ) -> Any:
     """봇 중지 요청 — Redis 중지 신호 설정 후 DB 상태 즉시 stopped 업데이트."""
@@ -212,5 +229,15 @@ def stop_bot(
         level="info",
         message="Bot stop requested by user",
         payload={"status": stopped_bot.status.value},
+    )
+    queue_notification_event(
+        session=session,
+        user_id=current_user.id,
+        bot_id=stopped_bot.id,
+        event_type=EVENT_BOT_STOP,
+        title=f"[AutoTrade] Bot stop requested: {stopped_bot.name}",
+        body=f"Bot '{stopped_bot.name}' stop was requested and status is now stopped.",
+        payload={"status": stopped_bot.status.value},
+        background_tasks=background_tasks,
     )
     return stopped_bot

@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { AccountsReadAccountsData, AccountsReadAccountsResponse, AccountsCreateAccountData, AccountsCreateAccountResponse, AccountsReadAccountData, AccountsReadAccountResponse, AccountsUpdateAccountData, AccountsUpdateAccountResponse, AccountsDeleteAccountData, AccountsDeleteAccountResponse, AccountsGetAccountBalanceData, AccountsGetAccountBalanceResponse, BotsReadBotsData, BotsReadBotsResponse, BotsCreateBotData, BotsCreateBotResponse, BotsReadBotData, BotsReadBotResponse, BotsUpdateBotData, BotsUpdateBotResponse, BotsDeleteBotData, BotsDeleteBotResponse, BotsReadBotLogsData, BotsReadBotLogsResponse, BotsStartBotData, BotsStartBotResponse, BotsStopBotData, BotsStopBotResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { AccountsReadAccountsData, AccountsReadAccountsResponse, AccountsCreateAccountData, AccountsCreateAccountResponse, AccountsReadAccountData, AccountsReadAccountResponse, AccountsUpdateAccountData, AccountsUpdateAccountResponse, AccountsDeleteAccountData, AccountsDeleteAccountResponse, AccountsGetAccountBalanceData, AccountsGetAccountBalanceResponse, BotsReadBotsData, BotsReadBotsResponse, BotsCreateBotData, BotsCreateBotResponse, BotsReadBotData, BotsReadBotResponse, BotsUpdateBotData, BotsUpdateBotResponse, BotsDeleteBotData, BotsDeleteBotResponse, BotsReadBotLogsData, BotsReadBotLogsResponse, BotsStartBotData, BotsStartBotResponse, BotsStopBotData, BotsStopBotResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, NotificationsReadNotificationSettingsResponse, NotificationsUpdateNotificationSettingsData, NotificationsUpdateNotificationSettingsResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class AccountsService {
     /**
@@ -410,6 +410,39 @@ export class LoginService {
             path: {
                 email: data.email
             },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class NotificationsService {
+    /**
+     * Read Notification Settings
+     * @returns NotificationSettingsPublic Successful Response
+     * @throws ApiError
+     */
+    public static readNotificationSettings(): CancelablePromise<NotificationsReadNotificationSettingsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/notifications/settings'
+        });
+    }
+    
+    /**
+     * Update Notification Settings
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns NotificationSettingsPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateNotificationSettings(data: NotificationsUpdateNotificationSettingsData): CancelablePromise<NotificationsUpdateNotificationSettingsResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/notifications/settings',
+            body: data.requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }

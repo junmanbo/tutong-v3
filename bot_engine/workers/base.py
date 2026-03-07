@@ -140,6 +140,23 @@ def _update_bot_status_error(bot_id: str, error_message: str) -> None:
                     level="error",
                     message=error_message,
                 )
+                try:
+                    from app.notifications import (
+                        EVENT_BOT_ERROR,
+                        queue_notification_event,
+                    )
+
+                    queue_notification_event(
+                        session=session,
+                        user_id=bot.user_id,
+                        bot_id=bot.id,
+                        event_type=EVENT_BOT_ERROR,
+                        title=f"[AutoTrade] Bot error: {bot.name}",
+                        body=error_message,
+                        payload={"status": bot.status.value},
+                    )
+                except Exception as notify_exc:
+                    logger.warning("Failed to queue bot error notification: %s", notify_exc)
     except Exception as e:
         logger.error("Failed to update bot status to error: %s", e)
 
@@ -197,6 +214,26 @@ def _update_bot_status_stopped(bot_id: str, reason: str | None = None) -> None:
                     level="warning" if reason else "info",
                     message=reason or "Bot stopped",
                 )
+                if reason and "stop-loss" in reason.lower():
+                    try:
+                        from app.notifications import (
+                            EVENT_STOP_LOSS,
+                            queue_notification_event,
+                        )
+
+                        queue_notification_event(
+                            session=session,
+                            user_id=bot.user_id,
+                            bot_id=bot.id,
+                            event_type=EVENT_STOP_LOSS,
+                            title=f"[AutoTrade] Stop-loss triggered: {bot.name}",
+                            body=reason,
+                            payload={"status": bot.status.value},
+                        )
+                    except Exception as notify_exc:
+                        logger.warning(
+                            "Failed to queue stop-loss notification: %s", notify_exc
+                        )
     except Exception as e:
         logger.error("Failed to update bot status to stopped: %s", e)
 
@@ -226,6 +263,26 @@ def _update_bot_status_completed(bot_id: str, reason: str | None = None) -> None
                     level="info",
                     message=reason or "Bot completed",
                 )
+                if reason and "take-profit" in reason.lower():
+                    try:
+                        from app.notifications import (
+                            EVENT_TAKE_PROFIT,
+                            queue_notification_event,
+                        )
+
+                        queue_notification_event(
+                            session=session,
+                            user_id=bot.user_id,
+                            bot_id=bot.id,
+                            event_type=EVENT_TAKE_PROFIT,
+                            title=f"[AutoTrade] Take-profit reached: {bot.name}",
+                            body=reason,
+                            payload={"status": bot.status.value},
+                        )
+                    except Exception as notify_exc:
+                        logger.warning(
+                            "Failed to queue take-profit notification: %s", notify_exc
+                        )
     except Exception as e:
         logger.error("Failed to update bot status to completed: %s", e)
 

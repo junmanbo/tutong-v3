@@ -519,6 +519,30 @@ class TestStartBot:
         assert call_args[0][0] == "bot_engine.workers.spot_dca.run"
         assert call_args[1]["kwargs"]["bot_id"] == bot_id
 
+    def test_start_bot_triggers_notification(
+        self, client: TestClient, db: Session
+    ) -> None:
+        _, headers, account_id = _setup_user_with_account(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/bots/",
+            headers=headers,
+            json=_bot_payload(account_id),
+        )
+        bot_id = create_r.json()["id"]
+
+        mock_celery = MagicMock()
+        with (
+            patch("app.api.routes.bots.Celery", return_value=mock_celery),
+            patch("app.api.routes.bots.queue_notification_event") as mock_notify,
+        ):
+            r = client.post(
+                f"{settings.API_V1_STR}/bots/{bot_id}/start",
+                headers=headers,
+            )
+
+        assert r.status_code == 200
+        mock_notify.assert_called_once()
+
     def test_start_already_running_bot_returns_409(
         self, client: TestClient, db: Session
     ) -> None:
@@ -673,6 +697,37 @@ class TestStopBot:
             )
 
         mock_redis.set.assert_called_once_with(f"bot:{bot_id}:stop", "1")
+
+    def test_stop_bot_triggers_notification(
+        self, client: TestClient, db: Session
+    ) -> None:
+        user, headers, account_id = _setup_user_with_account(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/bots/",
+            headers=headers,
+            json=_bot_payload(account_id),
+        )
+        bot_id = create_r.json()["id"]
+
+        bot = crud.get_bot(
+            session=db, bot_id=uuid.UUID(bot_id), user_id=user.id
+        )
+        assert bot is not None
+        bot.status = BotStatusEnum.running
+        db.add(bot)
+        db.commit()
+
+        mock_redis = MagicMock()
+        with (
+            patch("redis.from_url", return_value=mock_redis),
+            patch("app.api.routes.bots.queue_notification_event") as mock_notify,
+        ):
+            r = client.post(
+                f"{settings.API_V1_STR}/bots/{bot_id}/stop",
+                headers=headers,
+            )
+        assert r.status_code == 200
+        mock_notify.assert_called_once()
 
     def test_stop_pending_bot(
         self, client: TestClient, db: Session

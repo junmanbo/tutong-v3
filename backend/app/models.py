@@ -48,6 +48,18 @@ class SubscriptionStatusEnum(str, PyEnum):
     past_due = "past_due"
 
 
+class NotificationChannelEnum(str, PyEnum):
+    email = "email"
+    telegram = "telegram"
+    web_push = "web_push"
+
+
+class NotificationDeliveryStatusEnum(str, PyEnum):
+    pending = "pending"
+    sent = "sent"
+    failed = "failed"
+
+
 # ── User ─────────────────────────────────────────────────────────────────────
 
 
@@ -101,6 +113,12 @@ class User(UserBase, table=True):
         back_populates="owner", cascade_delete=True
     )
     subscription: Optional["UserSubscription"] = Relationship(back_populates="owner")
+    notification_settings: Optional["NotificationSettings"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
+    notifications: list["Notification"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
 
 
 # Properties to return via API, id is always required
@@ -247,6 +265,7 @@ class Bot(BotBase, table=True):
     owner: User = Relationship(back_populates="bots")
     account: ExchangeAccount = Relationship(back_populates="bots")
     logs: list["BotLog"] = Relationship(back_populates="bot")
+    notifications: list["Notification"] = Relationship(back_populates="bot")
 
 
 class BotCreate(BotBase):
@@ -353,3 +372,92 @@ class UserSubscription(SQLModel, table=True):
 
     owner: User = Relationship(back_populates="subscription")
     plan: SubscriptionPlan = Relationship(back_populates="subscriptions")
+
+
+# ── Notifications ────────────────────────────────────────────────────────────
+
+
+class NotificationSettingsBase(SQLModel):
+    email_enabled: bool = True
+    telegram_enabled: bool = False
+    telegram_chat_id: str | None = Field(default=None, max_length=100)
+    notify_bot_start: bool = True
+    notify_bot_stop: bool = True
+    notify_bot_error: bool = True
+    notify_take_profit: bool = True
+    notify_stop_loss: bool = True
+    notify_account_error: bool = True
+
+
+class NotificationSettings(NotificationSettingsBase, table=True):
+    user_id: uuid.UUID = Field(
+        primary_key=True, foreign_key="user.id", ondelete="CASCADE"
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+    user: User = Relationship(back_populates="notification_settings")
+
+
+class NotificationSettingsUpdate(SQLModel):
+    email_enabled: bool | None = None
+    telegram_enabled: bool | None = None
+    telegram_chat_id: str | None = Field(default=None, max_length=100)
+    notify_bot_start: bool | None = None
+    notify_bot_stop: bool | None = None
+    notify_bot_error: bool | None = None
+    notify_take_profit: bool | None = None
+    notify_stop_loss: bool | None = None
+    notify_account_error: bool | None = None
+
+
+class NotificationSettingsPublic(NotificationSettingsBase):
+    user_id: uuid.UUID
+    updated_at: datetime
+
+
+class NotificationBase(SQLModel):
+    channel: NotificationChannelEnum = NotificationChannelEnum.email
+    event_type: str = Field(max_length=50)
+    title: str = Field(max_length=255)
+    body: str = Field(sa_type=Text())
+    is_read: bool = False
+    payload: dict = Field(
+        default={},
+        sa_column=Column(JSONB, nullable=False, server_default="{}"),
+    )
+
+
+class Notification(NotificationBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE")
+    bot_id: uuid.UUID | None = Field(default=None, foreign_key="bot.id", ondelete="SET NULL")
+    delivery_status: NotificationDeliveryStatusEnum = Field(
+        default=NotificationDeliveryStatusEnum.pending
+    )
+    attempt_count: int = 0
+    last_error: str | None = Field(default=None, sa_type=Text())
+    sent_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    failed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+    user: User = Relationship(back_populates="notifications")
+    bot: Bot | None = Relationship(back_populates="notifications")
+
+
+class NotificationPublic(NotificationBase):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    bot_id: uuid.UUID | None
+    delivery_status: NotificationDeliveryStatusEnum
+    attempt_count: int
+    last_error: str | None
+    sent_at: datetime | None
+    failed_at: datetime | None
+    created_at: datetime

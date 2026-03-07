@@ -4,6 +4,7 @@
 각 테스트는 독립적인 랜덤 사용자를 사용하여 데이터 격리를 보장합니다.
 """
 import uuid
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session
@@ -456,3 +457,28 @@ class TestDeleteAccount:
             f"{settings.API_V1_STR}/accounts/{uuid.uuid4()}"
         )
         assert r.status_code == 401
+
+
+class TestGetAccountBalance:
+    def test_balance_decrypt_failure_triggers_notification(
+        self, client: TestClient, db: Session
+    ) -> None:
+        _, headers = _user_and_headers(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/accounts/",
+            headers=headers,
+            json=_account_payload(label="Failing Account"),
+        )
+        account_id = create_r.json()["id"]
+
+        with (
+            patch("app.api.routes.accounts.decrypt", side_effect=Exception("decrypt-failed")),
+            patch("app.api.routes.accounts.queue_notification_event") as mock_notify,
+        ):
+            r = client.get(
+                f"{settings.API_V1_STR}/accounts/{account_id}/balance",
+                headers=headers,
+            )
+
+        assert r.status_code == 500
+        mock_notify.assert_called_once()

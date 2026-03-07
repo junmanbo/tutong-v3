@@ -14,6 +14,11 @@ from app.models import (
     ExchangeAccount,
     ExchangeAccountCreate,
     ExchangeAccountUpdate,
+    Notification,
+    NotificationChannelEnum,
+    NotificationDeliveryStatusEnum,
+    NotificationSettings,
+    NotificationSettingsUpdate,
     SubscriptionStatusEnum,
     User,
     UserCreate,
@@ -318,3 +323,114 @@ def get_bot_logs_by_user(
         .limit(limit)
     )
     return list(session.exec(statement).all())
+
+
+# ── Notification ──────────────────────────────────────────────────────────────
+
+
+def get_notification_settings(*, session: Session, user_id: uuid.UUID) -> NotificationSettings | None:
+    statement = select(NotificationSettings).where(NotificationSettings.user_id == user_id)
+    return session.exec(statement).first()
+
+
+def get_or_create_notification_settings(
+    *, session: Session, user_id: uuid.UUID
+) -> NotificationSettings:
+    settings = get_notification_settings(session=session, user_id=user_id)
+    if settings:
+        return settings
+
+    settings = NotificationSettings(user_id=user_id)
+    session.add(settings)
+    session.commit()
+    session.refresh(settings)
+    return settings
+
+
+def update_notification_settings(
+    *,
+    session: Session,
+    user_id: uuid.UUID,
+    settings_in: NotificationSettingsUpdate,
+) -> NotificationSettings:
+    settings = get_or_create_notification_settings(session=session, user_id=user_id)
+    update_data = settings_in.model_dump(exclude_unset=True)
+    settings.sqlmodel_update(update_data)
+    settings.updated_at = datetime.now(timezone.utc)
+    session.add(settings)
+    session.commit()
+    session.refresh(settings)
+    return settings
+
+
+def create_notification(
+    *,
+    session: Session,
+    user_id: uuid.UUID,
+    event_type: str,
+    title: str,
+    body: str,
+    bot_id: uuid.UUID | None = None,
+    channel: NotificationChannelEnum = NotificationChannelEnum.email,
+    payload: dict | None = None,
+) -> Notification:
+    notification = Notification(
+        user_id=user_id,
+        bot_id=bot_id,
+        channel=channel,
+        event_type=event_type,
+        title=title,
+        body=body,
+        payload=payload or {},
+    )
+    session.add(notification)
+    session.commit()
+    session.refresh(notification)
+    return notification
+
+
+def get_notification(*, session: Session, notification_id: uuid.UUID) -> Notification | None:
+    return session.get(Notification, notification_id)
+
+
+def mark_notification_sent(
+    *,
+    session: Session,
+    notification: Notification,
+    attempt_count: int,
+) -> Notification:
+    now = datetime.now(timezone.utc)
+    notification.delivery_status = NotificationDeliveryStatusEnum.sent
+    notification.attempt_count = attempt_count
+    notification.sent_at = now
+    notification.failed_at = None
+    notification.last_error = None
+    notification.updated_at = now
+    session.add(notification)
+    session.commit()
+    session.refresh(notification)
+    return notification
+
+
+def mark_notification_failed(
+    *,
+    session: Session,
+    notification: Notification,
+    attempt_count: int,
+    last_error: str,
+    terminal: bool,
+) -> Notification:
+    now = datetime.now(timezone.utc)
+    notification.delivery_status = (
+        NotificationDeliveryStatusEnum.failed
+        if terminal
+        else NotificationDeliveryStatusEnum.pending
+    )
+    notification.attempt_count = attempt_count
+    notification.last_error = last_error
+    notification.failed_at = now if terminal else None
+    notification.updated_at = now
+    session.add(notification)
+    session.commit()
+    session.refresh(notification)
+    return notification

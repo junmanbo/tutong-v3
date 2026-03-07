@@ -616,6 +616,183 @@ export const NewPasswordSchema = {
     title: 'NewPassword'
 } as const;
 
+export const NotificationSettingsPublicSchema = {
+    properties: {
+        email_enabled: {
+            type: 'boolean',
+            title: 'Email Enabled',
+            default: true
+        },
+        telegram_enabled: {
+            type: 'boolean',
+            title: 'Telegram Enabled',
+            default: false
+        },
+        telegram_chat_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Telegram Chat Id'
+        },
+        notify_bot_start: {
+            type: 'boolean',
+            title: 'Notify Bot Start',
+            default: true
+        },
+        notify_bot_stop: {
+            type: 'boolean',
+            title: 'Notify Bot Stop',
+            default: true
+        },
+        notify_bot_error: {
+            type: 'boolean',
+            title: 'Notify Bot Error',
+            default: true
+        },
+        notify_take_profit: {
+            type: 'boolean',
+            title: 'Notify Take Profit',
+            default: true
+        },
+        notify_stop_loss: {
+            type: 'boolean',
+            title: 'Notify Stop Loss',
+            default: true
+        },
+        notify_account_error: {
+            type: 'boolean',
+            title: 'Notify Account Error',
+            default: true
+        },
+        user_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'User Id'
+        },
+        updated_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Updated At'
+        }
+    },
+    type: 'object',
+    required: ['user_id', 'updated_at'],
+    title: 'NotificationSettingsPublic'
+} as const;
+
+export const NotificationSettingsUpdateSchema = {
+    properties: {
+        email_enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Email Enabled'
+        },
+        telegram_enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Telegram Enabled'
+        },
+        telegram_chat_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Telegram Chat Id'
+        },
+        notify_bot_start: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Notify Bot Start'
+        },
+        notify_bot_stop: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Notify Bot Stop'
+        },
+        notify_bot_error: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Notify Bot Error'
+        },
+        notify_take_profit: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Notify Take Profit'
+        },
+        notify_stop_loss: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Notify Stop Loss'
+        },
+        notify_account_error: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Notify Account Error'
+        }
+    },
+    type: 'object',
+    title: 'NotificationSettingsUpdate'
+} as const;
+
 export const PrivateUserCreateSchema = {
     properties: {
         email: {
