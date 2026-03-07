@@ -17,6 +17,9 @@ from tests.utils.account import create_random_account, create_random_bot
 from tests.utils.user import user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
 
+# 계좌 등록 API에서 validate_credentials가 호출되므로,
+# bot 테스트에서는 계좌를 DB 직접 생성 방식을 사용합니다.
+
 
 # ── 공통 헬퍼 ─────────────────────────────────────────────────────────────────
 
@@ -59,16 +62,14 @@ def _bot_payload(account_id: str, **overrides) -> dict:
 def _setup_user_with_account(
     client: TestClient, db: Session
 ) -> tuple:
-    """사용자와 거래소 계좌를 생성하고 반환."""
+    """사용자와 거래소 계좌를 생성하고 반환.
+
+    계좌는 DB 직접 생성 방식을 사용하여 거래소 API Key 검증을 우회합니다.
+    계좌 등록 API 자체의 검증은 test_accounts.py에서 별도로 테스트합니다.
+    """
     user, headers = _user_and_headers(client, db)
-    account_r = client.post(
-        f"{settings.API_V1_STR}/accounts/",
-        headers=headers,
-        json=_account_payload(),
-    )
-    assert account_r.status_code == 201
-    account_id = account_r.json()["id"]
-    return user, headers, account_id
+    account = create_random_account(db, user.id)
+    return user, headers, str(account.id)
 
 
 # ── GET / ─────────────────────────────────────────────────────────────────────

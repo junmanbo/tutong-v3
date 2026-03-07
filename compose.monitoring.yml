@@ -1,0 +1,104 @@
+# 모니터링 스택: Prometheus + Grafana + Loki
+#
+# 사용법:
+#   docker compose -f compose.yml -f compose.monitoring.yml up -d
+#
+# 접근:
+#   Grafana:    http://grafana.${DOMAIN} (또는 로컬: http://localhost:3000)
+#   Prometheus: http://prometheus.${DOMAIN} (또는 로컬: http://localhost:9090)
+#   Loki:       내부 전용 (Grafana datasource로만 접근)
+
+services:
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    restart: always
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - traefik-public
+      - default
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.constraint-label=traefik-public
+      - traefik.http.routers.${STACK_NAME?Variable not set}-prometheus-https.rule=Host(`prometheus.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.${STACK_NAME?Variable not set}-prometheus-https.entrypoints=https
+      - traefik.http.routers.${STACK_NAME?Variable not set}-prometheus-https.tls=true
+      - traefik.http.routers.${STACK_NAME?Variable not set}-prometheus-https.tls.certresolver=le
+      - traefik.http.routers.${STACK_NAME?Variable not set}-prometheus-https.middlewares=monitoring-auth
+      - traefik.http.routers.${STACK_NAME?Variable not set}-prometheus-http.rule=Host(`prometheus.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.${STACK_NAME?Variable not set}-prometheus-http.entrypoints=http
+      - traefik.http.routers.${STACK_NAME?Variable not set}-prometheus-http.middlewares=https-redirect
+      - traefik.http.services.${STACK_NAME?Variable not set}-prometheus.loadbalancer.server.port=9090
+      # BasicAuth 미들웨어 (htpasswd: admin:$MONITORING_PASSWORD)
+      - traefik.http.middlewares.monitoring-auth.basicauth.users=${MONITORING_HTPASSWD?Variable not set}
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_USER=${MONITORING_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${MONITORING_PASSWORD?Variable not set}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://grafana.${DOMAIN}
+      - GF_SMTP_ENABLED=${SMTP_HOST:+true}
+      - GF_SMTP_HOST=${SMTP_HOST}:${SMTP_PORT:-587}
+      - GF_SMTP_USER=${SMTP_USER}
+      - GF_SMTP_PASSWORD=${SMTP_PASSWORD}
+      - GF_SMTP_FROM_ADDRESS=${EMAILS_FROM_EMAIL}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - traefik-public
+      - default
+    depends_on:
+      - prometheus
+      - loki
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.constraint-label=traefik-public
+      - traefik.http.routers.${STACK_NAME?Variable not set}-grafana-https.rule=Host(`grafana.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.${STACK_NAME?Variable not set}-grafana-https.entrypoints=https
+      - traefik.http.routers.${STACK_NAME?Variable not set}-grafana-https.tls=true
+      - traefik.http.routers.${STACK_NAME?Variable not set}-grafana-https.tls.certresolver=le
+      - traefik.http.routers.${STACK_NAME?Variable not set}-grafana-http.rule=Host(`grafana.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.${STACK_NAME?Variable not set}-grafana-http.entrypoints=http
+      - traefik.http.routers.${STACK_NAME?Variable not set}-grafana-http.middlewares=https-redirect
+      - traefik.http.services.${STACK_NAME?Variable not set}-grafana.loadbalancer.server.port=3000
+
+  loki:
+    image: grafana/loki:3.1.0
+    restart: always
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    networks:
+      - default
+
+  promtail:
+    image: grafana/promtail:3.1.0
+    restart: always
+    command: -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ./monitoring/loki/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - default
+    depends_on:
+      - loki
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:

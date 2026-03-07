@@ -317,9 +317,88 @@ class KisAdapter(AbstractExchangeAdapter):
                     )
 
     async def order_update_stream(self) -> AsyncGenerator[OrderResponse, None]:
-        # KIS 실시간 체결통보는 WebSocket H0STCNI0 사용 (구현 예정)
-        raise NotImplementedError("KIS order_update_stream is not yet implemented")
-        yield  # make it a generator
+        """KIS WebSocket 실시간 체결통보 스트림 (H0STCNI0).
+
+        구독 키: 계좌번호(CANO)
+        데이터 형식: pipe(|) 구분 → 4번째 필드를 caret(^) 구분으로 파싱
+        필드 순서 (^ 구분):
+          [0]  CANO (계좌번호)
+          [1]  ACNT_PRDT_CD (계좌상품코드)
+          [2]  ODNO (주문번호)
+          [3]  ORGN_ODNO (원주문번호)
+          [4]  ORD_DVSN_NAME (주문구분명)
+          [5]  PDNO (종목코드)
+          [6]  ORD_DVSN_CD (01=매도, 02=매수)
+          [7]  CNTG_QTY (체결수량)
+          [8]  CNTG_UNPR (체결단가)
+          [9]  STCK_CNTG_HOUR (체결시각)
+          [10] RFUS_YN (거부여부 Y/N)
+          [11] CNTG_YN (체결여부 Y=체결, N=접수)
+          [14] ORD_QTY (주문수량)
+        """
+        import json
+        import websockets  # type: ignore[import-untyped]
+
+        token = await self._ensure_token()
+        # WebSocket 접속키 발급
+        resp = await self._client.post(
+            f"{self._base_url}/oauth2/Approval",
+            json={
+                "grant_type": "client_credentials",
+                "appkey": self._app_key,
+                "secretkey": self._app_secret,
+            },
+        )
+        resp.raise_for_status()
+        approval_key = resp.json()["approval_key"]
+
+        ws_url = "ws://ops.koreainvestment.com:21000"
+        subscribe_msg = {
+            "header": {
+                "approval_key": approval_key,
+                "custtype": "P",
+                "tr_type": "1",
+                "content-type": "utf-8",
+            },
+            "body": {
+                "input": {
+                    "tr_id": "H0STCNI0",
+                    "tr_key": self._cano,  # 계좌번호로 체결통보 구독
+                }
+            },
+        }
+        async with websockets.connect(ws_url) as ws:
+            await ws.send(json.dumps(subscribe_msg))
+            async for message in ws:
+                if not isinstance(message, str):
+                    continue
+                parts = message.split("|")
+                # 데이터 메시지: |H0STCNI0|{userid}|{fields}
+                if len(parts) < 4 or parts[1] != "H0STCNI0":
+                    continue
+                fields = parts[3].split("^")
+                if len(fields) < 12:
+                    continue
+                exchange_order_id = fields[2]
+                symbol = fields[5]
+                side = "buy" if fields[6] == "02" else "sell"
+                cntg_qty = Decimal(fields[7]) if fields[7] else Decimal("0")
+                cntg_price = Decimal(fields[8]) if fields[8] else Decimal("0")
+                is_filled = fields[11] == "Y"
+                ord_qty = Decimal(fields[14]) if len(fields) > 14 and fields[14] else Decimal("0")
+                yield OrderResponse(
+                    exchange_order_id=exchange_order_id,
+                    symbol=symbol,
+                    side=side,
+                    order_type="limit",
+                    status="closed" if is_filled else "open",
+                    requested_qty=ord_qty,
+                    filled_qty=cntg_qty,
+                    avg_fill_price=cntg_price if is_filled else None,
+                    fee=Decimal("0"),
+                    fee_currency="KRW",
+                    raw={"fields": fields},
+                )
 
 
 # ── 파싱 헬퍼 ─────────────────────────────────────────────────────────────────

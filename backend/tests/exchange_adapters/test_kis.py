@@ -160,3 +160,140 @@ class TestKisAdapterMethods:
 
         assert asyncio.run(bad_adapter.validate_credentials()) is False
         bad_adapter.close.assert_awaited_once()
+
+
+def _make_fake_ws(messages: list[str]):
+    """async context manager + async iterable로 동작하는 WebSocket mock."""
+
+    class FakeWS:
+        def __init__(self, msgs: list[str]) -> None:
+            self._msgs = msgs
+            self.sent: list[str] = []
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        def __aiter__(self):
+            return self._gen()
+
+        async def _gen(self):
+            for msg in self._msgs:
+                yield msg
+
+        async def send(self, data: str) -> None:
+            self.sent.append(data)
+
+    return FakeWS(messages)
+
+
+class TestKisOrderUpdateStream:
+    """order_update_stream WebSocket 파싱 로직 테스트 (Mock WebSocket)."""
+
+    @staticmethod
+    def _h0stcni0_msg(
+        odno: str = "A123",
+        pdno: str = "005930",
+        dvsn: str = "02",
+        cntg_qty: str = "5",
+        cntg_price: str = "70000",
+        cntg_yn: str = "Y",
+        ord_qty: str = "10",
+    ) -> str:
+        """H0STCNI0 체결통보 메시지 형식 생성.
+        fields[0..14]: 계좌, 상품코드, 주문번호, 원주문번호, 주문구분명,
+                       종목코드, 매매구분(01매도/02매수), 체결수량, 체결단가,
+                       체결시각, 거부여부, 체결여부(Y/N), 접수여부, 지점번호, 주문수량
+        """
+        fields = [
+            "12345678", "01", odno, "", "시장가매수",
+            pdno, dvsn, cntg_qty, cntg_price, "091500",
+            "N", cntg_yn, "1", "001", ord_qty,
+        ]
+        return "0|H0STCNI0|user123|" + "^".join(fields)
+
+    def _make_adapter_with_ws_mock(self, messages: list[str]):
+        from unittest.mock import AsyncMock, MagicMock, patch
+        adapter = _make_adapter()
+        adapter._ensure_token = AsyncMock(return_value="token")
+        adapter._client = MagicMock()
+        adapter._client.post = AsyncMock(
+            return_value=_mock_response({"approval_key": "ws-key"})
+        )
+        return adapter
+
+    def test_filled_message_parses_to_closed_order(self) -> None:
+        from unittest.mock import patch
+
+        msg = self._h0stcni0_msg(
+            odno="B999", pdno="005380", dvsn="02",
+            cntg_qty="3", cntg_price="85000", cntg_yn="Y", ord_qty="3",
+        )
+        adapter = self._make_adapter_with_ws_mock([msg])
+        fake_ws = _make_fake_ws([msg])
+
+        async def _run():
+            results = []
+            with patch("websockets.connect", return_value=fake_ws):
+                async for order in adapter.order_update_stream():
+                    results.append(order)
+                    break
+            return results
+
+        results = asyncio.run(_run())
+        assert len(results) == 1
+        order = results[0]
+        assert order.exchange_order_id == "B999"
+        assert order.symbol == "005380"
+        assert order.side == "buy"
+        assert order.status == "closed"
+        assert order.filled_qty == Decimal("3")
+        assert order.avg_fill_price == Decimal("85000")
+
+    def test_pending_message_parses_to_open_order(self) -> None:
+        from unittest.mock import patch
+
+        msg = self._h0stcni0_msg(
+            odno="C001", pdno="000660", dvsn="01",
+            cntg_qty="0", cntg_price="0", cntg_yn="N", ord_qty="5",
+        )
+        adapter = self._make_adapter_with_ws_mock([msg])
+        fake_ws = _make_fake_ws([msg])
+
+        async def _run():
+            results = []
+            with patch("websockets.connect", return_value=fake_ws):
+                async for order in adapter.order_update_stream():
+                    results.append(order)
+                    break
+            return results
+
+        results = asyncio.run(_run())
+        assert len(results) == 1
+        order = results[0]
+        assert order.side == "sell"
+        assert order.status == "open"
+        assert order.avg_fill_price is None
+
+    def test_non_h0stcni0_message_is_skipped(self) -> None:
+        from unittest.mock import patch
+
+        irrelevant = "0|H0STCNT0|user|005930^70000^..."
+        valid = self._h0stcni0_msg(odno="D001")
+        adapter = self._make_adapter_with_ws_mock([irrelevant, valid])
+        fake_ws = _make_fake_ws([irrelevant, valid])
+
+        async def _run():
+            results = []
+            with patch("websockets.connect", return_value=fake_ws):
+                async for order in adapter.order_update_stream():
+                    results.append(order)
+                    break
+            return results
+
+        results = asyncio.run(_run())
+        # irrelevant 메시지는 스킵, valid 메시지만 파싱
+        assert len(results) == 1
+        assert results[0].exchange_order_id == "D001"

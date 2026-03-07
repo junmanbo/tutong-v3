@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # FastAPI 백엔드 메트릭 (prometheus-fastapi-instrumentator 필요)
+  - job_name: "backend"
+    static_configs:
+      - targets: ["backend:8000"]
+    metrics_path: "/metrics"
+
+  # Celery 봇 엔진 워커 메트릭 (prometheus-client 필요)
+  - job_name: "bot_engine"
+    static_configs:
+      - targets: ["bot_engine:9100"]
+    metrics_path: "/metrics"
+
+  # Redis 메트릭 (redis_exporter 사이드카가 있을 경우)
+  # - job_name: "redis"
+  #   static_configs:
+  #     - targets: ["redis-exporter:9121"]
+
+  # PostgreSQL 메트릭 (postgres_exporter 사이드카가 있을 경우)
+  # - job_name: "postgres"
+  #   static_configs:
+  #     - targets: ["postgres-exporter:9187"]
+
+  # Prometheus 자체 메트릭
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

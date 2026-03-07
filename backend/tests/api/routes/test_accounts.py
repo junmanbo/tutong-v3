@@ -4,8 +4,9 @@
 각 테스트는 독립적인 랜덤 사용자를 사용하여 데이터 격리를 보장합니다.
 """
 import uuid
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -14,6 +15,20 @@ from app.core.config import settings
 from app.models import UserCreate
 from tests.utils.user import user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
+
+
+@pytest.fixture(autouse=True)
+def mock_exchange_adapter():
+    """계좌 등록 시 거래소 API Key 검증을 Mock으로 대체.
+
+    실제 거래소 API 호출 없이 테스트를 실행하기 위해
+    get_adapter()가 반환하는 어댑터의 validate_credentials를 항상 True로 반환.
+    """
+    mock_adapter = MagicMock()
+    mock_adapter.validate_credentials = AsyncMock(return_value=True)
+    mock_adapter.close = AsyncMock()
+    with patch("app.api.routes.accounts.get_adapter", return_value=mock_adapter):
+        yield mock_adapter
 
 
 # ── 공통 헬퍼 ─────────────────────────────────────────────────────────────────
@@ -211,7 +226,7 @@ class TestCreateAccount:
         assert data["exchange"] == "upbit"
         assert data["label"] == "My Upbit"
         assert data["is_active"] is True
-        assert data["is_valid"] is False
+        assert data["is_valid"] is True   # 등록 시 validate_credentials() 성공 후 True로 설정
         assert "id" in data
         assert "created_at" in data
 

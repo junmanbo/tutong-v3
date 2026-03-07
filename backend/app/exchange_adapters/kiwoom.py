@@ -240,11 +240,125 @@ class KiwoomAdapter(AbstractExchangeAdapter):
         ]
         return OrderBook(bids=bids, asks=asks)
 
+    async def _get_ws_approval_key(self) -> str:
+        """WebSocket 접속키 발급."""
+        resp = await self._client.post(
+            f"{_BASE_URL}/oauth2/approval",
+            json={
+                "grant_type": "client_credentials",
+                "appkey": self._app_key,
+                "secretkey": self._secret_key,
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["approval_key"]
+
     async def price_stream(self, symbol: str) -> AsyncGenerator[PriceTick, None]:
-        # 키움 WebSocket 실시간 시세 구현 예정
-        raise NotImplementedError("Kiwoom price_stream is not yet implemented")
-        yield
+        """키움 WebSocket 실시간 체결가 스트림.
+
+        키움 REST API WebSocket은 KIS와 유사한 구조를 사용합니다.
+        - 접속키 발급: POST /oauth2/approval
+        - WebSocket URL: wss://openapi.kiwoom.com:9443/ws
+        - 구독 TR: H0STCNT0 (주식체결)
+        - 데이터: pipe(|) 구분 → 4번째 필드 caret(^) 구분
+          [2]: 현재가(STCK_PRPR)
+
+        ⚠️ 키움 REST API는 신규 서비스(2025년)이므로 포털
+           (https://openapi.kiwoom.com) 최신 API 가이드를 반드시 확인하세요.
+        """
+        import json
+        import websockets  # type: ignore[import-untyped]
+
+        approval_key = await self._get_ws_approval_key()
+        ws_url = "wss://openapi.kiwoom.com:9443/ws"
+        subscribe_msg = {
+            "header": {
+                "approval_key": approval_key,
+                "custtype": "P",
+                "tr_type": "1",
+                "content-type": "utf-8",
+            },
+            "body": {"input": {"tr_id": "H0STCNT0", "tr_key": symbol}},
+        }
+        async with websockets.connect(ws_url) as ws:
+            await ws.send(json.dumps(subscribe_msg))
+            async for message in ws:
+                if not isinstance(message, str):
+                    continue
+                parts = message.split("|")
+                if len(parts) < 4 or parts[1] != "H0STCNT0":
+                    continue
+                fields = parts[3].split("^")
+                price = Decimal(fields[2]) if len(fields) > 2 and fields[2] else Decimal("0")
+                yield PriceTick(
+                    symbol=symbol,
+                    price=price,
+                    timestamp=datetime.now(UTC),
+                )
 
     async def order_update_stream(self) -> AsyncGenerator[OrderResponse, None]:
-        raise NotImplementedError("Kiwoom order_update_stream is not yet implemented")
-        yield
+        """키움 WebSocket 실시간 체결통보 스트림.
+
+        - 구독 TR: H0STCNI0 (체결통보) — KIS와 동일한 TR ID 사용
+        - 구독 키: 계좌번호
+        - 데이터 필드(^ 구분, KIS H0STCNI0와 동일 구조):
+          [2]  ODNO (주문번호)
+          [5]  PDNO (종목코드)
+          [6]  ORD_DVSN_CD (01=매도, 02=매수)
+          [7]  CNTG_QTY (체결수량)
+          [8]  CNTG_UNPR (체결단가)
+          [11] CNTG_YN (체결여부 Y/N)
+          [14] ORD_QTY (주문수량)
+
+        ⚠️ 실제 TR ID 및 필드 구조는 포털 최신 API 가이드에서 확인하세요.
+        """
+        import json
+        import websockets  # type: ignore[import-untyped]
+
+        approval_key = await self._get_ws_approval_key()
+        ws_url = "wss://openapi.kiwoom.com:9443/ws"
+        subscribe_msg = {
+            "header": {
+                "approval_key": approval_key,
+                "custtype": "P",
+                "tr_type": "1",
+                "content-type": "utf-8",
+            },
+            "body": {
+                "input": {
+                    "tr_id": "H0STCNI0",
+                    "tr_key": self._account_no,
+                }
+            },
+        }
+        async with websockets.connect(ws_url) as ws:
+            await ws.send(json.dumps(subscribe_msg))
+            async for message in ws:
+                if not isinstance(message, str):
+                    continue
+                parts = message.split("|")
+                if len(parts) < 4 or parts[1] != "H0STCNI0":
+                    continue
+                fields = parts[3].split("^")
+                if len(fields) < 12:
+                    continue
+                exchange_order_id = fields[2]
+                symbol = fields[5]
+                side = "buy" if fields[6] == "02" else "sell"
+                cntg_qty = Decimal(fields[7]) if fields[7] else Decimal("0")
+                cntg_price = Decimal(fields[8]) if fields[8] else Decimal("0")
+                is_filled = fields[11] == "Y"
+                ord_qty = Decimal(fields[14]) if len(fields) > 14 and fields[14] else Decimal("0")
+                yield OrderResponse(
+                    exchange_order_id=exchange_order_id,
+                    symbol=symbol,
+                    side=side,
+                    order_type="limit",
+                    status="closed" if is_filled else "open",
+                    requested_qty=ord_qty,
+                    filled_qty=cntg_qty,
+                    avg_fill_price=cntg_price if is_filled else None,
+                    fee=Decimal("0"),
+                    fee_currency="KRW",
+                    raw={"fields": fields},
+                )
