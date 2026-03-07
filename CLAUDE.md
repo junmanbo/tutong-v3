@@ -436,6 +436,7 @@ test: BinanceAdapter 단위 테스트 추가
 - [x] Phase 1-2 계속: 봇 전략 로직 구현 + 잔고 조회 API
 - [x] Phase 1-2 마무리(1차): 전략 테스트 보강 + 봇 생성 5종 폼 + 봇 상세/운영 현황 페이지
 - [x] 프론트 E2E 테스트 정리: 템플릿 잔재(items) 제거, 현재 UI 기준 Playwright 정합화
+- [x] Phase 1-3: 알림/Admin/Subscription API 완성 + Worker 버그 수정 + Bot.config 추가
 
 ### Phase 1-1 완료 세부 내역
 1. ✅ 템플릿 클론 및 환경 설정
@@ -458,12 +459,25 @@ test: BinanceAdapter 단위 테스트 추가
    - Redis 상태 저장 (재시작 복원), 1분 단위 stop 신호 확인
 3. ✅ 계좌 잔고 조회 API: GET /accounts/{id}/balance
 4. ✅ app.core.crypto에 decrypt() 추가 (backend 내부 사용)
+5. ✅ 봇 실행 로그 API + Worker 주문/체결 이벤트 로그 저장
+6. ✅ 알림 시스템 (Notification 모델, 이벤트 트리거, 알림 설정 API)
 
-### 지금 해야 할 작업 (Phase 1-3 준비)
-1. 업비트 / KIS Adapter 동작 검증 + 테스트 코드 작성
-2. 봇 손절/목표 수익 자동 종료 로직 구현 (Worker 반영)
-3. 봇 실행 로그 DB 저장 및 봇 상세 페이지 로그 탭 연동
-4. 알림 이벤트 트리거(봇 상태/손절/익절) + 알림 설정 화면 연동
+### Phase 1-3 완료 세부 내역
+1. ✅ Bot.config JSONB 필드 + Alembic 마이그레이션 (b4c5d6e7f8a9)
+2. ✅ Worker 버그 수정: `ticker.price`, `order.exchange_order_id`, `OrderRequest.qty`
+3. ✅ bot_engine DB 엔진 싱글턴 (_get_db_session 모듈-레벨 캐싱)
+4. ✅ 계좌 등록 시 API Key 유효성 검증 (validate_credentials 호출)
+5. ✅ 알림 목록/읽음 처리 API: GET /notifications/, POST /notifications/{id}/read, POST /notifications/read-all
+6. ✅ Admin 라우터: GET /admin/users, PATCH /admin/users/{id}/deactivate|activate, GET /admin/bots
+7. ✅ Subscription 라우터: GET /subscriptions/plans, GET /subscriptions/me, DELETE /subscriptions/me/cancel
+8. ✅ 봇 생성 5종 폼에서 config 파라미터 API 전달
+9. ✅ TypeScript 클라이언트 재생성 (Admin/Notifications/Subscriptions 서비스 포함)
+
+### 지금 해야 할 작업 (Phase 1-4 진입 전)
+1. KIS `order_update_stream` 실시간 체결 WebSocket 구현
+2. Kiwoom `price_stream` / `order_update_stream` WebSocket 구현
+3. 통합 테스트 (봇 시나리오 E2E, 보안 테스트, 부하 테스트)
+4. 운영 환경 구성 (compose.prod.yml, Nginx, SSL, Prometheus/Grafana)
 
 ---
 

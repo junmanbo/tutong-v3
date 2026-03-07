@@ -134,7 +134,7 @@ Week 9-10: Algo Orders + 공통 봇 기능
 └── [FE] 대시보드 차트 실데이터 기반 연동 (accounts/balance, bots) ✅
 ```
 
-### Phase 1-3: 추가 거래소 연동 + 알림 (9~12주)
+### Phase 1-3: 추가 거래소 연동 + 알림 + API 완성 (9~12주)
 
 ```
 Week 9-10: 업비트 연동
@@ -151,11 +151,23 @@ Week 10-11: 한국투자증권 연동
 └── [BE] KIS 연동 테스트 ✅ (adapter 검증 테스트 추가)
 
 Week 11-12: 알림 + 대시보드 고도화
-├── [BE] 이메일 알림 서비스 구현 (SES/SendGrid)
-├── [BE] 알림 이벤트 트리거 로직
+├── [BE] 이메일 알림 서비스 구현 ✅ (FastAPI BackgroundTasks + SMTP)
+├── [BE] 알림 이벤트 트리거 로직 ✅ (봇 상태/오류/계좌 오류)
+├── [BE] 알림 설정 API ✅ (GET/PUT /notifications/settings)
+├── [BE] 알림 목록 조회 API ✅ (GET /notifications/, POST /notifications/{id}/read, POST /notifications/read-all)
 ├── [FE] 알림 설정 페이지 ✅
 ├── [FE] 대시보드 차트 (수익 추이, 포트폴리오 비중) ✅
 └── [FE] 구독 / 결제 페이지 (PG 연동 제외 UI 우선) ✅
+
+── Phase 1-3 추가 완료 ──
+├── [BE] Bot.config JSONB 필드 추가 + Alembic 마이그레이션 (b4c5d6e7f8a9) ✅
+├── [BE] 계좌 등록 시 API Key 유효성 검증 (validate_credentials) ✅
+├── [BE] Worker 버그 수정 — ticker.price / order.exchange_order_id / OrderRequest.qty ✅
+├── [BE] bot_engine DB 엔진 싱글턴화 (_get_db_session) ✅
+├── [BE] /admin/* 라우터 구현 (사용자 관리, 봇 모니터링) ✅
+├── [BE] /subscriptions/* 라우터 구현 (플랜 조회, 구독 조회/취소) ✅
+├── [FE] 봇 생성 5종 폼에서 config 파라미터 API에 전달 ✅
+└── [FE] TypeScript 클라이언트 재생성 (Admin/Notifications/Subscriptions 포함) ✅
 ```
 
 ### Phase 1-4: QA 및 배포 (12~14주)
@@ -196,7 +208,7 @@ Week  4    │ ✅ 회원 인증 / 계좌 연동 API 완성
 Week  6    │ ✅ 기본 대시보드 + Exchange Adapter 완성 (백엔드 + 프론트 완료)
 Week  8    │ ✅ Spot Grid + DCA 봇 동작 확인
 Week 10    │ ✅ 전체 봇 5종 구현 완료
-Week 12    │ 🔄 업비트 + KIS 연동/검증 대부분 완료, 알림 백엔드 구현 진행 중
+Week 12    │ ✅ Phase 1-3 완료 — 알림/Admin/Subscription API, Worker 버그 수정, Bot.config 완성
 Week 14    │ 🚀 MVP 베타 론칭
 ```
 
@@ -233,6 +245,7 @@ Week 14    │ 🚀 MVP 베타 론칭
 | v1.9 | 2026-03-07 | 진행 현황 반영 — 봇 손절/목표수익 자동 종료 로직 완료, Upbit/KIS adapter 검증 테스트 추가, 봇 생성 UI 5종 상세 라우트 분리, 설정/구독 경로 분리, 대시보드 실데이터 시각화 반영 | Dev |
 | v2.0 | 2026-03-07 | 운영 변경 반영 — GitHub Actions 워크플로우 비활성화(.github/workflows.disabled로 이동), 배포/CI는 수동 운영 기준으로 임시 전환 | Dev |
 | v2.1 | 2026-03-07 | 봇 실행 로그 후속 완성 — BotLog 테이블/CRUD/API 추가, worker 주문/체결 이벤트 로그 저장, 봇 상세 로그 타임라인 실데이터 연동 | Dev |
+| v2.2 | 2026-03-07 | Phase 1-3 완료 — Bot.config JSONB 추가, Worker 3종 버그 수정(ticker.price/exchange_order_id/qty), DB 엔진 싱글턴, 알림 목록 API, 계좌 등록 API Key 검증, Admin 라우터, Subscription 라우터, 봇 생성 폼 config 전달, TS 클라이언트 재생성 | Dev |
 
 ---
 
