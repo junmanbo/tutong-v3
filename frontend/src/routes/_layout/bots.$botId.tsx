@@ -61,6 +61,12 @@ function formatSignedNumber(value: number, unit = "") {
   return `${prefix}${value.toFixed(2)}${unit}`
 }
 
+function formatKrw(value?: string | null) {
+  const amount = Number(value ?? "0")
+  if (!Number.isFinite(amount)) return "-"
+  return `${Math.round(amount).toLocaleString()} KRW`
+}
+
 function formatDurationFrom(isoDate: string) {
   const startedAt = new Date(isoDate).getTime()
   const now = Date.now()
@@ -346,7 +352,7 @@ function BotDetailPage() {
             <Separator />
             <ValueRow
               label="투자 금액"
-              value={`${bot.investment_amount ?? "-"} KRW`}
+              value={formatKrw(bot.investment_amount)}
             />
             <Separator />
             <ValueRow

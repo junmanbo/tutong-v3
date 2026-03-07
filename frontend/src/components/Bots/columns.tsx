@@ -28,6 +28,12 @@ const STATUS_STYLES: Record<
   completed: { variant: "outline", label: "완료" },
 }
 
+const formatKrw = (value?: string | null): string => {
+  const amount = Number(value ?? "0")
+  if (!Number.isFinite(amount)) return "-"
+  return `${Math.round(amount).toLocaleString()} KRW`
+}
+
 export const columns: ColumnDef<BotPublic>[] = [
   {
     accessorKey: "name",
@@ -65,9 +71,7 @@ export const columns: ColumnDef<BotPublic>[] = [
     header: "투자금액",
     cell: ({ row }) => (
       <span className="font-mono text-sm">
-        {row.original.investment_amount
-          ? `${row.original.investment_amount} KRW`
-          : "-"}
+        {row.original.investment_amount ? formatKrw(row.original.investment_amount) : "-"}
       </span>
     ),
   },
