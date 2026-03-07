@@ -123,7 +123,7 @@ Week 9-10: Algo Orders + 공통 봇 기능
 │   ├── 슬라이스 수량 계산 (calc_slice_qty, calc_remaining_qty) ✅
 │   └── 인터벌 계산 + 슬라이스 순차 실행 ✅
 ├── [Bot] 봇 손절/목표 수익 자동 종료 로직 ✅
-├── [Bot] 봇 실행 로그 DB 저장 ← 다음 단계
+├── [Bot] 봇 실행 로그 DB 저장 ✅
 ├── [Bot] strategies/ 테스트 코드 (커버리지 90%+) ✅ (현재 100%)
 ├── [FE] 봇 생성 UI - Algo Orders 폼 반영 ✅
 ├── [FE] 봇 목록 페이지 ✅
@@ -232,6 +232,7 @@ Week 14    │ 🚀 MVP 베타 론칭
 | v1.8 | 2026-03-05 | E2E 테스트 정리 — 템플릿 잔재 items.spec.ts 삭제, 로그인/설정/리셋 테스트를 현재 UI 기준으로 정합화, Playwright 전체 51 pass / 2 skip 확인 | Dev |
 | v1.9 | 2026-03-07 | 진행 현황 반영 — 봇 손절/목표수익 자동 종료 로직 완료, Upbit/KIS adapter 검증 테스트 추가, 봇 생성 UI 5종 상세 라우트 분리, 설정/구독 경로 분리, 대시보드 실데이터 시각화 반영 | Dev |
 | v2.0 | 2026-03-07 | 운영 변경 반영 — GitHub Actions 워크플로우 비활성화(.github/workflows.disabled로 이동), 배포/CI는 수동 운영 기준으로 임시 전환 | Dev |
+| v2.1 | 2026-03-07 | 봇 실행 로그 후속 완성 — BotLog 테이블/CRUD/API 추가, worker 주문/체결 이벤트 로그 저장, 봇 상세 로그 타임라인 실데이터 연동 | Dev |
 
 ---
 

@@ -19,6 +19,7 @@ from decimal import Decimal
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _create_bot_log,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
@@ -103,6 +104,17 @@ def run_rebalancing(self, *, bot_id: str) -> None:
             "Rebalancing bot started: bot_id=%s assets=%s threshold=%s interval=%ds",
             bot_id, list(config.assets.keys()), config.threshold_pct, config.interval_seconds,
         )
+        _create_bot_log(
+            bot_id=bot_id,
+            event_type="rebalancing_started",
+            level="info",
+            message="Rebalancing bot started",
+            payload={
+                "assets": list(config.assets.keys()),
+                "threshold_pct": str(config.threshold_pct),
+                "interval_seconds": config.interval_seconds,
+            },
+        )
         initial_total_value: Decimal | None = None
         final_status = "stopped"
         final_reason: str | None = None
@@ -164,6 +176,13 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                                 bot_id,
                                 final_reason,
                             )
+                            _create_bot_log(
+                                bot_id=bot_id,
+                                event_type="risk_triggered",
+                                level="warning",
+                                message=final_reason,
+                                payload={"change_pct": str(pnl_pct)},
+                            )
                             break
 
                     logger.debug(
@@ -180,6 +199,13 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                         logger.info(
                             "Rebalancing triggered: bot_id=%s orders=%d",
                             bot_id, len(orders),
+                        )
+                        _create_bot_log(
+                            bot_id=bot_id,
+                            event_type="rebalance_triggered",
+                            level="info",
+                            message="Rebalancing condition met",
+                            payload={"orders": len(orders)},
                         )
                         for rb_order in orders:
                             if rb_order.asset not in prices:
@@ -206,14 +232,43 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                                     rb_order.side, qty, rb_order.asset,
                                     price, order.order_id,
                                 )
+                                _create_bot_log(
+                                    bot_id=bot_id,
+                                    event_type="rebalance_order",
+                                    level="info",
+                                    message="Rebalance order placed",
+                                    payload={
+                                        "asset": rb_order.asset,
+                                        "side": rb_order.side,
+                                        "qty": str(qty),
+                                        "price": str(price),
+                                        "order_id": order.order_id,
+                                    },
+                                )
                             except Exception as exc:
                                 logger.error(
                                     "Rebalance order error: asset=%s side=%s error=%s",
                                     rb_order.asset, rb_order.side, exc,
                                 )
+                                _create_bot_log(
+                                    bot_id=bot_id,
+                                    event_type="order_error",
+                                    level="error",
+                                    message=f"Rebalance order error: {exc}",
+                                    payload={
+                                        "asset": rb_order.asset,
+                                        "side": rb_order.side,
+                                    },
+                                )
 
                 except Exception as exc:
                     logger.error("Rebalancing check error: bot_id=%s error=%s", bot_id, exc)
+                    _create_bot_log(
+                        bot_id=bot_id,
+                        event_type="rebalance_check_error",
+                        level="error",
+                        message=f"Rebalancing check error: {exc}",
+                    )
 
                 # 1분 단위로 stop 신호 확인
                 await asyncio.sleep(min(config.interval_seconds, 60))

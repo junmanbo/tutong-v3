@@ -19,6 +19,7 @@ from decimal import Decimal
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _create_bot_log,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
@@ -108,6 +109,18 @@ def run_algo_orders(self, *, bot_id: str) -> None:
             bot_id, symbol, config.side, config.total_qty,
             config.num_slices, slice_qty, interval_sec,
         )
+        _create_bot_log(
+            bot_id=bot_id,
+            event_type="algo_started",
+            level="info",
+            message="Algo Orders bot started",
+            payload={
+                "symbol": symbol,
+                "side": config.side,
+                "num_slices": config.num_slices,
+                "interval_sec": interval_sec,
+            },
+        )
 
         # ── Redis에서 이전 상태 복원 ─────────────────────────────────────────
         r = get_redis()
@@ -137,6 +150,13 @@ def run_algo_orders(self, *, bot_id: str) -> None:
                     )
                     final_status = "completed"
                     final_reason = "TWAP slices completed"
+                    _create_bot_log(
+                        bot_id=bot_id,
+                        event_type="algo_completed",
+                        level="info",
+                        message=final_reason,
+                        payload={"executed_slices": executed_slices},
+                    )
                     break
 
                 try:
@@ -158,6 +178,13 @@ def run_algo_orders(self, *, bot_id: str) -> None:
                                 "Algo auto-stop: bot_id=%s reason=%s",
                                 bot_id,
                                 final_reason,
+                            )
+                            _create_bot_log(
+                                bot_id=bot_id,
+                                event_type="risk_triggered",
+                                level="warning",
+                                message=final_reason,
+                                payload={"change_pct": str(pnl_pct)},
                             )
                             break
                 except Exception as exc:
@@ -203,10 +230,29 @@ def run_algo_orders(self, *, bot_id: str) -> None:
                         "TWAP slice executed: bot_id=%s %d/%d qty=%s order_id=%s",
                         bot_id, executed_slices, config.num_slices, qty, order.order_id,
                     )
+                    _create_bot_log(
+                        bot_id=bot_id,
+                        event_type="algo_slice_executed",
+                        level="info",
+                        message="TWAP slice order executed",
+                        payload={
+                            "executed_slices": executed_slices,
+                            "num_slices": config.num_slices,
+                            "qty": str(qty),
+                            "order_id": order.order_id,
+                        },
+                    )
                 except Exception as exc:
                     logger.error(
                         "Slice order error: bot_id=%s slice=%d error=%s",
                         bot_id, executed_slices, exc,
+                    )
+                    _create_bot_log(
+                        bot_id=bot_id,
+                        event_type="order_error",
+                        level="error",
+                        message=f"Slice order error: {exc}",
+                        payload={"executed_slices": executed_slices},
                     )
 
                 if not is_completed(executed_slices, config.num_slices) and interval_sec > 0:

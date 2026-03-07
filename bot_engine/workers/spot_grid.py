@@ -19,6 +19,7 @@ from decimal import Decimal
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _create_bot_log,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
@@ -108,6 +109,13 @@ def run_spot_grid(self, *, bot_id: str) -> None:
             "Spot Grid bot started: bot_id=%s symbol=%s grid_count=%d",
             bot_id, symbol, config.grid_count,
         )
+        _create_bot_log(
+            bot_id=bot_id,
+            event_type="grid_started",
+            level="info",
+            message="Spot Grid bot started",
+            payload={"symbol": symbol, "grid_count": config.grid_count},
+        )
 
         # ── 그리드 초기화 ────────────────────────────────────────────────────
         r = get_redis()
@@ -163,10 +171,29 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                             "Grid buy order placed: price=%s qty=%s order_id=%s",
                             level.price, level.qty, order.order_id,
                         )
+                        _create_bot_log(
+                            bot_id=bot_id,
+                            event_type="order_placed",
+                            level="info",
+                            message="Grid initial buy order placed",
+                            payload={
+                                "side": "buy",
+                                "price": str(level.price),
+                                "qty": str(level.qty),
+                                "order_id": order.order_id,
+                            },
+                        )
                     except Exception as exc:
                         logger.error(
                             "Failed to place grid order: price=%s error=%s",
                             level.price, exc,
+                        )
+                        _create_bot_log(
+                            bot_id=bot_id,
+                            event_type="order_error",
+                            level="error",
+                            message=f"Grid initial buy order error: {exc}",
+                            payload={"price": str(level.price)},
                         )
 
             # 상태 저장
@@ -229,6 +256,18 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                 "Grid order filled: side=%s price=%s qty=%s",
                                 level.side, level.price, level.qty,
                             )
+                            _create_bot_log(
+                                bot_id=bot_id,
+                                event_type="order_filled",
+                                level="info",
+                                message="Grid order filled",
+                                payload={
+                                    "side": level.side,
+                                    "price": str(level.price),
+                                    "qty": str(level.qty),
+                                    "order_id": level.order_id,
+                                },
+                            )
                             if level.side == "buy":
                                 new_level = on_buy_filled(level, levels)
                                 if new_level:
@@ -243,10 +282,29 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                             )
                                         )
                                         new_level.order_id = order.order_id
+                                        _create_bot_log(
+                                            bot_id=bot_id,
+                                            event_type="counter_order_placed",
+                                            level="info",
+                                            message="Grid counter sell order placed",
+                                            payload={
+                                                "side": "sell",
+                                                "price": str(new_level.price),
+                                                "qty": str(new_level.qty),
+                                                "order_id": order.order_id,
+                                            },
+                                        )
                                     except Exception as exc:
                                         logger.error(
                                             "Failed to place counter sell: price=%s error=%s",
                                             new_level.price, exc,
+                                        )
+                                        _create_bot_log(
+                                            bot_id=bot_id,
+                                            event_type="order_error",
+                                            level="error",
+                                            message=f"Counter sell order error: {exc}",
+                                            payload={"price": str(new_level.price)},
                                         )
                             else:  # sell filled
                                 new_level = on_sell_filled(level, levels)
@@ -262,16 +320,42 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                             )
                                         )
                                         new_level.order_id = order.order_id
+                                        _create_bot_log(
+                                            bot_id=bot_id,
+                                            event_type="counter_order_placed",
+                                            level="info",
+                                            message="Grid counter buy order placed",
+                                            payload={
+                                                "side": "buy",
+                                                "price": str(new_level.price),
+                                                "qty": str(new_level.qty),
+                                                "order_id": order.order_id,
+                                            },
+                                        )
                                     except Exception as exc:
                                         logger.error(
                                             "Failed to place counter buy: price=%s error=%s",
                                             new_level.price, exc,
+                                        )
+                                        _create_bot_log(
+                                            bot_id=bot_id,
+                                            event_type="order_error",
+                                            level="error",
+                                            message=f"Counter buy order error: {exc}",
+                                            payload={"price": str(new_level.price)},
                                         )
 
                     except Exception as exc:
                         logger.error(
                             "Error polling order: order_id=%s error=%s",
                             level.order_id, exc,
+                        )
+                        _create_bot_log(
+                            bot_id=bot_id,
+                            event_type="order_poll_error",
+                            level="error",
+                            message=f"Order polling error: {exc}",
+                            payload={"order_id": level.order_id},
                         )
 
                 # 상태 저장

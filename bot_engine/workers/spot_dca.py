@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _create_bot_log,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
@@ -106,6 +107,17 @@ def run_spot_dca(self, *, bot_id: str) -> None:
             "Spot DCA bot started: bot_id=%s symbol=%s interval=%ds amount=%s",
             bot_id, symbol, config.interval_seconds, config.amount_per_order,
         )
+        _create_bot_log(
+            bot_id=bot_id,
+            event_type="dca_started",
+            level="info",
+            message="Spot DCA bot started",
+            payload={
+                "symbol": symbol,
+                "interval_seconds": config.interval_seconds,
+                "amount_per_order": str(config.amount_per_order),
+            },
+        )
 
         # ── Redis에서 이전 상태 복원 ─────────────────────────────────────────
         r = get_redis()
@@ -137,6 +149,13 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                     )
                     final_status = "completed"
                     final_reason = "DCA total orders completed"
+                    _create_bot_log(
+                        bot_id=bot_id,
+                        event_type="dca_completed",
+                        level="info",
+                        message=final_reason,
+                        payload={"order_count": order_count},
+                    )
                     break
 
                 now = datetime.now(UTC)
@@ -161,6 +180,13 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                                     "DCA auto-stop: bot_id=%s reason=%s",
                                     bot_id,
                                     final_reason,
+                                )
+                                _create_bot_log(
+                                    bot_id=bot_id,
+                                    event_type="risk_triggered",
+                                    level="warning",
+                                    message=final_reason,
+                                    payload={"change_pct": str(pnl_pct)},
                                 )
                                 break
 
@@ -194,8 +220,26 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                                 "DCA order placed: bot_id=%s #%d order_id=%s qty=%s price=%s",
                                 bot_id, order_count, order.order_id, qty, price,
                             )
+                            _create_bot_log(
+                                bot_id=bot_id,
+                                event_type="order_placed",
+                                level="info",
+                                message="DCA buy order placed",
+                                payload={
+                                    "order_count": order_count,
+                                    "order_id": order.order_id,
+                                    "qty": str(qty),
+                                    "price": str(price),
+                                },
+                            )
                     except Exception as exc:
                         logger.error("DCA order error: bot_id=%s error=%s", bot_id, exc)
+                        _create_bot_log(
+                            bot_id=bot_id,
+                            event_type="order_error",
+                            level="error",
+                            message=f"DCA order error: {exc}",
+                        )
 
                 # 1분 단위로 stop 신호 확인 (interval이 길어도 빠른 정지 보장)
                 await asyncio.sleep(min(config.interval_seconds, 60))

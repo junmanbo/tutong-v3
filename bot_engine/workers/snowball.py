@@ -18,6 +18,7 @@ from decimal import Decimal
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _create_bot_log,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
@@ -105,6 +106,13 @@ def run_snowball(self, *, bot_id: str) -> None:
             "Snowball bot started: bot_id=%s symbol=%s drop_pct=%s tp_pct=%s max_buys=%d",
             bot_id, symbol, config.drop_pct, config.take_profit_pct, config.max_buys,
         )
+        _create_bot_log(
+            bot_id=bot_id,
+            event_type="snowball_started",
+            level="info",
+            message="Snowball bot started",
+            payload={"symbol": symbol, "max_buys": config.max_buys},
+        )
 
         # ── Redis에서 이전 상태 복원 ─────────────────────────────────────────
         r = get_redis()
@@ -141,6 +149,17 @@ def run_snowball(self, *, bot_id: str) -> None:
                     logger.info(
                         "Snowball initial buy: price=%s qty=%s order_id=%s",
                         price, qty, order.order_id,
+                    )
+                    _create_bot_log(
+                        bot_id=bot_id,
+                        event_type="order_placed",
+                        level="info",
+                        message="Snowball initial buy order placed",
+                        payload={
+                            "order_id": order.order_id,
+                            "price": str(price),
+                            "qty": str(qty),
+                        },
                     )
 
             # ── 메인 루프: 가격 스트림 ───────────────────────────────────────
@@ -180,6 +199,17 @@ def run_snowball(self, *, bot_id: str) -> None:
                                 total_qty,
                                 order.order_id,
                             )
+                            _create_bot_log(
+                                bot_id=bot_id,
+                                event_type="risk_exit_order",
+                                level="warning",
+                                message="Snowball risk-exit sell order placed",
+                                payload={
+                                    "status": status,
+                                    "order_id": order.order_id,
+                                    "qty": str(total_qty),
+                                },
+                            )
                             buys.clear()
                             save_state()
                             final_status = status
@@ -187,6 +217,12 @@ def run_snowball(self, *, bot_id: str) -> None:
                             break
                         except Exception as exc:
                             logger.error("Risk exit order error: %s", exc)
+                            _create_bot_log(
+                                bot_id=bot_id,
+                                event_type="order_error",
+                                level="error",
+                                message=f"Risk exit order error: {exc}",
+                            )
 
                 # 익절 조건 확인
                 if total_qty > Decimal("0") and should_take_profit(
@@ -203,6 +239,17 @@ def run_snowball(self, *, bot_id: str) -> None:
                             "Snowball take profit: price=%s avg=%s qty=%s order_id=%s",
                             current_price, avg_price, total_qty, order.order_id,
                         )
+                        _create_bot_log(
+                            bot_id=bot_id,
+                            event_type="take_profit_order",
+                            level="info",
+                            message="Snowball take-profit sell order placed",
+                            payload={
+                                "order_id": order.order_id,
+                                "qty": str(total_qty),
+                                "price": str(current_price),
+                            },
+                        )
                         buys.clear()
                         save_state()
                         final_status = "completed"
@@ -210,6 +257,12 @@ def run_snowball(self, *, bot_id: str) -> None:
                         break  # 익절 후 봇 완료
                     except Exception as exc:
                         logger.error("Take profit order error: %s", exc)
+                        _create_bot_log(
+                            bot_id=bot_id,
+                            event_type="order_error",
+                            level="error",
+                            message=f"Take-profit order error: {exc}",
+                        )
 
                 # 추가 매수 조건 확인
                 elif len(buys) < config.max_buys and should_add_buy(
@@ -230,8 +283,26 @@ def run_snowball(self, *, bot_id: str) -> None:
                                 "Snowball add buy #%d: price=%s qty=%s order_id=%s",
                                 len(buys), current_price, qty, order.order_id,
                             )
+                            _create_bot_log(
+                                bot_id=bot_id,
+                                event_type="add_buy_order",
+                                level="info",
+                                message="Snowball additional buy order placed",
+                                payload={
+                                    "buy_count": len(buys),
+                                    "order_id": order.order_id,
+                                    "qty": str(qty),
+                                    "price": str(current_price),
+                                },
+                            )
                     except Exception as exc:
                         logger.error("Add buy order error: %s", exc)
+                        _create_bot_log(
+                            bot_id=bot_id,
+                            event_type="order_error",
+                            level="error",
+                            message=f"Add buy order error: {exc}",
+                        )
 
         finally:
             await adapter.close()
