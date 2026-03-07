@@ -17,9 +17,9 @@ function BillingPlansPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Plan Selection</h1>
+        <h1 className="text-2xl font-bold tracking-tight">플랜 선택</h1>
         <p className="text-muted-foreground">
-          Choose the subscription that fits your trading scale.
+          거래 규모에 맞는 구독 플랜을 선택하세요.
         </p>
       </div>
 
@@ -35,7 +35,7 @@ function BillingPlansPage() {
                 {plan.isCurrent && (
                   <Badge className="gap-1">
                     <Sparkles className="size-3.5" />
-                    Current
+                    현재 플랜
                   </Badge>
                 )}
               </div>
@@ -54,7 +54,7 @@ function BillingPlansPage() {
                 className="w-full"
                 variant={plan.isCurrent ? "outline" : "default"}
               >
-                {plan.isCurrent ? "Current Plan" : "Upgrade"}
+                {plan.isCurrent ? "현재 플랜" : "업그레이드"}
               </Button>
             </CardContent>
           </Card>

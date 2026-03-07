@@ -125,7 +125,7 @@ function Dashboard() {
           Hi, {currentUser?.full_name || currentUser?.email} 👋
         </h1>
         <p className="text-muted-foreground">
-          Welcome back to AutoTrade Platform
+          AutoTrade 플랫폼에 오신 것을 환영합니다
         </p>
       </div>
 
@@ -133,7 +133,7 @@ function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Accounts
+              연결 계좌
             </CardTitle>
             <Wallet className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -144,14 +144,14 @@ function Dashboard() {
               <div className="text-2xl font-bold">{totalAccounts}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              Connected exchanges
+              연결된 거래소 수
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Running Bots</CardTitle>
+            <CardTitle className="text-sm font-medium">실행 중인 봇</CardTitle>
             <Bot className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -161,14 +161,14 @@ function Dashboard() {
               <div className="text-2xl font-bold">{runningBots}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              {pendingBots > 0 ? `${pendingBots} pending startup` : "Live bots"}
+              {pendingBots > 0 ? `${pendingBots}개 시작 대기 중` : "라이브 봇"}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Bots</CardTitle>
+            <CardTitle className="text-sm font-medium">전체 봇</CardTitle>
             <Bot className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -178,14 +178,14 @@ function Dashboard() {
               <div className="text-2xl font-bold">{totalBots}</div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              Active + stopped + completed
+              실행 + 중지 + 완료 포함
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Today P&L</CardTitle>
+            <CardTitle className="text-sm font-medium">수익/손실</CardTitle>
             <TrendingUp className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -198,7 +198,7 @@ function Dashboard() {
               </div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              Aggregated bot performance
+              전체 봇 누적 성과
             </p>
           </CardContent>
         </Card>
@@ -207,14 +207,14 @@ function Dashboard() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Portfolio Allocation</CardTitle>
+            <CardTitle>포트폴리오 배분</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {balancesLoading || accountsLoading ? (
               <Skeleton className="h-32 w-full" />
             ) : portfolioAssets.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No balance data available yet.
+                잔고 데이터가 없습니다.
               </p>
             ) : (
               portfolioAssets.map((asset) => (
@@ -239,14 +239,14 @@ function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>P&L Trend (Latest 7 Bots)</CardTitle>
+            <CardTitle>수익/손실 추이 (최근 7개 봇)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {botsLoading ? (
               <Skeleton className="h-32 w-full" />
             ) : trend.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No bot P&L data available yet.
+                봇 수익/손실 데이터가 없습니다.
               </p>
             ) : (
               trend.map((point) => {
@@ -283,11 +283,11 @@ function Dashboard() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Running Bots</CardTitle>
+          <CardTitle>실행 중인 봇</CardTitle>
           <Link to="/bots/new">
             <Button size="sm">
               <Plus className="mr-2 size-4" />
-              Add Bot
+              봇 추가
             </Button>
           </Link>
         </CardHeader>
@@ -295,10 +295,10 @@ function Dashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>P&L %</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>이름</TableHead>
+                <TableHead>유형</TableHead>
+                <TableHead>수익률</TableHead>
+                <TableHead>상태</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -308,7 +308,7 @@ function Dashboard() {
                     colSpan={4}
                     className="text-center text-muted-foreground"
                   >
-                    No running bots right now.
+                    현재 실행 중인 봇이 없습니다.
                   </TableCell>
                 </TableRow>
               ) : (

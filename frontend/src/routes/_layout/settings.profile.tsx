@@ -13,9 +13,9 @@ function SettingsProfilePage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Profile Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">프로필 설정</h1>
         <p className="text-muted-foreground">
-          Update your personal account information.
+          개인 계정 정보를 수정합니다.
         </p>
       </div>
       <UserInformation />

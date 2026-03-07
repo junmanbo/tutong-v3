@@ -2,6 +2,7 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import func
 from sqlmodel import Session, delete
 
 from app.core.config import settings
@@ -17,7 +18,13 @@ def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         init_db(session)
         yield session
-        statement = delete(User)
+        keep_emails = {
+            "admin@example.com",
+            str(settings.FIRST_SUPERUSER).lower(),
+        }
+        statement = delete(User).where(
+            func.lower(User.email).notin_(keep_emails)
+        )
         session.execute(statement)
         session.commit()
 

@@ -21,17 +21,17 @@ const STATUS_STYLES: Record<
     label: string
   }
 > = {
-  running: { variant: "default", label: "Running" },
-  pending: { variant: "outline", label: "Pending" },
-  stopped: { variant: "secondary", label: "Stopped" },
-  error: { variant: "destructive", label: "Error" },
-  completed: { variant: "outline", label: "Completed" },
+  running: { variant: "default", label: "실행 중" },
+  pending: { variant: "outline", label: "대기 중" },
+  stopped: { variant: "secondary", label: "중지됨" },
+  error: { variant: "destructive", label: "오류" },
+  completed: { variant: "outline", label: "완료" },
 }
 
 export const columns: ColumnDef<BotPublic>[] = [
   {
     accessorKey: "name",
-    header: "Name",
+    header: "이름",
     cell: ({ row }) => (
       <Link
         to="/bots/$botId"
@@ -44,7 +44,7 @@ export const columns: ColumnDef<BotPublic>[] = [
   },
   {
     accessorKey: "bot_type",
-    header: "Type",
+    header: "유형",
     cell: ({ row }) => (
       <Badge variant="outline">
         {BOT_TYPE_LABELS[row.original.bot_type] ?? row.original.bot_type}
@@ -53,7 +53,7 @@ export const columns: ColumnDef<BotPublic>[] = [
   },
   {
     accessorKey: "symbol",
-    header: "Symbol",
+    header: "종목",
     cell: ({ row }) => (
       <span className="text-muted-foreground">
         {row.original.symbol ?? "-"}
@@ -62,7 +62,7 @@ export const columns: ColumnDef<BotPublic>[] = [
   },
   {
     accessorKey: "investment_amount",
-    header: "Investment",
+    header: "투자금액",
     cell: ({ row }) => (
       <span className="font-mono text-sm">
         {row.original.investment_amount
@@ -73,7 +73,7 @@ export const columns: ColumnDef<BotPublic>[] = [
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: "상태",
     cell: ({ row }) => {
       const s = STATUS_STYLES[row.original.status]
       return <Badge variant={s.variant}>{s.label}</Badge>
@@ -81,7 +81,7 @@ export const columns: ColumnDef<BotPublic>[] = [
   },
   {
     accessorKey: "total_pnl_pct",
-    header: "P&L",
+    header: "수익률",
     cell: ({ row }) => {
       const pct = parseFloat(row.original.total_pnl_pct ?? "0")
       return (

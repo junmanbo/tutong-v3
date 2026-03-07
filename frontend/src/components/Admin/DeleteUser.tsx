@@ -37,7 +37,7 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
   const mutation = useMutation({
     mutationFn: deleteUser,
     onSuccess: () => {
-      showSuccessToast("The user was deleted successfully")
+      showSuccessToast("사용자가 삭제되었습니다")
       setIsOpen(false)
       onSuccess()
     },
@@ -59,23 +59,22 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
         onClick={() => setIsOpen(true)}
       >
         <Trash2 />
-        Delete User
+        사용자 삭제
       </DropdownMenuItem>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Delete User</DialogTitle>
+            <DialogTitle>사용자 삭제</DialogTitle>
             <DialogDescription>
-              This user and all associated data will be{" "}
-              <strong>permanently deleted.</strong> Are you sure? You will not
-              be able to undo this action.
+              이 사용자와 모든 관련 데이터가{" "}
+              <strong>영구적으로 삭제됩니다.</strong> 이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?
             </DialogDescription>
           </DialogHeader>
 
           <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button variant="outline" disabled={mutation.isPending}>
-                Cancel
+                취소
               </Button>
             </DialogClose>
             <LoadingButton
@@ -83,7 +82,7 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
               type="submit"
               loading={mutation.isPending}
             >
-              Delete
+              삭제
             </LoadingButton>
           </DialogFooter>
         </form>

@@ -33,14 +33,14 @@ const formSchema = z
   .object({
     new_password: z
       .string()
-      .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
+      .min(1, { message: "비밀번호를 입력해주세요" })
+      .min(8, { message: "비밀번호는 최소 8자 이상이어야 합니다" }),
     confirm_password: z
       .string()
-      .min(1, { message: "Password confirmation is required" }),
+      .min(1, { message: "비밀번호 확인을 입력해주세요" }),
   })
   .refine((data) => data.new_password === data.confirm_password, {
-    message: "The passwords don't match",
+    message: "비밀번호가 일치하지 않습니다",
     path: ["confirm_password"],
   })
 
@@ -60,7 +60,7 @@ export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
       {
-        title: "Reset Password - FastAPI Template",
+        title: "비밀번호 재설정 - AutoTrade",
       },
     ],
   }),
@@ -85,7 +85,7 @@ function ResetPassword() {
     mutationFn: (data: { new_password: string; token: string }) =>
       LoginService.resetPassword({ requestBody: data }),
     onSuccess: () => {
-      showSuccessToast("Password updated successfully")
+      showSuccessToast("비밀번호가 변경되었습니다")
       form.reset()
       navigate({ to: "/login" })
     },
@@ -104,7 +104,7 @@ function ResetPassword() {
           className="flex flex-col gap-6"
         >
           <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Reset Password</h1>
+            <h1 className="text-2xl font-bold">비밀번호 재설정</h1>
           </div>
 
           <div className="grid gap-4">
@@ -113,11 +113,11 @@ function ResetPassword() {
               name="new_password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Password</FormLabel>
+                  <FormLabel>새 비밀번호</FormLabel>
                   <FormControl>
                     <PasswordInput
                       data-testid="new-password-input"
-                      placeholder="New Password"
+                      placeholder="새 비밀번호"
                       {...field}
                     />
                   </FormControl>
@@ -131,11 +131,11 @@ function ResetPassword() {
               name="confirm_password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FormLabel>비밀번호 확인</FormLabel>
                   <FormControl>
                     <PasswordInput
                       data-testid="confirm-password-input"
-                      placeholder="Confirm Password"
+                      placeholder="비밀번호 확인"
                       {...field}
                     />
                   </FormControl>
@@ -149,14 +149,14 @@ function ResetPassword() {
               className="w-full"
               loading={mutation.isPending}
             >
-              Reset Password
+              비밀번호 재설정
             </LoadingButton>
           </div>
 
           <div className="text-center text-sm">
-            Remember your password?{" "}
+            비밀번호가 기억나시나요?{" "}
             <RouterLink to="/login" className="underline underline-offset-4">
-              Log in
+              로그인
             </RouterLink>
           </div>
         </form>

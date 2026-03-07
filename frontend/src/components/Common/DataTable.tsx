@@ -83,7 +83,7 @@ export function DataTable<TData, TValue>({
                 colSpan={columns.length}
                 className="h-32 text-center text-muted-foreground"
               >
-                No results found.
+                데이터가 없습니다.
               </TableCell>
             </TableRow>
           )}
@@ -94,19 +94,18 @@ export function DataTable<TData, TValue>({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-t bg-muted/20">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              Showing{" "}
               {table.getState().pagination.pageIndex *
                 table.getState().pagination.pageSize +
-                1}{" "}
-              to{" "}
+                1}
+              {" "}~{" "}
               {Math.min(
                 (table.getState().pagination.pageIndex + 1) *
                   table.getState().pagination.pageSize,
                 data.length,
               )}{" "}
-              of{" "}
+              /{" "}
               <span className="font-medium text-foreground">{data.length}</span>{" "}
-              entries
+              건
             </div>
             <div className="flex items-center gap-x-2">
               <p className="text-sm text-muted-foreground">Rows per page</p>

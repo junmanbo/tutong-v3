@@ -47,7 +47,7 @@ const requiredNumberField = (message: string) =>
     .string()
     .min(1, { message })
     .refine((val) => !Number.isNaN(Number(val)) && Number(val) > 0, {
-      message: "Must be a positive number",
+      message: "0보다 큰 숫자를 입력해주세요",
     })
 
 const optionalNumberField = z
@@ -56,7 +56,7 @@ const optionalNumberField = z
   .refine(
     (val) => val === undefined || val === "" || !Number.isNaN(Number(val)),
     {
-      message: "Must be a valid number",
+      message: "유효한 숫자를 입력해주세요",
     },
   )
 
@@ -64,8 +64,8 @@ const formSchema = z
   .object({
     name: z
       .string()
-      .min(1, { message: "Name is required" })
-      .max(100, { message: "Name must be at most 100 characters" }),
+      .min(1, { message: "봇 이름을 입력해주세요" })
+      .max(100, { message: "봇 이름은 최대 100자까지 입력 가능합니다" }),
     bot_type: z.enum([
       "spot_grid",
       "position_snowball",
@@ -76,10 +76,10 @@ const formSchema = z
     symbol: z.string().optional(),
     base_currency: z.string().optional(),
     quote_currency: z.string().optional(),
-    investment_amount: requiredNumberField("Investment amount is required"),
+    investment_amount: requiredNumberField("투자 금액을 입력해주세요"),
     stop_loss_pct: optionalNumberField,
     take_profit_pct: optionalNumberField,
-    account_id: z.string().min(1, { message: "Account is required" }),
+    account_id: z.string().min(1, { message: "계좌를 선택해주세요" }),
   })
   .superRefine((data, ctx) => {
     if (data.bot_type === "rebalancing") {
@@ -87,14 +87,14 @@ const formSchema = z
         ctx.addIssue({
           code: "custom",
           path: ["base_currency"],
-          message: "Base currency is required for rebalancing",
+          message: "리밸런싱에는 기준 통화가 필요합니다",
         })
       }
       if (!data.quote_currency?.trim()) {
         ctx.addIssue({
           code: "custom",
           path: ["quote_currency"],
-          message: "Quote currency is required for rebalancing",
+          message: "리밸런싱에는 견적 통화가 필요합니다",
         })
       }
       if (
@@ -106,7 +106,7 @@ const formSchema = z
         ctx.addIssue({
           code: "custom",
           path: ["quote_currency"],
-          message: "Base and quote currency must be different",
+          message: "기준 통화와 견적 통화는 달라야 합니다",
         })
       }
       return
@@ -116,7 +116,7 @@ const formSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["symbol"],
-        message: "Symbol is required for this strategy",
+        message: "이 전략에는 종목코드(심볼)가 필요합니다",
       })
     }
   })
@@ -133,15 +133,15 @@ const BOT_TYPE_OPTIONS = [
 
 const BOT_TYPE_DESCRIPTIONS: Record<BotTypeEnum, string> = {
   spot_grid:
-    "Place repeated buy/sell orders across a configured range. Requires symbol and capital.",
+    "설정된 범위에서 매수/매도 주문을 반복 실행합니다. 종목코드와 투자금이 필요합니다.",
   position_snowball:
-    "Average down on drawdowns and exit on recovery. Requires symbol and capital.",
+    "하락 시 분할 매수 후 회복 시 이익 실현합니다. 종목코드와 투자금이 필요합니다.",
   rebalancing:
-    "Maintain a target asset mix by base/quote allocation. Requires base and quote currencies.",
+    "목표 자산 비중을 유지합니다. 기준 통화와 견적 통화가 필요합니다.",
   spot_dca:
-    "Buy a fixed amount over time to reduce timing risk. Requires symbol and capital.",
+    "일정 금액을 주기적으로 매수하여 타이밍 리스크를 줄입니다. 종목코드와 투자금이 필요합니다.",
   algo_orders:
-    "Split large orders into smaller slices over time. Requires symbol and capital.",
+    "대량 주문을 시간에 걸쳐 분할 실행합니다(TWAP). 종목코드와 투자금이 필요합니다.",
 }
 
 const AddBot = () => {
@@ -176,7 +176,7 @@ const AddBot = () => {
     mutationFn: (data: BotCreate) =>
       BotsService.createBot({ requestBody: data }),
     onSuccess: () => {
-      showSuccessToast("Bot created successfully")
+      showSuccessToast("봇이 생성되었습니다")
       form.reset()
       setIsOpen(false)
     },
@@ -218,14 +218,14 @@ const AddBot = () => {
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2" />
-          Create Bot
+          봇 생성
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Trading Bot</DialogTitle>
+          <DialogTitle>트레이딩 봇 생성</DialogTitle>
           <DialogDescription>
-            Configure your new trading bot. You can start it after creation.
+            새 트레이딩 봇을 설정합니다. 생성 후 시작할 수 있습니다.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -237,7 +237,7 @@ const AddBot = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Exchange Account{" "}
+                      거래소 계좌{" "}
                       <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select
@@ -246,7 +246,7 @@ const AddBot = () => {
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select account" />
+                          <SelectValue placeholder="계좌 선택" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -268,7 +268,7 @@ const AddBot = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Bot Type <span className="text-destructive">*</span>
+                      봇 유형 <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select
                       onValueChange={field.onChange}
@@ -276,7 +276,7 @@ const AddBot = () => {
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select strategy" />
+                          <SelectValue placeholder="전략 선택" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -298,10 +298,10 @@ const AddBot = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Bot Name <span className="text-destructive">*</span>
+                      봇 이름 <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. BTC DCA Bot" {...field} />
+                      <Input placeholder="예) BTC DCA 봇" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -322,11 +322,11 @@ const AddBot = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Base Currency{" "}
+                          기준 통화{" "}
                           <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. BTC" {...field} />
+                          <Input placeholder="예) BTC" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -338,11 +338,11 @@ const AddBot = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Quote Currency{" "}
+                          견적 통화{" "}
                           <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. USDT" {...field} />
+                          <Input placeholder="예) USDT" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -356,10 +356,10 @@ const AddBot = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Symbol <span className="text-destructive">*</span>
+                        종목코드(심볼) <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. BTC/USDT" {...field} />
+                        <Input placeholder="예) BTC/USDT" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -373,12 +373,12 @@ const AddBot = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Investment Amount (USDT){" "}
+                      투자 금액 (USDT){" "}
                       <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="e.g. 100"
+                        placeholder="예) 100"
                         type="text"
                         inputMode="decimal"
                         {...field}
@@ -395,10 +395,10 @@ const AddBot = () => {
                   name="stop_loss_pct"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Stop Loss %</FormLabel>
+                      <FormLabel>손절 비율 %</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="optional, e.g. 5"
+                          placeholder="선택, 예) 5"
                           type="text"
                           inputMode="decimal"
                           {...field}
@@ -413,10 +413,10 @@ const AddBot = () => {
                   name="take_profit_pct"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Take Profit %</FormLabel>
+                      <FormLabel>목표수익 비율 %</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="optional, e.g. 10"
+                          placeholder="선택, 예) 10"
                           type="text"
                           inputMode="decimal"
                           {...field}
@@ -432,11 +432,11 @@ const AddBot = () => {
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline" disabled={mutation.isPending}>
-                  Cancel
+                  취소
                 </Button>
               </DialogClose>
               <LoadingButton type="submit" loading={mutation.isPending}>
-                Create
+                생성
               </LoadingButton>
             </DialogFooter>
           </form>

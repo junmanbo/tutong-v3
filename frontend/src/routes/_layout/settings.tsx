@@ -18,9 +18,9 @@ function SettingsHub() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">설정</h1>
         <p className="text-muted-foreground">
-          Manage your profile, security, and notification preferences.
+          프로필, 보안, 알림 설정을 관리합니다.
         </p>
       </div>
 
@@ -29,18 +29,18 @@ function SettingsHub() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <User className="size-5 text-primary" />
-              Profile
+              프로필
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-3">
-              Update your name and email address.
+              이름과 이메일 주소를 변경합니다.
             </p>
             <RouterLink
               to="/settings/profile"
               className="text-sm text-primary hover:underline"
             >
-              Go to Profile
+              프로필 설정으로 이동
             </RouterLink>
           </CardContent>
         </Card>
@@ -49,18 +49,18 @@ function SettingsHub() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <ShieldCheck className="size-5 text-primary" />
-              Security
+              보안
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-3">
-              Change password and manage account safety.
+              비밀번호 변경 및 계정 보안을 관리합니다.
             </p>
             <RouterLink
               to="/settings/security"
               className="text-sm text-primary hover:underline"
             >
-              Go to Security
+              보안 설정으로 이동
             </RouterLink>
           </CardContent>
         </Card>
@@ -69,18 +69,18 @@ function SettingsHub() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Bell className="size-5 text-primary" />
-              Notifications
+              알림
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-3">
-              Configure event alerts for email and Telegram.
+              이메일 및 텔레그램 알림을 설정합니다.
             </p>
             <RouterLink
               to="/settings/notifications"
               className="text-sm text-primary hover:underline"
             >
-              Go to Notifications
+              알림 설정으로 이동
             </RouterLink>
           </CardContent>
         </Card>

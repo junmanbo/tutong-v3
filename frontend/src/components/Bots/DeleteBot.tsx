@@ -33,7 +33,7 @@ const DeleteBot = ({ id, onSuccess }: DeleteBotProps) => {
   const mutation = useMutation({
     mutationFn: () => BotsService.deleteBot({ id }),
     onSuccess: () => {
-      showSuccessToast("Bot deleted successfully")
+      showSuccessToast("봇이 삭제되었습니다")
       setIsOpen(false)
       onSuccess()
     },
@@ -55,22 +55,21 @@ const DeleteBot = ({ id, onSuccess }: DeleteBotProps) => {
         onClick={() => setIsOpen(true)}
       >
         <Trash2 />
-        Delete
+        삭제
       </DropdownMenuItem>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Delete Bot</DialogTitle>
+            <DialogTitle>봇 삭제</DialogTitle>
             <DialogDescription>
-              This bot and its configuration will be{" "}
-              <strong>permanently deleted.</strong> The bot must be stopped
-              before deleting. Are you sure?
+              이 봇과 모든 설정이{" "}
+              <strong>영구적으로 삭제됩니다.</strong> 봇을 삭제하기 전에 반드시 중지해야 합니다. 계속하시겠습니까?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button variant="outline" disabled={mutation.isPending}>
-                Cancel
+                취소
               </Button>
             </DialogClose>
             <LoadingButton
@@ -78,7 +77,7 @@ const DeleteBot = ({ id, onSuccess }: DeleteBotProps) => {
               type="submit"
               loading={mutation.isPending}
             >
-              Delete
+              삭제
             </LoadingButton>
           </DialogFooter>
         </form>

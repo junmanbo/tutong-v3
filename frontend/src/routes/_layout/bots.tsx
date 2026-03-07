@@ -42,14 +42,14 @@ function Bots() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Trading Bots</h1>
+          <h1 className="text-2xl font-bold tracking-tight">트레이딩 봇</h1>
           <p className="text-muted-foreground">
-            Create and manage your automated trading bots
+            자동매매 봇을 생성하고 관리합니다
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/bots/new">
-            <Button variant="outline">Bot Type Guide</Button>
+            <Button variant="outline">봇 유형 안내</Button>
           </Link>
           <AddBot />
         </div>

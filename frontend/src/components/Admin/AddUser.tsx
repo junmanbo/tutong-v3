@@ -33,20 +33,20 @@ import { handleError } from "@/utils"
 
 const formSchema = z
   .object({
-    email: z.email({ message: "Invalid email address" }),
+    email: z.email({ message: "유효하지 않은 이메일 주소입니다" }),
     full_name: z.string().optional(),
     password: z
       .string()
-      .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
+      .min(1, { message: "비밀번호를 입력해주세요" })
+      .min(8, { message: "비밀번호는 최소 8자 이상이어야 합니다" }),
     confirm_password: z
       .string()
-      .min(1, { message: "Please confirm your password" }),
+      .min(1, { message: "비밀번호 확인을 입력해주세요" }),
     is_superuser: z.boolean(),
     is_active: z.boolean(),
   })
   .refine((data) => data.password === data.confirm_password, {
-    message: "The passwords don't match",
+    message: "비밀번호가 일치하지 않습니다",
     path: ["confirm_password"],
   })
 
@@ -75,7 +75,7 @@ const AddUser = () => {
     mutationFn: (data: UserCreate) =>
       UsersService.createUser({ requestBody: data }),
     onSuccess: () => {
-      showSuccessToast("User created successfully")
+      showSuccessToast("사용자가 생성되었습니다")
       form.reset()
       setIsOpen(false)
     },
@@ -94,14 +94,14 @@ const AddUser = () => {
       <DialogTrigger asChild>
         <Button className="my-4">
           <Plus className="mr-2" />
-          Add User
+          사용자 추가
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add User</DialogTitle>
+          <DialogTitle>사용자 추가</DialogTitle>
           <DialogDescription>
-            Fill in the form below to add a new user to the system.
+            아래 양식을 작성하여 새 사용자를 시스템에 추가합니다.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -113,11 +113,11 @@ const AddUser = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Email <span className="text-destructive">*</span>
+                      이메일 <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Email"
+                        placeholder="이메일"
                         type="email"
                         {...field}
                         required
@@ -133,9 +133,9 @@ const AddUser = () => {
                 name="full_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>이름</FormLabel>
                     <FormControl>
-                      <Input placeholder="Full name" type="text" {...field} />
+                      <Input placeholder="이름" type="text" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -148,11 +148,11 @@ const AddUser = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Set Password <span className="text-destructive">*</span>
+                      비밀번호 설정 <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Password"
+                        placeholder="비밀번호"
                         type="password"
                         {...field}
                         required
@@ -169,12 +169,12 @@ const AddUser = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Confirm Password{" "}
+                      비밀번호 확인{" "}
                       <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Password"
+                        placeholder="비밀번호 확인"
                         type="password"
                         {...field}
                         required
@@ -196,7 +196,7 @@ const AddUser = () => {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormLabel className="font-normal">Is superuser?</FormLabel>
+                    <FormLabel className="font-normal">관리자 권한 부여</FormLabel>
                   </FormItem>
                 )}
               />
@@ -212,7 +212,7 @@ const AddUser = () => {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormLabel className="font-normal">Is active?</FormLabel>
+                    <FormLabel className="font-normal">계정 활성화</FormLabel>
                   </FormItem>
                 )}
               />
@@ -221,11 +221,11 @@ const AddUser = () => {
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline" disabled={mutation.isPending}>
-                  Cancel
+                  취소
                 </Button>
               </DialogClose>
               <LoadingButton type="submit" loading={mutation.isPending}>
-                Save
+                저장
               </LoadingButton>
             </DialogFooter>
           </form>

@@ -42,10 +42,10 @@ function Accounts() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Exchange Accounts
+            거래소 계좌
           </h1>
           <p className="text-muted-foreground">
-            Manage your connected exchange API accounts
+            연결된 거래소 API 계좌를 관리합니다
           </p>
         </div>
         <AddAccount />

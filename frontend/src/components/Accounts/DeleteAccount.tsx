@@ -33,7 +33,7 @@ const DeleteAccount = ({ id, onSuccess }: DeleteAccountProps) => {
   const mutation = useMutation({
     mutationFn: () => AccountsService.deleteAccount({ id }),
     onSuccess: () => {
-      showSuccessToast("Account deleted successfully")
+      showSuccessToast("계좌가 삭제되었습니다")
       setIsOpen(false)
       onSuccess()
     },
@@ -55,22 +55,21 @@ const DeleteAccount = ({ id, onSuccess }: DeleteAccountProps) => {
         onClick={() => setIsOpen(true)}
       >
         <Trash2 />
-        Delete
+        삭제
       </DropdownMenuItem>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Delete Account</DialogTitle>
+            <DialogTitle>계좌 삭제</DialogTitle>
             <DialogDescription>
-              This exchange account will be{" "}
-              <strong>permanently deleted.</strong> Any bots using this account
-              must be stopped first. Are you sure?
+              이 거래소 계좌가{" "}
+              <strong>영구적으로 삭제됩니다.</strong> 이 계좌를 사용 중인 봇은 먼저 중지해야 합니다. 계속하시겠습니까?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button variant="outline" disabled={mutation.isPending}>
-                Cancel
+                취소
               </Button>
             </DialogClose>
             <LoadingButton
@@ -78,7 +77,7 @@ const DeleteAccount = ({ id, onSuccess }: DeleteAccountProps) => {
               type="submit"
               loading={mutation.isPending}
             >
-              Delete
+              삭제
             </LoadingButton>
           </DialogFooter>
         </form>

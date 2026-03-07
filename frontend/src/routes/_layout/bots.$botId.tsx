@@ -33,11 +33,11 @@ const STATUS_STYLES: Record<
     label: string
   }
 > = {
-  running: { variant: "default", label: "Running" },
-  pending: { variant: "outline", label: "Pending" },
-  stopped: { variant: "secondary", label: "Stopped" },
-  error: { variant: "destructive", label: "Error" },
-  completed: { variant: "outline", label: "Completed" },
+  running: { variant: "default", label: "실행 중" },
+  pending: { variant: "outline", label: "대기 중" },
+  stopped: { variant: "secondary", label: "중지됨" },
+  error: { variant: "destructive", label: "오류" },
+  completed: { variant: "outline", label: "완료" },
 }
 
 export const Route = createFileRoute("/_layout/bots/$botId")({
@@ -126,15 +126,15 @@ function BotDetailPage() {
         <Link to="/bots">
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-2 size-4" />
-            Back to Bots
+            봇 목록으로
           </Button>
         </Link>
         <Card>
           <CardHeader>
-            <CardTitle>Failed to load bot</CardTitle>
+            <CardTitle>봇 정보를 불러오지 못했습니다</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {error instanceof Error ? error.message : "Unknown error"}
+            {error instanceof Error ? error.message : "알 수 없는 오류"}
           </CardContent>
         </Card>
       </div>
@@ -149,23 +149,23 @@ function BotDetailPage() {
   const systemTimeline: TimelineItem[] = [
     {
       id: "created",
-      title: "Bot created",
-      description: "Initial configuration saved and ready for operation.",
+      title: "봇 생성됨",
+      description: "초기 설정이 저장되었으며 실행할 준비가 완료되었습니다.",
       at: new Date(bot.created_at).toLocaleString(),
       tone: "default",
     },
     {
       id: "status",
-      title: `Status: ${statusMeta.label}`,
+      title: `상태: ${statusMeta.label}`,
       description:
         bot.status === "running"
-          ? "Bot is actively processing strategy cycles."
+          ? "봇이 전략 사이클을 활발하게 처리 중입니다."
           : bot.status === "pending"
-            ? "Bot start requested and waiting for worker pickup."
+            ? "봇 시작이 요청되어 워커 처리를 기다리고 있습니다."
             : bot.status === "error"
-              ? "Bot requires manual check before restarting."
-              : "Bot is currently not processing new cycles.",
-      at: `Last synced ${lastSyncedAt}`,
+              ? "재시작 전에 수동 점검이 필요합니다."
+              : "봇이 현재 새 사이클을 처리하고 있지 않습니다.",
+      at: `마지막 동기화: ${lastSyncedAt}`,
       tone:
         bot.status === "running"
           ? "success"
@@ -227,14 +227,14 @@ function BotDetailPage() {
         <Link to="/bots">
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-2 size-4" />
-            Back to Bots
+            봇 목록으로
           </Button>
         </Link>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RefreshCw
             className={cn("mr-2 size-4", isFetching && "animate-spin")}
           />
-          Refresh
+          새로고침
         </Button>
       </div>
 
@@ -243,7 +243,7 @@ function BotDetailPage() {
           <div>
             <CardTitle className="text-2xl">{bot.name}</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              Live status updates every 5 seconds
+              5초마다 실시간 상태 업데이트
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -258,7 +258,7 @@ function BotDetailPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
+            <CardTitle className="text-sm font-medium">총 수익/손실</CardTitle>
             <TrendingUp className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -282,7 +282,7 @@ function BotDetailPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Run Time</CardTitle>
+            <CardTitle className="text-sm font-medium">운영 시간</CardTitle>
             <Clock3 className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -290,7 +290,7 @@ function BotDetailPage() {
               {formatDurationFrom(bot.created_at)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Since bot creation
+              봇 생성 시점부터
             </p>
           </CardContent>
         </Card>
@@ -298,30 +298,30 @@ function BotDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Current Status
+              현재 상태
             </CardTitle>
             <Activity className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
             <p className="text-xs text-muted-foreground mt-2">
-              Updated every 5 seconds
+              5초마다 업데이트
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Risk Limits</CardTitle>
+            <CardTitle className="text-sm font-medium">리스크 한도</CardTitle>
             <ListOrdered className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="space-y-1">
             <p className="text-sm">
-              Stop Loss:{" "}
+              손절:{" "}
               <span className="font-mono">{bot.stop_loss_pct ?? "-"}</span>
             </p>
             <p className="text-sm">
-              Take Profit:{" "}
+              목표수익:{" "}
               <span className="font-mono">{bot.take_profit_pct ?? "-"}</span>
             </p>
           </CardContent>
@@ -331,55 +331,55 @@ function BotDetailPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Performance</CardTitle>
+            <CardTitle>성과</CardTitle>
           </CardHeader>
           <CardContent>
             <ValueRow
-              label="Total P&L"
+              label="총 수익/손실"
               value={`${pnlValue >= 0 ? "+" : ""}${bot.total_pnl}`}
             />
             <Separator />
             <ValueRow
-              label="Total P&L %"
+              label="총 수익률"
               value={`${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`}
             />
             <Separator />
             <ValueRow
-              label="Investment Amount"
+              label="투자 금액"
               value={`${bot.investment_amount ?? "-"} USDT`}
             />
             <Separator />
             <ValueRow
-              label="Created At"
+              label="생성일"
               value={new Date(bot.created_at).toLocaleString()}
             />
             <Separator />
-            <ValueRow label="Last Synced" value={lastSyncedAt} />
+            <ValueRow label="마지막 동기화" value={lastSyncedAt} />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Configuration</CardTitle>
+            <CardTitle>설정 정보</CardTitle>
           </CardHeader>
           <CardContent>
-            <ValueRow label="Bot ID" value={bot.id} />
+            <ValueRow label="봇 ID" value={bot.id} />
             <Separator />
-            <ValueRow label="Account ID" value={bot.account_id} />
+            <ValueRow label="계좌 ID" value={bot.account_id} />
             <Separator />
-            <ValueRow label="Symbol" value={bot.symbol ?? "-"} />
+            <ValueRow label="종목코드" value={bot.symbol ?? "-"} />
             <Separator />
-            <ValueRow label="Base Currency" value={bot.base_currency ?? "-"} />
+            <ValueRow label="기준 통화" value={bot.base_currency ?? "-"} />
             <Separator />
             <ValueRow
-              label="Quote Currency"
+              label="견적 통화"
               value={bot.quote_currency ?? "-"}
             />
             <Separator />
-            <ValueRow label="Stop Loss %" value={bot.stop_loss_pct ?? "-"} />
+            <ValueRow label="손절 비율 %" value={bot.stop_loss_pct ?? "-"} />
             <Separator />
             <ValueRow
-              label="Take Profit %"
+              label="목표수익 비율 %"
               value={bot.take_profit_pct ?? "-"}
             />
           </CardContent>
@@ -389,14 +389,14 @@ function BotDetailPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
+            <CardTitle>최근 주문</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {logsLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : recentOrders.length === 0 ? (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                No recent order executions yet.
+                최근 실행된 주문이 없습니다.
               </div>
             ) : (
               recentOrders.map((item) => (
@@ -422,7 +422,7 @@ function BotDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Log Timeline</CardTitle>
+            <CardTitle>로그 타임라인</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {logsLoading ? (

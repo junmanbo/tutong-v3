@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.crypto import decrypt
 from app.exchange_adapters.base import BalanceItem
 from app.exchange_adapters.factory import get_adapter
+from app.exchange_adapters.kis import KisApiError
 from app.models import (
     ExchangeAccountCreate,
     ExchangeAccountPublic,
@@ -186,6 +187,13 @@ def get_account_balance(
     try:
         balances = loop.run_until_complete(adapter.get_balance())
     except Exception as exc:
+        if isinstance(exc, KisApiError):
+            detail = (
+                "Failed to fetch balance from exchange: "
+                f"KIS[{exc.error_code or '-'}] {exc.error_message or exc}"
+            )
+        else:
+            detail = f"Failed to fetch balance from exchange: {exc}"
         queue_notification_event(
             session=session,
             user_id=current_user.id,
@@ -197,7 +205,7 @@ def get_account_balance(
         )
         raise HTTPException(
             status_code=503,
-            detail=f"Failed to fetch balance from exchange: {exc}",
+            detail=detail,
         )
     finally:
         loop.run_until_complete(adapter.close())

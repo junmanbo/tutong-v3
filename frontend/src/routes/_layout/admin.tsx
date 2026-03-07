@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_layout/admin")({
   head: () => ({
     meta: [
       {
-        title: "Admin - FastAPI Template",
+        title: "관리자 - AutoTrade",
       },
     ],
   }),
@@ -60,9 +60,9 @@ function Admin() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+          <h1 className="text-2xl font-bold tracking-tight">사용자 관리</h1>
           <p className="text-muted-foreground">
-            Manage user accounts and permissions
+            사용자 계정과 권한을 관리합니다
           </p>
         </div>
         <AddUser />

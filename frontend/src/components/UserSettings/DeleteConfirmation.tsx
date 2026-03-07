@@ -27,7 +27,7 @@ const DeleteConfirmation = () => {
   const mutation = useMutation({
     mutationFn: () => UsersService.deleteUserMe(),
     onSuccess: () => {
-      showSuccessToast("Your account has been successfully deleted")
+      showSuccessToast("계정이 삭제되었습니다")
       logout()
     },
     onError: handleError.bind(showErrorToast),
@@ -44,25 +44,24 @@ const DeleteConfirmation = () => {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="destructive" className="mt-3">
-          Delete Account
+          계정 삭제
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Confirmation Required</DialogTitle>
+            <DialogTitle>최종 확인</DialogTitle>
             <DialogDescription>
-              All your account data will be{" "}
-              <strong>permanently deleted.</strong> If you are sure, please
-              click <strong>"Confirm"</strong> to proceed. This action cannot be
-              undone.
+              모든 계정 데이터가{" "}
+              <strong>영구적으로 삭제됩니다.</strong> 계속하시려면{" "}
+              <strong>"삭제"</strong> 버튼을 클릭하세요. 이 작업은 되돌릴 수 없습니다.
             </DialogDescription>
           </DialogHeader>
 
           <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button variant="outline" disabled={mutation.isPending}>
-                Cancel
+                취소
               </Button>
             </DialogClose>
             <LoadingButton
@@ -70,7 +69,7 @@ const DeleteConfirmation = () => {
               type="submit"
               loading={mutation.isPending}
             >
-              Delete
+              삭제
             </LoadingButton>
           </DialogFooter>
         </form>

@@ -64,7 +64,7 @@ function NotificationsSettingsPage() {
     mutationFn: (requestBody: NotificationSettingsUpdate) =>
       NotificationsService.updateNotificationSettings({ requestBody }),
     onSuccess: () => {
-      showSuccessToast("Notification settings saved")
+      showSuccessToast("알림 설정이 저장되었습니다")
     },
     onError: handleError.bind(showErrorToast),
   })
@@ -87,10 +87,10 @@ function NotificationsSettingsPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Notification Settings
+          알림 설정
         </h1>
         <p className="text-muted-foreground">
-          Configure event subscriptions for email and Telegram alerts.
+          이메일 및 텔레그램 알림 이벤트를 설정합니다.
         </p>
       </div>
 
@@ -98,9 +98,9 @@ function NotificationsSettingsPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Bell className="size-4" />
-            Email Alerts
+            이메일 알림
           </CardTitle>
-          <Badge variant="outline">{user?.email ?? "No email"}</Badge>
+          <Badge variant="outline">{user?.email ?? "이메일 없음"}</Badge>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
@@ -181,7 +181,7 @@ function NotificationsSettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="size-4" />
-            Telegram Alerts
+            텔레그램 알림
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -200,7 +200,7 @@ function NotificationsSettingsPage() {
             id="telegram-chat-id"
             value={telegramChatId}
             onChange={(e) => setTelegramChatId(e.target.value)}
-            placeholder="Connect your Telegram chat id"
+            placeholder="텔레그램 Chat ID를 입력하세요"
           />
         </CardContent>
       </Card>
@@ -211,7 +211,7 @@ function NotificationsSettingsPage() {
           onClick={onSave}
           disabled={isLoading || mutation.isPending}
         >
-          Save Settings
+          설정 저장
         </Button>
       </div>
     </div>

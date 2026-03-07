@@ -17,28 +17,28 @@ function BillingPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Billing</h1>
+          <h1 className="text-2xl font-bold tracking-tight">결제</h1>
           <p className="text-muted-foreground">
-            Navigate to plan management and payment history.
+            플랜 관리 및 결제 내역을 확인합니다.
           </p>
         </div>
         <Badge variant="outline" className="gap-1">
           <CreditCard className="size-3.5" />
-          Subscription Active
+          구독 활성
         </Badge>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Plans</CardTitle>
+            <CardTitle>플랜</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Compare plans and change your subscription.
+              플랜을 비교하고 구독을 변경합니다.
             </p>
             <Link to="/billing/plans">
-              <Button className="w-full">Go to Plans</Button>
+              <Button className="w-full">플랜 보기</Button>
             </Link>
           </CardContent>
         </Card>
@@ -47,16 +47,16 @@ function BillingPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ReceiptText className="size-4" />
-              Payment History
+              결제 내역
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Review payment receipts and billing activity.
+              결제 영수증 및 청구 내역을 확인합니다.
             </p>
             <Link to="/billing/history">
               <Button className="w-full" variant="outline">
-                Go to History
+                내역 보기
               </Button>
             </Link>
           </CardContent>

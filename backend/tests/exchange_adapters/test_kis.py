@@ -10,10 +10,11 @@ from app.exchange_adapters.kis import KisAdapter, _parse_kis_balance
 UTC = timezone.utc
 
 
-def _mock_response(payload: dict) -> MagicMock:
+def _mock_response(payload: dict, status_code: int = 200) -> MagicMock:
     resp = MagicMock()
-    resp.raise_for_status = MagicMock()
+    resp.status_code = status_code
     resp.json.return_value = payload
+    resp.text = str(payload)
     return resp
 
 
@@ -48,6 +49,11 @@ class TestParseKisBalance:
 
 
 class TestTokenFlow:
+    def setup_method(self) -> None:
+        KisAdapter._process_token_cache.clear()
+        KisAdapter._token_locks.clear()
+        KisAdapter._redis_client = None
+
     def test_ensure_token_refreshes_when_missing(self) -> None:
         adapter = _make_adapter()
         adapter._client = MagicMock()
@@ -71,6 +77,46 @@ class TestTokenFlow:
         token = asyncio.run(adapter._ensure_token())
         assert token == "cached-token"
         adapter._refresh_token.assert_not_called()
+
+    def test_refresh_token_retries_once_on_egw00133(self) -> None:
+        adapter = _make_adapter()
+        adapter._client = MagicMock()
+        adapter._client.post = AsyncMock(
+            side_effect=[
+                _mock_response(
+                    {
+                        "error_code": "EGW00133",
+                        "error_description": "접근토큰 발급 잠시 후 다시 시도하세요(1분당 1회)",
+                    },
+                    status_code=403,
+                ),
+                _mock_response({"access_token": "token-2", "expires_in": 3600}),
+            ]
+        )
+
+        token = asyncio.run(adapter._ensure_token())
+        assert token == "token-2"
+        assert adapter._client.post.await_count == 2
+
+    def test_token_shared_from_process_cache_across_instances(self) -> None:
+        adapter1 = _make_adapter()
+        adapter1._client = MagicMock()
+        adapter1._client.post = AsyncMock(
+            return_value=_mock_response({"access_token": "token-shared", "expires_in": 3600})
+        )
+
+        token1 = asyncio.run(adapter1._ensure_token())
+        assert token1 == "token-shared"
+
+        adapter2 = _make_adapter()
+        adapter2._client = MagicMock()
+        adapter2._client.post = AsyncMock(
+            return_value=_mock_response({"access_token": "should-not-be-used", "expires_in": 3600})
+        )
+
+        token2 = asyncio.run(adapter2._ensure_token())
+        assert token2 == "token-shared"
+        adapter2._client.post.assert_not_called()
 
 
 class TestKisAdapterMethods:

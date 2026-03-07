@@ -31,7 +31,7 @@ export const BotActionsMenu = ({ bot }: BotActionsMenuProps) => {
   const startMutation = useMutation({
     mutationFn: () => BotsService.startBot({ id: bot.id }),
     onSuccess: () => {
-      showSuccessToast("Bot started")
+      showSuccessToast("봇이 시작되었습니다")
       setOpen(false)
     },
     onError: handleError.bind(showErrorToast),
@@ -43,7 +43,7 @@ export const BotActionsMenu = ({ bot }: BotActionsMenuProps) => {
   const stopMutation = useMutation({
     mutationFn: () => BotsService.stopBot({ id: bot.id }),
     onSuccess: () => {
-      showSuccessToast("Bot stopped")
+      showSuccessToast("봇이 중지되었습니다")
       setOpen(false)
     },
     onError: handleError.bind(showErrorToast),
@@ -66,7 +66,7 @@ export const BotActionsMenu = ({ bot }: BotActionsMenuProps) => {
             disabled={startMutation.isPending}
           >
             <Play />
-            Start
+            시작
           </DropdownMenuItem>
         )}
         {canStop && (
@@ -75,7 +75,7 @@ export const BotActionsMenu = ({ bot }: BotActionsMenuProps) => {
             disabled={stopMutation.isPending}
           >
             <Square />
-            Stop
+            중지
           </DropdownMenuItem>
         )}
         {canDelete && (

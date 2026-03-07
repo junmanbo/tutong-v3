@@ -14,11 +14,16 @@ extra_params (ExchangeAccount.extra_params_enc 복호화 후):
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
+import logging
+import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import AsyncGenerator, Any
 
 import httpx
+import redis as redis_lib
 
 from app.exchange_adapters.base import (
     AbstractExchangeAdapter,
@@ -31,13 +36,43 @@ from app.exchange_adapters.base import (
 )
 
 UTC = timezone.utc
+logger = logging.getLogger(__name__)
 
 _REAL_BASE = "https://openapi.koreainvestment.com:9443"
 _MOCK_BASE = "https://openapivts.koreainvestment.com:29443"
 
+_TOKEN_RETRY_ERROR_CODE = "EGW00133"
+_TOKEN_RETRY_DELAY_SECONDS = 1.2
+_TOKEN_REUSE_MARGIN_SECONDS = 300
+_REDIS_KEY_PREFIX = "kis:token"
+
+
+class KisApiError(Exception):
+    def __init__(
+        self,
+        *,
+        endpoint: str,
+        status_code: int,
+        error_code: str | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        self.endpoint = endpoint
+        self.status_code = status_code
+        self.error_code = error_code
+        self.error_message = error_message
+        detail = f"KIS API error {status_code} at {endpoint}"
+        if error_code:
+            detail += f" [{error_code}]"
+        if error_message:
+            detail += f": {error_message}"
+        super().__init__(detail)
+
 
 class KisAdapter(AbstractExchangeAdapter):
     """한국투자증권 REST API 어댑터."""
+    _process_token_cache: dict[str, tuple[str, datetime]] = {}
+    _token_locks: dict[str, asyncio.Lock] = {}
+    _redis_client: redis_lib.Redis | None = None
 
     def __init__(
         self,
@@ -66,28 +101,196 @@ class KisAdapter(AbstractExchangeAdapter):
         """Access Token 유효성 확인 후 필요 시 재발급."""
         now = datetime.now(UTC)
         if (
-            self._access_token is None
-            or self._token_expires_at is None
-            or now >= self._token_expires_at - timedelta(minutes=5)
+            self._access_token is not None
+            and self._token_expires_at is not None
+            and now < self._token_expires_at - timedelta(seconds=_TOKEN_REUSE_MARGIN_SECONDS)
         ):
+            return self._access_token
+
+        cache_key = self._token_cache_key()
+        cached = self._read_token_from_process_cache(cache_key)
+        if cached:
+            self._access_token, self._token_expires_at = cached
+            return self._access_token
+
+        cached = self._read_token_from_redis_cache(cache_key)
+        if cached:
+            self._access_token, self._token_expires_at = cached
+            self._write_token_to_process_cache(
+                cache_key=cache_key,
+                token=self._access_token,
+                expires_at=self._token_expires_at,
+            )
+            return self._access_token
+
+        lock = self._token_locks.setdefault(cache_key, asyncio.Lock())
+        async with lock:
+            cached = self._read_token_from_process_cache(cache_key)
+            if cached:
+                self._access_token, self._token_expires_at = cached
+                return self._access_token
+
+            cached = self._read_token_from_redis_cache(cache_key)
+            if cached:
+                self._access_token, self._token_expires_at = cached
+                self._write_token_to_process_cache(
+                    cache_key=cache_key,
+                    token=self._access_token,
+                    expires_at=self._token_expires_at,
+                )
+                return self._access_token
+
             await self._refresh_token()
+            assert self._access_token is not None
+            assert self._token_expires_at is not None
+            self._write_token_to_process_cache(
+                cache_key=cache_key,
+                token=self._access_token,
+                expires_at=self._token_expires_at,
+            )
+            self._write_token_to_redis_cache(
+                cache_key=cache_key,
+                token=self._access_token,
+                expires_at=self._token_expires_at,
+            )
         assert self._access_token is not None
         return self._access_token
 
     async def _refresh_token(self) -> None:
-        resp = await self._client.post(
-            f"{self._base_url}/oauth2/tokenP",
-            json={
-                "grant_type": "client_credentials",
-                "appkey": self._app_key,
-                "appsecret": self._app_secret,
-            },
-        )
-        resp.raise_for_status()
+        endpoint = f"{self._base_url}/oauth2/tokenP"
+        payload = {
+            "grant_type": "client_credentials",
+            "appkey": self._app_key,
+            "appsecret": self._app_secret,
+        }
+        resp = await self._client.post(endpoint, json=payload)
+        if resp.status_code >= 400:
+            error = self._parse_error_response(endpoint=endpoint, response=resp)
+            if (
+                error.status_code == 403
+                and error.error_code == _TOKEN_RETRY_ERROR_CODE
+            ):
+                await asyncio.sleep(_TOKEN_RETRY_DELAY_SECONDS)
+                resp = await self._client.post(endpoint, json=payload)
+                if resp.status_code >= 400:
+                    raise self._parse_error_response(endpoint=endpoint, response=resp)
+            else:
+                raise error
         data = resp.json()
         self._access_token = data["access_token"]
         self._token_expires_at = datetime.now(UTC) + timedelta(
             seconds=int(data.get("expires_in", 86400))
+        )
+
+    def _token_cache_key(self) -> str:
+        app_hash = hashlib.sha256(self._app_key.encode()).hexdigest()[:16]
+        mode = "mock" if self._is_mock else "real"
+        return f"{_REDIS_KEY_PREFIX}:{mode}:{app_hash}"
+
+    @classmethod
+    def _redis(cls) -> redis_lib.Redis | None:
+        if cls._redis_client is not None:
+            return cls._redis_client
+        redis_url = os.environ.get("REDIS_URL")
+        if not redis_url:
+            return None
+        try:
+            cls._redis_client = redis_lib.from_url(redis_url, decode_responses=True)
+        except Exception as exc:
+            logger.warning("KIS token redis init failed: %s", exc)
+            cls._redis_client = None
+        return cls._redis_client
+
+    @classmethod
+    def _write_token_to_process_cache(
+        cls, *, cache_key: str, token: str, expires_at: datetime
+    ) -> None:
+        cls._process_token_cache[cache_key] = (token, expires_at)
+
+    @classmethod
+    def _read_token_from_process_cache(
+        cls, cache_key: str
+    ) -> tuple[str, datetime] | None:
+        cached = cls._process_token_cache.get(cache_key)
+        if not cached:
+            return None
+        token, expires_at = cached
+        if datetime.now(UTC) >= expires_at - timedelta(seconds=_TOKEN_REUSE_MARGIN_SECONDS):
+            cls._process_token_cache.pop(cache_key, None)
+            return None
+        return token, expires_at
+
+    @classmethod
+    def _write_token_to_redis_cache(
+        cls, *, cache_key: str, token: str, expires_at: datetime
+    ) -> None:
+        redis_client = cls._redis()
+        if redis_client is None:
+            return
+        ttl = int((expires_at - datetime.now(UTC)).total_seconds()) - _TOKEN_REUSE_MARGIN_SECONDS
+        if ttl <= 0:
+            return
+        try:
+            redis_client.setex(
+                cache_key,
+                ttl,
+                json.dumps(
+                    {"access_token": token, "expires_at": expires_at.isoformat()}
+                ),
+            )
+        except Exception as exc:
+            logger.warning("KIS token redis write failed: %s", exc)
+
+    @classmethod
+    def _read_token_from_redis_cache(
+        cls, cache_key: str
+    ) -> tuple[str, datetime] | None:
+        redis_client = cls._redis()
+        if redis_client is None:
+            return None
+        try:
+            raw = redis_client.get(cache_key)
+            if not raw:
+                return None
+            data = json.loads(raw)
+            token = data.get("access_token")
+            expires_at_raw = data.get("expires_at")
+            if not token or not expires_at_raw:
+                return None
+            expires_at = datetime.fromisoformat(expires_at_raw)
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=UTC)
+            if datetime.now(UTC) >= expires_at - timedelta(seconds=_TOKEN_REUSE_MARGIN_SECONDS):
+                return None
+            return token, expires_at
+        except Exception as exc:
+            logger.warning("KIS token redis read failed: %s", exc)
+            return None
+
+    @staticmethod
+    def _parse_error_response(*, endpoint: str, response: httpx.Response) -> KisApiError:
+        error_code: str | None = None
+        error_message: str | None = None
+        try:
+            data = response.json()
+            if isinstance(data, dict):
+                error_code = (
+                    data.get("error_code")
+                    or data.get("msg_cd")
+                    or data.get("rt_cd")
+                )
+                error_message = (
+                    data.get("error_description")
+                    or data.get("msg1")
+                )
+        except Exception:
+            error_message = response.text[:300]
+
+        return KisApiError(
+            endpoint=endpoint,
+            status_code=response.status_code,
+            error_code=error_code,
+            error_message=error_message,
         )
 
     def _headers(self, tr_id: str, token: str) -> dict[str, str]:
@@ -131,7 +334,11 @@ class KisAdapter(AbstractExchangeAdapter):
                 "CTX_AREA_NK100": "",
             },
         )
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            raise self._parse_error_response(
+                endpoint=f"{self._base_url}/uapi/domestic-stock/v1/trading/inquire-balance",
+                response=resp,
+            )
         return _parse_kis_balance(resp.json())
 
     async def get_ticker(self, symbol: str) -> TickerData:

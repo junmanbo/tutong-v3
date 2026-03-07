@@ -12,6 +12,7 @@ from sqlmodel import Session
 
 from app import crud
 from app.core.config import settings
+from app.exchange_adapters.kis import KisApiError
 from app.models import UserCreate
 from tests.utils.user import user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
@@ -497,3 +498,35 @@ class TestGetAccountBalance:
 
         assert r.status_code == 500
         mock_notify.assert_called_once()
+
+    def test_balance_kis_error_detail_includes_error_code(
+        self, client: TestClient, db: Session
+    ) -> None:
+        _, headers = _user_and_headers(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/accounts/",
+            headers=headers,
+            json=_account_payload(exchange="kis", extra_params={"CANO": "12345678"}),
+        )
+        account_id = create_r.json()["id"]
+
+        class _FailingAdapter:
+            async def get_balance(self):
+                raise KisApiError(
+                    endpoint="oauth2/tokenP",
+                    status_code=403,
+                    error_code="EGW00133",
+                    error_message="rate limit",
+                )
+
+            async def close(self):
+                return None
+
+        with patch("app.api.routes.accounts.get_adapter", return_value=_FailingAdapter()):
+            r = client.get(
+                f"{settings.API_V1_STR}/accounts/{account_id}/balance",
+                headers=headers,
+            )
+
+        assert r.status_code == 503
+        assert "EGW00133" in r.json()["detail"]

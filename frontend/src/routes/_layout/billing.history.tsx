@@ -23,24 +23,24 @@ function BillingHistoryPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Payment History</h1>
+        <h1 className="text-2xl font-bold tracking-tight">결제 내역</h1>
         <p className="text-muted-foreground">
-          Recent billing transactions and subscription charges.
+          최근 결제 및 구독 청구 내역입니다.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Invoices</CardTitle>
+          <CardTitle>청구서</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>날짜</TableHead>
+                <TableHead>플랜</TableHead>
+                <TableHead>금액</TableHead>
+                <TableHead>상태</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
