@@ -5,10 +5,10 @@ exchange adapter에 의존하지 않고, 잔고/가격/목표비중을 입력받
 
 bot.config 예시:
     {
-        "assets": {"BTC": "50", "ETH": "30", "USDT": "20"},  # 목표 비중(%)
+        "assets": {"BTC": "50", "ETH": "30", "KRW": "20"},  # 목표 비중(%)
         "threshold_pct": "5",       # 리밸런싱 임계값 (%)
         "interval_seconds": 3600,   # 주기 체크 간격 (초)
-        "quote": "USDT"             # 기준 통화
+        "quote": "KRW"              # 기준 통화
     }
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ class RebalancingConfig:
     assets: dict[str, Decimal]  # {"BTC": Decimal("50"), ...} 목표 비중(%)
     threshold_pct: Decimal       # 리밸런싱 임계값 (%)
     interval_seconds: int        # 주기 체크 간격 (초)
-    quote: str                   # 기준 통화 (예: "USDT")
+    quote: str                   # 기준 통화 (예: "KRW")
 
     @classmethod
     def from_dict(cls, config: dict) -> "RebalancingConfig":
@@ -34,7 +34,7 @@ class RebalancingConfig:
             assets={k: to_decimal(v) for k, v in config.get("assets", {}).items()},
             threshold_pct=to_decimal(config.get("threshold_pct", "5")),
             interval_seconds=int(config.get("interval_seconds", 3600)),
-            quote=config.get("quote", "USDT"),
+            quote=config.get("quote", "KRW"),
         )
 
 
@@ -50,12 +50,12 @@ class RebalanceOrder:
 def calc_weights(
     balances: dict[str, Decimal],
     prices: dict[str, Decimal],
-    quote: str = "USDT",
+    quote: str = "KRW",
 ) -> dict[str, Decimal]:
     """현재 자산 비중 계산 (quote 기준 가치 비율).
 
     Args:
-        balances: {"BTC": Decimal("0.5"), "USDT": Decimal("5000"), ...}
+        balances: {"BTC": Decimal("0.5"), "KRW": Decimal("5000"), ...}
         prices: {"BTC": Decimal("50000"), "ETH": Decimal("3000"), ...} (quote 기준)
         quote: 기준 통화
 
@@ -105,7 +105,7 @@ def calc_rebalance_orders(
     current_weights: dict[str, Decimal],
     target_weights: dict[str, Decimal],
     total_value: Decimal,
-    quote: str = "USDT",
+    quote: str = "KRW",
 ) -> list[RebalanceOrder]:
     """리밸런싱 주문 목록 계산.
 

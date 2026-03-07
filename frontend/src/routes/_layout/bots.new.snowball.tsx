@@ -37,7 +37,7 @@ function SnowballBotPage() {
 
   const [accountId, setAccountId] = useState("")
   const [name, setName] = useState("")
-  const [symbol, setSymbol] = useState("BTC/USDT")
+  const [symbol, setSymbol] = useState("BTC/KRW")
   const [initialBuyAmount, setInitialBuyAmount] = useState("100")
   const [dropTriggerPct, setDropTriggerPct] = useState("5")
   const [multiplier, setMultiplier] = useState("2.0")
@@ -137,11 +137,11 @@ function SnowballBotPage() {
                 <Input
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
-                  placeholder="BTC/USDT"
+                  placeholder="BTC/KRW"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Initial Buy Amount (USDT) *</Label>
+                <Label>Initial Buy Amount (KRW) *</Label>
                 <Input
                   value={initialBuyAmount}
                   onChange={(e) => setInitialBuyAmount(e.target.value)}
@@ -194,7 +194,7 @@ function SnowballBotPage() {
               {Number.isFinite(estimatedMaxCapital)
                 ? estimatedMaxCapital.toFixed(2)
                 : "0"}{" "}
-              USDT
+              KRW
             </div>
 
             <div className="flex justify-end">

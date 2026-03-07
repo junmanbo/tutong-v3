@@ -66,7 +66,7 @@ export const columns: ColumnDef<BotPublic>[] = [
     cell: ({ row }) => (
       <span className="font-mono text-sm">
         {row.original.investment_amount
-          ? `${row.original.investment_amount} USDT`
+          ? `${row.original.investment_amount} KRW`
           : "-"}
       </span>
     ),

@@ -37,7 +37,7 @@ function SpotGridBotPage() {
 
   const [accountId, setAccountId] = useState("")
   const [name, setName] = useState("")
-  const [symbol, setSymbol] = useState("BTC/USDT")
+  const [symbol, setSymbol] = useState("BTC/KRW")
   const [upperPrice, setUpperPrice] = useState("75000")
   const [lowerPrice, setLowerPrice] = useState("55000")
   const [gridCount, setGridCount] = useState("20")
@@ -140,11 +140,11 @@ function SpotGridBotPage() {
                 <Input
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
-                  placeholder="BTC/USDT"
+                  placeholder="BTC/KRW"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Total Investment (USDT) *</Label>
+                <Label>Total Investment (KRW) *</Label>
                 <Input
                   value={investmentAmount}
                   onChange={(e) => setInvestmentAmount(e.target.value)}

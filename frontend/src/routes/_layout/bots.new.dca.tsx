@@ -37,7 +37,7 @@ function DcaBotPage() {
 
   const [accountId, setAccountId] = useState("")
   const [name, setName] = useState("")
-  const [symbol, setSymbol] = useState("BTC/USDT")
+  const [symbol, setSymbol] = useState("BTC/KRW")
   const [buyAmount, setBuyAmount] = useState("100")
   const [frequency, setFrequency] = useState("daily")
   const [buyTime, setBuyTime] = useState("09:00")
@@ -143,7 +143,7 @@ function DcaBotPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Buy Amount per Cycle *</Label>
+                <Label>Buy Amount per Cycle (KRW) *</Label>
                 <Input
                   value={buyAmount}
                   onChange={(e) => setBuyAmount(e.target.value)}

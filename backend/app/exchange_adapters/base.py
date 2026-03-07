@@ -21,7 +21,7 @@ UTC = timezone.utc
 
 
 class BalanceItem(BaseModel):
-    asset: str       # 예: "BTC", "USDT", "KRW", "005930"
+    asset: str       # 예: "BTC", "KRW", "USDT", "005930"
     free: Decimal    # 사용 가능 잔고
     locked: Decimal  # 주문에 묶인 잔고
 

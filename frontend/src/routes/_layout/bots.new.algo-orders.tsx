@@ -37,7 +37,7 @@ function AlgoOrdersBotPage() {
 
   const [accountId, setAccountId] = useState("")
   const [name, setName] = useState("")
-  const [symbol, setSymbol] = useState("BTC/USDT")
+  const [symbol, setSymbol] = useState("BTC/KRW")
   const [side, setSide] = useState("buy")
   const [amountType, setAmountType] = useState("quote")
   const [quoteAmount, setQuoteAmount] = useState("10000")
@@ -201,7 +201,7 @@ function AlgoOrdersBotPage() {
               </div>
               {amountType === "quote" ? (
                 <div className="space-y-2">
-                  <Label>Quote Amount (USDT)</Label>
+                  <Label>Quote Amount (KRW)</Label>
                   <Input
                     value={quoteAmount}
                     onChange={(e) => setQuoteAmount(e.target.value)}

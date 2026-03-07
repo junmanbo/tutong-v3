@@ -38,7 +38,7 @@ function RebalancingBotPage() {
   const [accountId, setAccountId] = useState("")
   const [name, setName] = useState("")
   const [baseCurrency, setBaseCurrency] = useState("BTC")
-  const [quoteCurrency, setQuoteCurrency] = useState("USDT")
+  const [quoteCurrency, setQuoteCurrency] = useState("KRW")
   const [baseWeight, setBaseWeight] = useState("40")
   const [quoteWeight, setQuoteWeight] = useState("60")
   const [rebalanceMode, setRebalanceMode] = useState("time")
@@ -215,7 +215,7 @@ function RebalancingBotPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Total Investment (USDT) *</Label>
+              <Label>Total Investment (KRW) *</Label>
               <Input
                 value={investmentAmount}
                 onChange={(e) => setInvestmentAmount(e.target.value)}

@@ -84,7 +84,7 @@ def run_snowball(self, *, bot_id: str) -> None:
                 extra_params = json.loads(
                     decrypt(account.extra_params_enc, settings.ENCRYPTION_KEY)
                 )
-            symbol = bot.symbol or "BTC/USDT"
+            symbol = bot.symbol or "BTC/KRW"
             bot_config = bot.config or {}
             exchange = account.exchange
             stop_loss_pct = bot.stop_loss_pct

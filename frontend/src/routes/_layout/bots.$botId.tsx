@@ -346,7 +346,7 @@ function BotDetailPage() {
             <Separator />
             <ValueRow
               label="투자 금액"
-              value={`${bot.investment_amount ?? "-"} USDT`}
+              value={`${bot.investment_amount ?? "-"} KRW`}
             />
             <Separator />
             <ValueRow

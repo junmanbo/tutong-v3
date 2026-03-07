@@ -342,7 +342,7 @@ const AddBot = () => {
                           <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="예) USDT" {...field} />
+                          <Input placeholder="예) KRW" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -359,7 +359,7 @@ const AddBot = () => {
                         종목코드(심볼) <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input placeholder="예) BTC/USDT" {...field} />
+                        <Input placeholder="예) BTC/KRW" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -373,7 +373,7 @@ const AddBot = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      투자 금액 (USDT){" "}
+                      투자 금액 (KRW){" "}
                       <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
