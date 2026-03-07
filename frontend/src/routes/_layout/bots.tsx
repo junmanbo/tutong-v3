@@ -1,13 +1,13 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { Suspense } from "react"
 
 import { BotsService } from "@/client"
 import AddBot from "@/components/Bots/AddBot"
 import { columns } from "@/components/Bots/columns"
 import { DataTable } from "@/components/Common/DataTable"
-import { Button } from "@/components/ui/button"
 import PendingBots from "@/components/Pending/PendingBots"
+import { Button } from "@/components/ui/button"
 
 function getBotsQueryOptions() {
   return {

@@ -10,7 +10,7 @@ import {
   TrendingUp,
 } from "lucide-react"
 
-import { BotsService, type BotStatusEnum } from "@/client"
+import { type BotStatusEnum, BotsService } from "@/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -180,9 +180,9 @@ function BotDetailPage() {
   const recentOrders: TimelineItem[] = (botLogs?.data ?? [])
     .filter(
       (log) =>
-        log.event_type.includes("order")
-        || log.event_type.includes("slice")
-        || log.event_type.includes("filled"),
+        log.event_type.includes("order") ||
+        log.event_type.includes("slice") ||
+        log.event_type.includes("filled"),
     )
     .slice(0, 20)
     .map((log) => ({
@@ -297,7 +297,9 @@ function BotDetailPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Current Status</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Current Status
+            </CardTitle>
             <Activity className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -369,7 +371,10 @@ function BotDetailPage() {
             <Separator />
             <ValueRow label="Base Currency" value={bot.base_currency ?? "-"} />
             <Separator />
-            <ValueRow label="Quote Currency" value={bot.quote_currency ?? "-"} />
+            <ValueRow
+              label="Quote Currency"
+              value={bot.quote_currency ?? "-"}
+            />
             <Separator />
             <ValueRow label="Stop Loss %" value={bot.stop_loss_pct ?? "-"} />
             <Separator />
@@ -424,24 +429,24 @@ function BotDetailPage() {
               <Skeleton className="h-24 w-full" />
             ) : (
               [...systemTimeline, ...recentLogs].map((item) => (
-              <div
-                key={item.id}
-                className={cn(
-                  "rounded-md border p-3",
-                  toneClassName[item.tone ?? "default"],
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <ScrollText className="size-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">{item.title}</p>
+                <div
+                  key={item.id}
+                  className={cn(
+                    "rounded-md border p-3",
+                    toneClassName[item.tone ?? "default"],
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <ScrollText className="size-4 text-muted-foreground" />
+                      <p className="text-sm font-medium">{item.title}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{item.at}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">{item.at}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {item.description}
+                  </p>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {item.description}
-                </p>
-              </div>
               ))
             )}
           </CardContent>

@@ -45,7 +45,7 @@ def run_algo_orders(self, *, bot_id: str) -> None:
     """Algo Orders (TWAP) 봇 실행 Task."""
 
     async def _run() -> None:
-        from sqlmodel import Session, create_engine, select
+        from sqlmodel import select
 
         from app.core.config import settings
         from app.exchange_adapters.base import OrderRequest
@@ -61,8 +61,7 @@ def run_algo_orders(self, *, bot_id: str) -> None:
         from bot_engine.utils.crypto import decrypt
 
         # ── DB에서 봇/계좌 정보 로드 ────────────────────────────────────────
-        engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
-        with Session(engine) as session:
+        with _get_db_session() as session:
             bot = session.exec(
                 select(Bot).where(Bot.id == uuid.UUID(bot_id))
             ).first()
@@ -161,7 +160,7 @@ def run_algo_orders(self, *, bot_id: str) -> None:
 
                 try:
                     ticker = await adapter.get_ticker(symbol)
-                    current_price = ticker.last
+                    current_price = ticker.price
                     if initial_price is None and current_price > Decimal("0"):
                         initial_price = current_price
                     if initial_price is not None:
@@ -213,7 +212,7 @@ def run_algo_orders(self, *, bot_id: str) -> None:
                             symbol=symbol,
                             side=config.side,
                             order_type=config.order_type,
-                            quantity=qty,
+                            qty=qty,
                         )
                     )
                     executed_slices += 1
@@ -228,7 +227,7 @@ def run_algo_orders(self, *, bot_id: str) -> None:
                     )
                     logger.info(
                         "TWAP slice executed: bot_id=%s %d/%d qty=%s order_id=%s",
-                        bot_id, executed_slices, config.num_slices, qty, order.order_id,
+                        bot_id, executed_slices, config.num_slices, qty, order.exchange_order_id,
                     )
                     _create_bot_log(
                         bot_id=bot_id,
@@ -239,7 +238,7 @@ def run_algo_orders(self, *, bot_id: str) -> None:
                             "executed_slices": executed_slices,
                             "num_slices": config.num_slices,
                             "qty": str(qty),
-                            "order_id": order.order_id,
+                            "order_id": order.exchange_order_id,
                         },
                     )
                 except Exception as exc:

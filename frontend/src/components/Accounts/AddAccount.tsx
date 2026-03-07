@@ -37,39 +37,41 @@ import {
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
-const formSchema = z.object({
-  exchange: z.enum(["binance", "upbit", "kis", "kiwoom"]),
-  label: z
-    .string()
-    .min(1, { message: "Label is required" })
-    .max(100, { message: "Label must be at most 100 characters" }),
-  api_key: z.string().min(1, { message: "API Key is required" }),
-  api_secret: z.string().min(1, { message: "API Secret is required" }),
-  kis_cano: z.string().optional(),
-  kis_acnt_prdt_cd: z.string().optional(),
-  kiwoom_account_no: z.string().optional(),
-  use_mock: z.enum(["real", "mock"]).default("real"),
-}).superRefine((data, ctx) => {
-  if (data.exchange === "kis") {
-    if (!data.kis_cano?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["kis_cano"],
-        message: "KIS account number (CANO) is required",
-      })
+const formSchema = z
+  .object({
+    exchange: z.enum(["binance", "upbit", "kis", "kiwoom"]),
+    label: z
+      .string()
+      .min(1, { message: "Label is required" })
+      .max(100, { message: "Label must be at most 100 characters" }),
+    api_key: z.string().min(1, { message: "API Key is required" }),
+    api_secret: z.string().min(1, { message: "API Secret is required" }),
+    kis_cano: z.string().optional(),
+    kis_acnt_prdt_cd: z.string().optional(),
+    kiwoom_account_no: z.string().optional(),
+    use_mock: z.enum(["real", "mock"]).default("real"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.exchange === "kis") {
+      if (!data.kis_cano?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["kis_cano"],
+          message: "KIS account number (CANO) is required",
+        })
+      }
     }
-  }
 
-  if (data.exchange === "kiwoom") {
-    if (!data.kiwoom_account_no?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["kiwoom_account_no"],
-        message: "Kiwoom account number is required",
-      })
+    if (data.exchange === "kiwoom") {
+      if (!data.kiwoom_account_no?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["kiwoom_account_no"],
+          message: "Kiwoom account number is required",
+        })
+      }
     }
-  }
-})
+  })
 
 type FormData = z.input<typeof formSchema>
 type SubmitData = z.output<typeof formSchema>

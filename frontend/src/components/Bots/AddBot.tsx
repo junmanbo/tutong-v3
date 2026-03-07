@@ -8,8 +8,8 @@ import { z } from "zod"
 import {
   AccountsService,
   type BotCreate,
-  type BotTypeEnum,
   BotsService,
+  type BotTypeEnum,
 } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
@@ -60,64 +60,66 @@ const optionalNumberField = z
     },
   )
 
-const formSchema = z.object({
-  name: z
-    .string()
-    .min(1, { message: "Name is required" })
-    .max(100, { message: "Name must be at most 100 characters" }),
-  bot_type: z.enum([
-    "spot_grid",
-    "position_snowball",
-    "rebalancing",
-    "spot_dca",
-    "algo_orders",
-  ]),
-  symbol: z.string().optional(),
-  base_currency: z.string().optional(),
-  quote_currency: z.string().optional(),
-  investment_amount: requiredNumberField("Investment amount is required"),
-  stop_loss_pct: optionalNumberField,
-  take_profit_pct: optionalNumberField,
-  account_id: z.string().min(1, { message: "Account is required" }),
-}).superRefine((data, ctx) => {
-  if (data.bot_type === "rebalancing") {
-    if (!data.base_currency?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["base_currency"],
-        message: "Base currency is required for rebalancing",
-      })
+const formSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, { message: "Name is required" })
+      .max(100, { message: "Name must be at most 100 characters" }),
+    bot_type: z.enum([
+      "spot_grid",
+      "position_snowball",
+      "rebalancing",
+      "spot_dca",
+      "algo_orders",
+    ]),
+    symbol: z.string().optional(),
+    base_currency: z.string().optional(),
+    quote_currency: z.string().optional(),
+    investment_amount: requiredNumberField("Investment amount is required"),
+    stop_loss_pct: optionalNumberField,
+    take_profit_pct: optionalNumberField,
+    account_id: z.string().min(1, { message: "Account is required" }),
+  })
+  .superRefine((data, ctx) => {
+    if (data.bot_type === "rebalancing") {
+      if (!data.base_currency?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["base_currency"],
+          message: "Base currency is required for rebalancing",
+        })
+      }
+      if (!data.quote_currency?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["quote_currency"],
+          message: "Quote currency is required for rebalancing",
+        })
+      }
+      if (
+        data.base_currency?.trim() &&
+        data.quote_currency?.trim() &&
+        data.base_currency.trim().toUpperCase() ===
+          data.quote_currency.trim().toUpperCase()
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["quote_currency"],
+          message: "Base and quote currency must be different",
+        })
+      }
+      return
     }
-    if (!data.quote_currency?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["quote_currency"],
-        message: "Quote currency is required for rebalancing",
-      })
-    }
-    if (
-      data.base_currency?.trim() &&
-      data.quote_currency?.trim() &&
-      data.base_currency.trim().toUpperCase() ===
-        data.quote_currency.trim().toUpperCase()
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["quote_currency"],
-        message: "Base and quote currency must be different",
-      })
-    }
-    return
-  }
 
-  if (!data.symbol?.trim()) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["symbol"],
-      message: "Symbol is required for this strategy",
-    })
-  }
-})
+    if (!data.symbol?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["symbol"],
+        message: "Symbol is required for this strategy",
+      })
+    }
+  })
 
 type FormData = z.infer<typeof formSchema>
 

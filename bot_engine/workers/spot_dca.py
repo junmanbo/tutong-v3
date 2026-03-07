@@ -47,7 +47,7 @@ def run_spot_dca(self, *, bot_id: str) -> None:
     async def _run() -> None:
         from decimal import Decimal
 
-        from sqlmodel import Session, create_engine, select
+        from sqlmodel import select
 
         from app.core.config import settings
         from app.exchange_adapters.base import OrderRequest
@@ -62,8 +62,7 @@ def run_spot_dca(self, *, bot_id: str) -> None:
         from bot_engine.utils.crypto import decrypt
 
         # ── DB에서 봇/계좌 정보 로드 ────────────────────────────────────────
-        engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
-        with Session(engine) as session:
+        with _get_db_session() as session:
             bot = session.exec(
                 select(Bot).where(Bot.id == uuid.UUID(bot_id))
             ).first()
@@ -162,7 +161,7 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                 if should_buy(last_order_time, config.interval_seconds, now):
                     try:
                         ticker = await adapter.get_ticker(symbol)
-                        price = ticker.last
+                        price = ticker.price
                         if initial_price is None and price > Decimal("0"):
                             initial_price = price
 
@@ -203,7 +202,7 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                                     symbol=symbol,
                                     side="buy",
                                     order_type=config.order_type,
-                                    quantity=qty,
+                                    qty=qty,
                                 )
                             )
                             order_count += 1
@@ -218,7 +217,7 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                             )
                             logger.info(
                                 "DCA order placed: bot_id=%s #%d order_id=%s qty=%s price=%s",
-                                bot_id, order_count, order.order_id, qty, price,
+                                bot_id, order_count, order.exchange_order_id, qty, price,
                             )
                             _create_bot_log(
                                 bot_id=bot_id,
@@ -227,7 +226,7 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                                 message="DCA buy order placed",
                                 payload={
                                     "order_count": order_count,
-                                    "order_id": order.order_id,
+                                    "order_id": order.exchange_order_id,
                                     "qty": str(qty),
                                     "price": str(price),
                                 },

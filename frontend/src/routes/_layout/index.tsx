@@ -1,5 +1,5 @@
-import { Link, createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { Bot, Plus, TrendingUp, Wallet } from "lucide-react"
 
 import { AccountsService, BotsService } from "@/client"
@@ -252,7 +252,10 @@ function Dashboard() {
               trend.map((point) => {
                 const width = (Math.abs(point.value) / maxTrendAbs) * 100
                 return (
-                  <div key={`${point.label}-${point.name}`} className="space-y-1">
+                  <div
+                    key={`${point.label}-${point.name}`}
+                    className="space-y-1"
+                  >
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>
                         {point.label} · {point.name}
@@ -301,7 +304,10 @@ function Dashboard() {
             <TableBody>
               {activeBots.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-muted-foreground"
+                  >
                     No running bots right now.
                   </TableCell>
                 </TableRow>
@@ -310,7 +316,9 @@ function Dashboard() {
                   <TableRow key={bot.id}>
                     <TableCell>{bot.name}</TableCell>
                     <TableCell>{bot.bot_type}</TableCell>
-                    <TableCell>{Number(bot.total_pnl_pct).toFixed(2)}%</TableCell>
+                    <TableCell>
+                      {Number(bot.total_pnl_pct).toFixed(2)}%
+                    </TableCell>
                     <TableCell className="capitalize">{bot.status}</TableCell>
                   </TableRow>
                 ))

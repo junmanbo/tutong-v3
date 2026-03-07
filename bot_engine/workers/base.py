@@ -21,6 +21,22 @@ from bot_engine.celery_app import celery_app
 logger = logging.getLogger(__name__)
 UTC = timezone.utc
 
+# ── DB 엔진 싱글턴 ─────────────────────────────────────────────────────────────
+_db_engine = None
+
+
+def _get_engine():
+    """모듈 레벨 싱글턴 SQLAlchemy 엔진 반환."""
+    global _db_engine
+    if _db_engine is None:
+        from sqlmodel import create_engine
+        db_url = os.environ.get(
+            "SQLALCHEMY_DATABASE_URI",
+            "postgresql+psycopg://postgres:changethis@localhost:5432/app",
+        )
+        _db_engine = create_engine(db_url, pool_pre_ping=True)
+    return _db_engine
+
 
 class AsyncBotTask(Task):
     """asyncio 코루틴을 Celery Task에서 안전하게 실행하는 베이스 클래스.
@@ -106,16 +122,9 @@ def clear_stop_signal(bot_id: str) -> None:
 
 
 def _get_db_session():
-    """Bot Engine에서 DB 세션 반환."""
-    import os
-    from sqlmodel import Session, create_engine
-
-    db_url = os.environ.get(
-        "SQLALCHEMY_DATABASE_URI",
-        "postgresql+psycopg://postgres:changethis@localhost:5432/app",
-    )
-    engine = create_engine(db_url)
-    return Session(engine)
+    """Bot Engine에서 DB 세션 반환 (싱글턴 엔진 재사용)."""
+    from sqlmodel import Session
+    return Session(_get_engine())
 
 
 def _update_bot_status_error(bot_id: str, error_message: str) -> None:

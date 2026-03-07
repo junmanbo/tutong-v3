@@ -2,10 +2,12 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     accounts,
+    admin,
     bots,
     login,
     notifications,
     private,
+    subscriptions,
     users,
     utils,
 )
@@ -18,6 +20,8 @@ api_router.include_router(utils.router)
 api_router.include_router(accounts.router)
 api_router.include_router(bots.router)
 api_router.include_router(notifications.router)
+api_router.include_router(subscriptions.router)
+api_router.include_router(admin.router)
 
 
 if settings.ENVIRONMENT == "local":

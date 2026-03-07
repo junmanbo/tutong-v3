@@ -57,6 +57,25 @@ function AlgoOrdersBotPage() {
           symbol: symbol.trim().toUpperCase(),
           investment_amount:
             amountType === "quote" ? quoteAmount.trim() : baseQty.trim(),
+          config: {
+            side,
+            total_qty: amountType === "base" ? baseQty.trim() : undefined,
+            total_amount:
+              amountType === "quote" ? quoteAmount.trim() : undefined,
+            num_slices: Number(sliceCount),
+            duration_seconds:
+              startAt && endAt
+                ? Math.max(
+                    60,
+                    Math.floor(
+                      (new Date(endAt).getTime() -
+                        new Date(startAt).getTime()) /
+                        1000,
+                    ),
+                  )
+                : 3600,
+            order_type: "market",
+          },
         },
       }),
     onSuccess: () => {
@@ -86,7 +105,11 @@ function AlgoOrdersBotPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Button variant="outline" size="sm" onClick={() => navigate({ to: "/bots/new" })}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => navigate({ to: "/bots/new" })}
+      >
         <ArrowLeft className="mr-2 size-4" />
         Back
       </Button>
@@ -115,14 +138,21 @@ function AlgoOrdersBotPage() {
               </div>
               <div className="space-y-2">
                 <Label>Bot Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="BTC TWAP Bot" />
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="BTC TWAP Bot"
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
               <div className="space-y-2">
                 <Label>Trading Pair *</Label>
-                <Input value={symbol} onChange={(e) => setSymbol(e.target.value)} />
+                <Input
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Order Side</Label>
@@ -149,7 +179,10 @@ function AlgoOrdersBotPage() {
               </div>
               <div className="space-y-2">
                 <Label>Slices</Label>
-                <Input value={sliceCount} onChange={(e) => setSliceCount(e.target.value)} />
+                <Input
+                  value={sliceCount}
+                  onChange={(e) => setSliceCount(e.target.value)}
+                />
               </div>
             </div>
 
@@ -169,12 +202,18 @@ function AlgoOrdersBotPage() {
               {amountType === "quote" ? (
                 <div className="space-y-2">
                   <Label>Quote Amount (USDT)</Label>
-                  <Input value={quoteAmount} onChange={(e) => setQuoteAmount(e.target.value)} />
+                  <Input
+                    value={quoteAmount}
+                    onChange={(e) => setQuoteAmount(e.target.value)}
+                  />
                 </div>
               ) : (
                 <div className="space-y-2">
                   <Label>Base Quantity</Label>
-                  <Input value={baseQty} onChange={(e) => setBaseQty(e.target.value)} />
+                  <Input
+                    value={baseQty}
+                    onChange={(e) => setBaseQty(e.target.value)}
+                  />
                 </div>
               )}
               <div className="space-y-2">
@@ -219,4 +258,3 @@ function AlgoOrdersBotPage() {
     </div>
   )
 }
-

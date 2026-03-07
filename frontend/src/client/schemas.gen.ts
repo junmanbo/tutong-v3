@@ -172,6 +172,12 @@ export const BotCreateSchema = {
             type: 'string',
             format: 'uuid',
             title: 'Account Id'
+        },
+        config: {
+            additionalProperties: true,
+            type: 'object',
+            title: 'Config',
+            default: {}
         }
     },
     type: 'object',
@@ -331,6 +337,11 @@ export const BotPublicSchema = {
         status: {
             '$ref': '#/components/schemas/BotStatusEnum'
         },
+        config: {
+            additionalProperties: true,
+            type: 'object',
+            title: 'Config'
+        },
         total_pnl: {
             type: 'string',
             pattern: '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$',
@@ -348,7 +359,7 @@ export const BotPublicSchema = {
         }
     },
     type: 'object',
-    required: ['name', 'bot_type', 'id', 'account_id', 'status', 'total_pnl', 'total_pnl_pct', 'created_at'],
+    required: ['name', 'bot_type', 'id', 'account_id', 'status', 'config', 'total_pnl', 'total_pnl_pct', 'created_at'],
     title: 'BotPublic'
 } as const;
 
@@ -616,6 +627,124 @@ export const NewPasswordSchema = {
     title: 'NewPassword'
 } as const;
 
+export const NotificationChannelEnumSchema = {
+    type: 'string',
+    enum: ['email', 'telegram', 'web_push'],
+    title: 'NotificationChannelEnum'
+} as const;
+
+export const NotificationDeliveryStatusEnumSchema = {
+    type: 'string',
+    enum: ['pending', 'sent', 'failed'],
+    title: 'NotificationDeliveryStatusEnum'
+} as const;
+
+export const NotificationPublicSchema = {
+    properties: {
+        channel: {
+            '$ref': '#/components/schemas/NotificationChannelEnum',
+            default: 'email'
+        },
+        event_type: {
+            type: 'string',
+            maxLength: 50,
+            title: 'Event Type'
+        },
+        title: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Title'
+        },
+        body: {
+            type: 'string',
+            title: 'Body'
+        },
+        is_read: {
+            type: 'boolean',
+            title: 'Is Read',
+            default: false
+        },
+        payload: {
+            additionalProperties: true,
+            type: 'object',
+            title: 'Payload',
+            default: {}
+        },
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        user_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'User Id'
+        },
+        bot_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Bot Id'
+        },
+        delivery_status: {
+            '$ref': '#/components/schemas/NotificationDeliveryStatusEnum'
+        },
+        attempt_count: {
+            type: 'integer',
+            title: 'Attempt Count'
+        },
+        last_error: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Error'
+        },
+        sent_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sent At'
+        },
+        failed_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Failed At'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        }
+    },
+    type: 'object',
+    required: ['event_type', 'title', 'body', 'id', 'user_id', 'bot_id', 'delivery_status', 'attempt_count', 'last_error', 'sent_at', 'failed_at', 'created_at'],
+    title: 'NotificationPublic'
+} as const;
+
 export const NotificationSettingsPublicSchema = {
     properties: {
         email_enabled: {
@@ -793,6 +922,25 @@ export const NotificationSettingsUpdateSchema = {
     title: 'NotificationSettingsUpdate'
 } as const;
 
+export const NotificationsPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/NotificationPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'NotificationsPublic'
+} as const;
+
 export const PrivateUserCreateSchema = {
     properties: {
         email: {
@@ -816,6 +964,135 @@ export const PrivateUserCreateSchema = {
     type: 'object',
     required: ['email', 'password', 'full_name'],
     title: 'PrivateUserCreate'
+} as const;
+
+export const SubscriptionPlanPublicSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        display_name: {
+            type: 'string',
+            title: 'Display Name'
+        },
+        price_krw: {
+            type: 'integer',
+            title: 'Price Krw'
+        },
+        max_bots: {
+            type: 'integer',
+            title: 'Max Bots'
+        },
+        max_accounts: {
+            type: 'integer',
+            title: 'Max Accounts'
+        },
+        features: {
+            additionalProperties: true,
+            type: 'object',
+            title: 'Features'
+        },
+        is_active: {
+            type: 'boolean',
+            title: 'Is Active'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        }
+    },
+    type: 'object',
+    required: ['id', 'name', 'display_name', 'price_krw', 'max_bots', 'max_accounts', 'features', 'is_active', 'created_at'],
+    title: 'SubscriptionPlanPublic'
+} as const;
+
+export const SubscriptionPublicSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        user_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'User Id'
+        },
+        plan_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Plan Id'
+        },
+        status: {
+            '$ref': '#/components/schemas/SubscriptionStatusEnum'
+        },
+        pg_subscription_id: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Pg Subscription Id'
+        },
+        started_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Started At'
+        },
+        expires_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Expires At'
+        },
+        cancelled_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cancelled At'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        },
+        updated_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Updated At'
+        }
+    },
+    type: 'object',
+    required: ['id', 'user_id', 'plan_id', 'status', 'pg_subscription_id', 'started_at', 'expires_at', 'cancelled_at', 'created_at', 'updated_at'],
+    title: 'SubscriptionPublic'
+} as const;
+
+export const SubscriptionStatusEnumSchema = {
+    type: 'string',
+    enum: ['active', 'cancelled', 'expired', 'past_due'],
+    title: 'SubscriptionStatusEnum'
 } as const;
 
 export const TokenSchema = {

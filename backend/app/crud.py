@@ -389,6 +389,45 @@ def create_notification(
     return notification
 
 
+def get_notifications_by_user(
+    *,
+    session: Session,
+    user_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 50,
+    unread_only: bool = False,
+) -> list[Notification]:
+    statement = (
+        select(Notification)
+        .where(Notification.user_id == user_id)
+        .order_by(Notification.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    if unread_only:
+        statement = statement.where(Notification.is_read == False)  # noqa: E712
+    return list(session.exec(statement).all())
+
+
+def count_notifications_by_user(
+    *, session: Session, user_id: uuid.UUID, unread_only: bool = False
+) -> int:
+    notifications = get_notifications_by_user(
+        session=session, user_id=user_id, limit=1000, unread_only=unread_only
+    )
+    return len(notifications)
+
+
+def mark_notification_read(
+    *, session: Session, notification: Notification
+) -> Notification:
+    notification.is_read = True
+    session.add(notification)
+    session.commit()
+    session.refresh(notification)
+    return notification
+
+
 def get_notification(*, session: Session, notification_id: uuid.UUID) -> Notification | None:
     return session.get(Notification, notification_id)
 

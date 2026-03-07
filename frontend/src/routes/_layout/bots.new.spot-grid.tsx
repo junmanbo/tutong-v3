@@ -57,6 +57,15 @@ function SpotGridBotPage() {
           investment_amount: investmentAmount.trim(),
           stop_loss_pct: stopLossPct.trim() || undefined,
           take_profit_pct: takeProfitPct.trim() || undefined,
+          config: {
+            upper: upperPrice.trim(),
+            lower: lowerPrice.trim(),
+            grid_count: Number(gridCount),
+            arithmetic: gridType === "arithmetic",
+            amount_per_grid: (
+              Number(investmentAmount) / Math.max(1, Number(gridCount))
+            ).toFixed(8),
+          },
         },
       }),
     onSuccess: () => {
@@ -77,12 +86,17 @@ function SpotGridBotPage() {
   }
 
   const spread = Math.max(0, Number(upperPrice) - Number(lowerPrice))
-  const perGrid = Number(gridCount) > 0 ? Number(investmentAmount) / Number(gridCount) : 0
+  const perGrid =
+    Number(gridCount) > 0 ? Number(investmentAmount) / Number(gridCount) : 0
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={() => navigate({ to: "/bots/new" })}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate({ to: "/bots/new" })}
+        >
           <ArrowLeft className="mr-2 size-4" />
           Back
         </Button>
@@ -112,33 +126,53 @@ function SpotGridBotPage() {
               </div>
               <div className="space-y-2">
                 <Label>Bot Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="BTC Grid Bot" />
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="BTC Grid Bot"
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Trading Pair *</Label>
-                <Input value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="BTC/USDT" />
+                <Input
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value)}
+                  placeholder="BTC/USDT"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Total Investment (USDT) *</Label>
-                <Input value={investmentAmount} onChange={(e) => setInvestmentAmount(e.target.value)} />
+                <Input
+                  value={investmentAmount}
+                  onChange={(e) => setInvestmentAmount(e.target.value)}
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>Upper Price</Label>
-                <Input value={upperPrice} onChange={(e) => setUpperPrice(e.target.value)} />
+                <Input
+                  value={upperPrice}
+                  onChange={(e) => setUpperPrice(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Lower Price</Label>
-                <Input value={lowerPrice} onChange={(e) => setLowerPrice(e.target.value)} />
+                <Input
+                  value={lowerPrice}
+                  onChange={(e) => setLowerPrice(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Grid Count</Label>
-                <Input value={gridCount} onChange={(e) => setGridCount(e.target.value)} />
+                <Input
+                  value={gridCount}
+                  onChange={(e) => setGridCount(e.target.value)}
+                />
               </div>
             </div>
 
@@ -157,11 +191,19 @@ function SpotGridBotPage() {
               </div>
               <div className="space-y-2">
                 <Label>Stop Loss %</Label>
-                <Input value={stopLossPct} onChange={(e) => setStopLossPct(e.target.value)} placeholder="optional" />
+                <Input
+                  value={stopLossPct}
+                  onChange={(e) => setStopLossPct(e.target.value)}
+                  placeholder="optional"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Take Profit %</Label>
-                <Input value={takeProfitPct} onChange={(e) => setTakeProfitPct(e.target.value)} placeholder="optional" />
+                <Input
+                  value={takeProfitPct}
+                  onChange={(e) => setTakeProfitPct(e.target.value)}
+                  placeholder="optional"
+                />
               </div>
             </div>
 

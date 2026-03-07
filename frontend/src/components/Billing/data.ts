@@ -29,4 +29,3 @@ export const paymentHistory = [
   { date: "2026-02-01", plan: "Basic", amount: "9,900 KRW", status: "Paid" },
   { date: "2026-01-01", plan: "Basic", amount: "9,900 KRW", status: "Paid" },
 ]
-

@@ -56,6 +56,13 @@ function SnowballBotPage() {
           investment_amount: initialBuyAmount.trim(),
           stop_loss_pct: stopLossPct.trim() || undefined,
           take_profit_pct: takeProfitPct.trim() || undefined,
+          config: {
+            drop_pct: dropTriggerPct.trim(),
+            amount_per_buy: initialBuyAmount.trim(),
+            take_profit_pct: takeProfitPct.trim(),
+            max_buys: Number(maxAdds),
+            multiplier: multiplier.trim(),
+          },
         },
       }),
     onSuccess: () => {
@@ -77,11 +84,17 @@ function SnowballBotPage() {
 
   const estimatedMaxCapital =
     Number(initialBuyAmount) *
-    (Number.isFinite(Number(multiplier)) ? Number(multiplier) ** Number(maxAdds) : 0)
+    (Number.isFinite(Number(multiplier))
+      ? Number(multiplier) ** Number(maxAdds)
+      : 0)
 
   return (
     <div className="flex flex-col gap-6">
-      <Button variant="outline" size="sm" onClick={() => navigate({ to: "/bots/new" })}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => navigate({ to: "/bots/new" })}
+      >
         <ArrowLeft className="mr-2 size-4" />
         Back
       </Button>
@@ -110,47 +123,78 @@ function SnowballBotPage() {
               </div>
               <div className="space-y-2">
                 <Label>Bot Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="BTC Snowball Bot" />
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="BTC Snowball Bot"
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Trading Pair *</Label>
-                <Input value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="BTC/USDT" />
+                <Input
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value)}
+                  placeholder="BTC/USDT"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Initial Buy Amount (USDT) *</Label>
-                <Input value={initialBuyAmount} onChange={(e) => setInitialBuyAmount(e.target.value)} />
+                <Input
+                  value={initialBuyAmount}
+                  onChange={(e) => setInitialBuyAmount(e.target.value)}
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
               <div className="space-y-2">
                 <Label>Drop Trigger %</Label>
-                <Input value={dropTriggerPct} onChange={(e) => setDropTriggerPct(e.target.value)} />
+                <Input
+                  value={dropTriggerPct}
+                  onChange={(e) => setDropTriggerPct(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Add Multiplier</Label>
-                <Input value={multiplier} onChange={(e) => setMultiplier(e.target.value)} />
+                <Input
+                  value={multiplier}
+                  onChange={(e) => setMultiplier(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Max Add Count</Label>
-                <Input value={maxAdds} onChange={(e) => setMaxAdds(e.target.value)} />
+                <Input
+                  value={maxAdds}
+                  onChange={(e) => setMaxAdds(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Take Profit %</Label>
-                <Input value={takeProfitPct} onChange={(e) => setTakeProfitPct(e.target.value)} />
+                <Input
+                  value={takeProfitPct}
+                  onChange={(e) => setTakeProfitPct(e.target.value)}
+                />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label>Stop Loss %</Label>
-              <Input value={stopLossPct} onChange={(e) => setStopLossPct(e.target.value)} placeholder="optional" />
+              <Input
+                value={stopLossPct}
+                onChange={(e) => setStopLossPct(e.target.value)}
+                placeholder="optional"
+              />
             </div>
 
             <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-              예상 최대 누적 투자금(대략): {Number.isFinite(estimatedMaxCapital) ? estimatedMaxCapital.toFixed(2) : "0"} USDT
+              예상 최대 누적 투자금(대략):{" "}
+              {Number.isFinite(estimatedMaxCapital)
+                ? estimatedMaxCapital.toFixed(2)
+                : "0"}{" "}
+              USDT
             </div>
 
             <div className="flex justify-end">
@@ -164,4 +208,3 @@ function SnowballBotPage() {
     </div>
   )
 }
-

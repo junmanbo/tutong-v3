@@ -56,6 +56,20 @@ function RebalancingBotPage() {
           base_currency: baseCurrency.trim().toUpperCase(),
           quote_currency: quoteCurrency.trim().toUpperCase(),
           investment_amount: investmentAmount.trim(),
+          config: {
+            assets: {
+              [baseCurrency.trim().toUpperCase()]: baseWeight.trim(),
+              [quoteCurrency.trim().toUpperCase()]: quoteWeight.trim(),
+            },
+            quote: quoteCurrency.trim().toUpperCase(),
+            threshold_pct: deviationPct.trim(),
+            interval_seconds:
+              rebalanceInterval === "1d"
+                ? 86400
+                : rebalanceInterval === "1w"
+                  ? 604800
+                  : 2592000,
+          },
         },
       }),
     onSuccess: () => {
@@ -68,11 +82,18 @@ function RebalancingBotPage() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    if (!accountId || !baseCurrency.trim() || !quoteCurrency.trim() || !investmentAmount.trim()) {
+    if (
+      !accountId ||
+      !baseCurrency.trim() ||
+      !quoteCurrency.trim() ||
+      !investmentAmount.trim()
+    ) {
       showErrorToast("Account, currencies, and investment amount are required.")
       return
     }
-    if (baseCurrency.trim().toUpperCase() === quoteCurrency.trim().toUpperCase()) {
+    if (
+      baseCurrency.trim().toUpperCase() === quoteCurrency.trim().toUpperCase()
+    ) {
       showErrorToast("Base and quote currency must be different.")
       return
     }
@@ -83,7 +104,11 @@ function RebalancingBotPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Button variant="outline" size="sm" onClick={() => navigate({ to: "/bots/new" })}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => navigate({ to: "/bots/new" })}
+      >
         <ArrowLeft className="mr-2 size-4" />
         Back
       </Button>
@@ -112,26 +137,42 @@ function RebalancingBotPage() {
               </div>
               <div className="space-y-2">
                 <Label>Bot Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Portfolio Rebalance Bot" />
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Portfolio Rebalance Bot"
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
               <div className="space-y-2">
                 <Label>Asset 1</Label>
-                <Input value={baseCurrency} onChange={(e) => setBaseCurrency(e.target.value)} />
+                <Input
+                  value={baseCurrency}
+                  onChange={(e) => setBaseCurrency(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Target %</Label>
-                <Input value={baseWeight} onChange={(e) => setBaseWeight(e.target.value)} />
+                <Input
+                  value={baseWeight}
+                  onChange={(e) => setBaseWeight(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Asset 2</Label>
-                <Input value={quoteCurrency} onChange={(e) => setQuoteCurrency(e.target.value)} />
+                <Input
+                  value={quoteCurrency}
+                  onChange={(e) => setQuoteCurrency(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Target %</Label>
-                <Input value={quoteWeight} onChange={(e) => setQuoteWeight(e.target.value)} />
+                <Input
+                  value={quoteWeight}
+                  onChange={(e) => setQuoteWeight(e.target.value)}
+                />
               </div>
             </div>
 
@@ -150,7 +191,10 @@ function RebalancingBotPage() {
               </div>
               <div className="space-y-2">
                 <Label>Interval</Label>
-                <Select value={rebalanceInterval} onValueChange={setRebalanceInterval}>
+                <Select
+                  value={rebalanceInterval}
+                  onValueChange={setRebalanceInterval}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -163,17 +207,24 @@ function RebalancingBotPage() {
               </div>
               <div className="space-y-2">
                 <Label>Deviation Trigger %</Label>
-                <Input value={deviationPct} onChange={(e) => setDeviationPct(e.target.value)} />
+                <Input
+                  value={deviationPct}
+                  onChange={(e) => setDeviationPct(e.target.value)}
+                />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label>Total Investment (USDT) *</Label>
-              <Input value={investmentAmount} onChange={(e) => setInvestmentAmount(e.target.value)} />
+              <Input
+                value={investmentAmount}
+                onChange={(e) => setInvestmentAmount(e.target.value)}
+              />
             </div>
 
             <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-              현재 구성 비중 합계: {totalWeight}% {totalWeight === 100 ? "✓" : "(100% 권장)"}
+              현재 구성 비중 합계: {totalWeight}%{" "}
+              {totalWeight === 100 ? "✓" : "(100% 권장)"}
             </div>
 
             <div className="flex justify-end">
@@ -187,4 +238,3 @@ function RebalancingBotPage() {
     </div>
   )
 }
-

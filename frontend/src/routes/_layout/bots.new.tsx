@@ -1,5 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, ChartColumnIncreasing, Gauge, Scale, Snowflake, Target } from "lucide-react"
+import {
+  ArrowLeft,
+  ChartColumnIncreasing,
+  Gauge,
+  Scale,
+  Snowflake,
+  Target,
+} from "lucide-react"
 
 import AddBot from "@/components/Bots/AddBot"
 import { Button } from "@/components/ui/button"
@@ -64,7 +71,9 @@ function BotsNewPage() {
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">어떤 봇을 만들까요?</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          어떤 봇을 만들까요?
+        </h1>
         <p className="text-muted-foreground">
           전략 유형을 확인한 뒤 우측 상단 버튼으로 새 봇을 생성하세요.
         </p>

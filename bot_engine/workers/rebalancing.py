@@ -44,7 +44,7 @@ def run_rebalancing(self, *, bot_id: str) -> None:
     """Rebalancing 봇 실행 Task."""
 
     async def _run() -> None:
-        from sqlmodel import Session, create_engine, select
+        from sqlmodel import select
 
         from app.core.config import settings
         from app.exchange_adapters.base import OrderRequest
@@ -60,8 +60,7 @@ def run_rebalancing(self, *, bot_id: str) -> None:
         from bot_engine.utils.decimal_utils import apply_lot_size, to_decimal
 
         # ── DB에서 봇/계좌 정보 로드 ────────────────────────────────────────
-        engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
-        with Session(engine) as session:
+        with _get_db_session() as session:
             bot = session.exec(
                 select(Bot).where(Bot.id == uuid.UUID(bot_id))
             ).first()
@@ -146,7 +145,7 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                             continue
                         try:
                             ticker = await adapter.get_ticker(f"{asset}/{quote}")
-                            prices[asset] = ticker.last
+                            prices[asset] = ticker.price
                         except Exception as exc:
                             logger.warning(
                                 "Failed to get ticker for %s/%s: %s", asset, quote, exc
@@ -224,13 +223,13 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                                         symbol=f"{rb_order.asset}/{quote}",
                                         side=rb_order.side,
                                         order_type="market",
-                                        quantity=qty,
+                                        qty=qty,
                                     )
                                 )
                                 logger.info(
                                     "Rebalance order: %s %s %s @ %s order_id=%s",
                                     rb_order.side, qty, rb_order.asset,
-                                    price, order.order_id,
+                                    price, order.exchange_order_id,
                                 )
                                 _create_bot_log(
                                     bot_id=bot_id,
@@ -242,7 +241,7 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                                         "side": rb_order.side,
                                         "qty": str(qty),
                                         "price": str(price),
-                                        "order_id": order.order_id,
+                                        "order_id": order.exchange_order_id,
                                     },
                                 )
                             except Exception as exc:

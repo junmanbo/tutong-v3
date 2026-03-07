@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router"
 import { useMutation, useQuery } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
 import { Bell, MessageCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -86,7 +86,9 @@ function NotificationsSettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Notification Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Notification Settings
+        </h1>
         <p className="text-muted-foreground">
           Configure event subscriptions for email and Telegram alerts.
         </p>
@@ -165,7 +167,10 @@ function NotificationsSettingsPage() {
               id="account-error"
               checked={events.accountError}
               onCheckedChange={(checked) =>
-                setEvents((prev) => ({ ...prev, accountError: checked === true }))
+                setEvents((prev) => ({
+                  ...prev,
+                  accountError: checked === true,
+                }))
               }
             />
           </div>
@@ -185,7 +190,9 @@ function NotificationsSettingsPage() {
             <Checkbox
               id="telegram-enabled"
               checked={telegramEnabled}
-              onCheckedChange={(checked) => setTelegramEnabled(checked === true)}
+              onCheckedChange={(checked) =>
+                setTelegramEnabled(checked === true)
+              }
             />
           </div>
           <Label htmlFor="telegram-chat-id">Telegram Chat ID</Label>

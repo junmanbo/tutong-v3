@@ -238,6 +238,10 @@ class Bot(BotBase, table=True):
     user_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE")
     account_id: uuid.UUID = Field(foreign_key="exchangeaccount.id", ondelete="RESTRICT")
     status: BotStatusEnum = Field(default=BotStatusEnum.stopped)
+    config: dict = Field(
+        default={},
+        sa_column=Column(JSONB, nullable=False, server_default="{}"),
+    )
     total_pnl: Decimal = Field(
         default=Decimal("0"),
         sa_type=Numeric(precision=36, scale=18),
@@ -270,6 +274,7 @@ class Bot(BotBase, table=True):
 
 class BotCreate(BotBase):
     account_id: uuid.UUID
+    config: dict = Field(default={})
 
 
 class BotUpdate(SQLModel):
@@ -282,6 +287,7 @@ class BotPublic(BotBase):
     id: uuid.UUID
     account_id: uuid.UUID
     status: BotStatusEnum
+    config: dict
     total_pnl: Decimal
     total_pnl_pct: Decimal
     created_at: datetime
@@ -461,3 +467,8 @@ class NotificationPublic(NotificationBase):
     sent_at: datetime | None
     failed_at: datetime | None
     created_at: datetime
+
+
+class NotificationsPublic(SQLModel):
+    data: list[NotificationPublic]
+    count: int

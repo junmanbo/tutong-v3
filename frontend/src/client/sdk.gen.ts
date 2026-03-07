@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { AccountsReadAccountsData, AccountsReadAccountsResponse, AccountsCreateAccountData, AccountsCreateAccountResponse, AccountsReadAccountData, AccountsReadAccountResponse, AccountsUpdateAccountData, AccountsUpdateAccountResponse, AccountsDeleteAccountData, AccountsDeleteAccountResponse, AccountsGetAccountBalanceData, AccountsGetAccountBalanceResponse, BotsReadBotsData, BotsReadBotsResponse, BotsCreateBotData, BotsCreateBotResponse, BotsReadBotData, BotsReadBotResponse, BotsUpdateBotData, BotsUpdateBotResponse, BotsDeleteBotData, BotsDeleteBotResponse, BotsReadBotLogsData, BotsReadBotLogsResponse, BotsStartBotData, BotsStartBotResponse, BotsStopBotData, BotsStopBotResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, NotificationsReadNotificationSettingsResponse, NotificationsUpdateNotificationSettingsData, NotificationsUpdateNotificationSettingsResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { AccountsReadAccountsData, AccountsReadAccountsResponse, AccountsCreateAccountData, AccountsCreateAccountResponse, AccountsReadAccountData, AccountsReadAccountResponse, AccountsUpdateAccountData, AccountsUpdateAccountResponse, AccountsDeleteAccountData, AccountsDeleteAccountResponse, AccountsGetAccountBalanceData, AccountsGetAccountBalanceResponse, AdminAdminListUsersData, AdminAdminListUsersResponse, AdminAdminGetUserData, AdminAdminGetUserResponse, AdminAdminDeactivateUserData, AdminAdminDeactivateUserResponse, AdminAdminActivateUserData, AdminAdminActivateUserResponse, AdminAdminListBotsData, AdminAdminListBotsResponse, BotsReadBotsData, BotsReadBotsResponse, BotsCreateBotData, BotsCreateBotResponse, BotsReadBotData, BotsReadBotResponse, BotsUpdateBotData, BotsUpdateBotResponse, BotsDeleteBotData, BotsDeleteBotResponse, BotsReadBotLogsData, BotsReadBotLogsResponse, BotsStartBotData, BotsStartBotResponse, BotsStopBotData, BotsStopBotResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, NotificationsReadNotificationsData, NotificationsReadNotificationsResponse, NotificationsMarkNotificationAsReadData, NotificationsMarkNotificationAsReadResponse, NotificationsMarkAllNotificationsReadResponse, NotificationsReadNotificationSettingsResponse, NotificationsUpdateNotificationSettingsData, NotificationsUpdateNotificationSettingsResponse, PrivateCreateUserData, PrivateCreateUserResponse, SubscriptionsListPlansResponse, SubscriptionsGetPlanData, SubscriptionsGetPlanResponse, SubscriptionsGetMySubscriptionResponse, SubscriptionsCancelMySubscriptionResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class AccountsService {
     /**
@@ -32,6 +32,9 @@ export class AccountsService {
     /**
      * Create Account
      * 거래소 계좌 등록. API Key/Secret은 AES-256-GCM으로 암호화 후 저장.
+     *
+     * 등록 시 거래소 API로 잔고 조회를 시도하여 Key 유효성을 검증합니다.
+     * 유효하지 않으면 400 반환 (저장하지 않음).
      * @param data The data for the request.
      * @param data.requestBody
      * @returns ExchangeAccountPublic Successful Response
@@ -132,6 +135,117 @@ export class AccountsService {
             url: '/api/v1/accounts/{id}/balance',
             path: {
                 id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class AdminService {
+    /**
+     * Admin List Users
+     * 전체 사용자 목록 조회.
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns UsersPublic Successful Response
+     * @throws ApiError
+     */
+    public static adminListUsers(data: AdminAdminListUsersData = {}): CancelablePromise<AdminAdminListUsersResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/admin/users',
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Admin Get User
+     * 사용자 상세 조회.
+     * @param data The data for the request.
+     * @param data.userId
+     * @returns UserPublic Successful Response
+     * @throws ApiError
+     */
+    public static adminGetUser(data: AdminAdminGetUserData): CancelablePromise<AdminAdminGetUserResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/admin/users/{user_id}',
+            path: {
+                user_id: data.userId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Admin Deactivate User
+     * 사용자 계정 정지.
+     * @param data The data for the request.
+     * @param data.userId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static adminDeactivateUser(data: AdminAdminDeactivateUserData): CancelablePromise<AdminAdminDeactivateUserResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/admin/users/{user_id}/deactivate',
+            path: {
+                user_id: data.userId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Admin Activate User
+     * 사용자 계정 정지 해제.
+     * @param data The data for the request.
+     * @param data.userId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static adminActivateUser(data: AdminAdminActivateUserData): CancelablePromise<AdminAdminActivateUserResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/admin/users/{user_id}/activate',
+            path: {
+                user_id: data.userId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Admin List Bots
+     * 전체 봇 운영 현황 조회.
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns BotsPublic Successful Response
+     * @throws ApiError
+     */
+    public static adminListBots(data: AdminAdminListBotsData = {}): CancelablePromise<AdminAdminListBotsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/admin/bots',
+            query: {
+                skip: data.skip,
+                limit: data.limit
             },
             errors: {
                 422: 'Validation Error'
@@ -419,6 +533,65 @@ export class LoginService {
 
 export class NotificationsService {
     /**
+     * Read Notifications
+     * 사용자 알림 목록 조회 (최신순).
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @param data.unreadOnly
+     * @returns NotificationsPublic Successful Response
+     * @throws ApiError
+     */
+    public static readNotifications(data: NotificationsReadNotificationsData = {}): CancelablePromise<NotificationsReadNotificationsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/notifications/',
+            query: {
+                skip: data.skip,
+                limit: data.limit,
+                unread_only: data.unreadOnly
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Mark Notification As Read
+     * 알림 읽음 처리.
+     * @param data The data for the request.
+     * @param data.id
+     * @returns NotificationPublic Successful Response
+     * @throws ApiError
+     */
+    public static markNotificationAsRead(data: NotificationsMarkNotificationAsReadData): CancelablePromise<NotificationsMarkNotificationAsReadResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/notifications/{id}/read',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Mark All Notifications Read
+     * 모든 알림 읽음 처리.
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static markAllNotificationsRead(): CancelablePromise<NotificationsMarkAllNotificationsReadResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/notifications/read-all'
+        });
+    }
+    
+    /**
      * Read Notification Settings
      * @returns NotificationSettingsPublic Successful Response
      * @throws ApiError
@@ -468,6 +641,68 @@ export class PrivateService {
             errors: {
                 422: 'Validation Error'
             }
+        });
+    }
+}
+
+export class SubscriptionsService {
+    /**
+     * List Plans
+     * 활성 구독 플랜 목록 조회.
+     * @returns SubscriptionPlanPublic Successful Response
+     * @throws ApiError
+     */
+    public static listPlans(): CancelablePromise<SubscriptionsListPlansResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/subscriptions/plans'
+        });
+    }
+    
+    /**
+     * Get Plan
+     * 구독 플랜 상세 조회 (id 또는 name).
+     * @param data The data for the request.
+     * @param data.planId
+     * @returns SubscriptionPlanPublic Successful Response
+     * @throws ApiError
+     */
+    public static getPlan(data: SubscriptionsGetPlanData): CancelablePromise<SubscriptionsGetPlanResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/subscriptions/plans/{plan_id}',
+            path: {
+                plan_id: data.planId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get My Subscription
+     * 현재 사용자의 구독 정보 조회.
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getMySubscription(): CancelablePromise<SubscriptionsGetMySubscriptionResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/subscriptions/me'
+        });
+    }
+    
+    /**
+     * Cancel My Subscription
+     * 구독 취소 요청. (실제 PG 연동 전 상태 변경만 수행)
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static cancelMySubscription(): CancelablePromise<SubscriptionsCancelMySubscriptionResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/subscriptions/me/cancel'
         });
     }
 }

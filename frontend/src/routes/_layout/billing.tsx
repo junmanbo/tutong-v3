@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { CreditCard, ReceiptText } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"

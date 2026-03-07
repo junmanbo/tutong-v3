@@ -56,6 +56,17 @@ function DcaBotPage() {
           symbol: symbol.trim().toUpperCase(),
           investment_amount: buyAmount.trim(),
           take_profit_pct: takeProfitPct.trim() || undefined,
+          config: {
+            amount_per_order: buyAmount.trim(),
+            interval_seconds:
+              frequency === "daily"
+                ? 86400
+                : frequency === "weekly"
+                  ? 604800
+                  : 2592000,
+            order_type: "market",
+            total_orders: runMode === "count" ? Number(cycles) : undefined,
+          },
         },
       }),
     onSuccess: () => {
@@ -82,7 +93,11 @@ function DcaBotPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Button variant="outline" size="sm" onClick={() => navigate({ to: "/bots/new" })}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => navigate({ to: "/bots/new" })}
+      >
         <ArrowLeft className="mr-2 size-4" />
         Back
       </Button>
@@ -111,22 +126,35 @@ function DcaBotPage() {
               </div>
               <div className="space-y-2">
                 <Label>Bot Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="BTC DCA Bot" />
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="BTC DCA Bot"
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>Trading Pair *</Label>
-                <Input value={symbol} onChange={(e) => setSymbol(e.target.value)} />
+                <Input
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Buy Amount per Cycle *</Label>
-                <Input value={buyAmount} onChange={(e) => setBuyAmount(e.target.value)} />
+                <Input
+                  value={buyAmount}
+                  onChange={(e) => setBuyAmount(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Take Profit %</Label>
-                <Input value={takeProfitPct} onChange={(e) => setTakeProfitPct(e.target.value)} />
+                <Input
+                  value={takeProfitPct}
+                  onChange={(e) => setTakeProfitPct(e.target.value)}
+                />
               </div>
             </div>
 
@@ -146,7 +174,11 @@ function DcaBotPage() {
               </div>
               <div className="space-y-2">
                 <Label>Buy Time</Label>
-                <Input type="time" value={buyTime} onChange={(e) => setBuyTime(e.target.value)} />
+                <Input
+                  type="time"
+                  value={buyTime}
+                  onChange={(e) => setBuyTime(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Run Mode</Label>
@@ -165,17 +197,25 @@ function DcaBotPage() {
             {runMode === "count" ? (
               <div className="space-y-2">
                 <Label>Cycles</Label>
-                <Input value={cycles} onChange={(e) => setCycles(e.target.value)} />
+                <Input
+                  value={cycles}
+                  onChange={(e) => setCycles(e.target.value)}
+                />
               </div>
             ) : (
               <div className="space-y-2">
                 <Label>End Date</Label>
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
               </div>
             )}
 
             <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-              계획 투자금(대략): {Number.isFinite(totalPlanned) ? totalPlanned.toFixed(2) : "0"}
+              계획 투자금(대략):{" "}
+              {Number.isFinite(totalPlanned) ? totalPlanned.toFixed(2) : "0"}
             </div>
 
             <div className="flex justify-end">
@@ -189,4 +229,3 @@ function DcaBotPage() {
     </div>
   )
 }
-

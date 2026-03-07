@@ -62,10 +62,43 @@ def create_account(
     current_user: CurrentUser,
     account_in: ExchangeAccountCreate,
 ) -> Any:
-    """거래소 계좌 등록. API Key/Secret은 AES-256-GCM으로 암호화 후 저장."""
-    return crud.create_exchange_account(
+    """거래소 계좌 등록. API Key/Secret은 AES-256-GCM으로 암호화 후 저장.
+
+    등록 시 거래소 API로 잔고 조회를 시도하여 Key 유효성을 검증합니다.
+    유효하지 않으면 400 반환 (저장하지 않음).
+    """
+    # API Key 유효성 검증 (등록 전)
+    adapter = get_adapter(
+        exchange=account_in.exchange,
+        api_key=account_in.api_key,
+        api_secret=account_in.api_secret,
+        extra_params=account_in.extra_params,
+    )
+    loop = asyncio.new_event_loop()
+    try:
+        is_valid = loop.run_until_complete(adapter.validate_credentials())
+    except Exception:
+        is_valid = False
+    finally:
+        loop.close()
+
+    if not is_valid:
+        raise HTTPException(
+            status_code=400,
+            detail="API Key validation failed. Please check your API Key and Secret.",
+        )
+
+    account = crud.create_exchange_account(
         session=session, account_in=account_in, owner_id=current_user.id
     )
+    # is_valid 및 last_verified_at 업데이트
+    from datetime import datetime, timezone
+    account.is_valid = True
+    account.last_verified_at = datetime.now(timezone.utc)
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return account
 
 
 @router.patch("/{id}", response_model=ExchangeAccountPublic)

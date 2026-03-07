@@ -1,4 +1,4 @@
-import { Link as RouterLink, createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link as RouterLink } from "@tanstack/react-router"
 import { Bell, ShieldCheck, User } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -36,7 +36,10 @@ function SettingsHub() {
             <p className="text-sm text-muted-foreground mb-3">
               Update your name and email address.
             </p>
-            <RouterLink to="/settings/profile" className="text-sm text-primary hover:underline">
+            <RouterLink
+              to="/settings/profile"
+              className="text-sm text-primary hover:underline"
+            >
               Go to Profile
             </RouterLink>
           </CardContent>
@@ -53,7 +56,10 @@ function SettingsHub() {
             <p className="text-sm text-muted-foreground mb-3">
               Change password and manage account safety.
             </p>
-            <RouterLink to="/settings/security" className="text-sm text-primary hover:underline">
+            <RouterLink
+              to="/settings/security"
+              className="text-sm text-primary hover:underline"
+            >
               Go to Security
             </RouterLink>
           </CardContent>
@@ -70,7 +76,10 @@ function SettingsHub() {
             <p className="text-sm text-muted-foreground mb-3">
               Configure event alerts for email and Telegram.
             </p>
-            <RouterLink to="/settings/notifications" className="text-sm text-primary hover:underline">
+            <RouterLink
+              to="/settings/notifications"
+              className="text-sm text-primary hover:underline"
+            >
               Go to Notifications
             </RouterLink>
           </CardContent>

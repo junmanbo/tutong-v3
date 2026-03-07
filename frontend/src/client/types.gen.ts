@@ -25,6 +25,9 @@ export type BotCreate = {
     stop_loss_pct?: (number | string | null);
     take_profit_pct?: (number | string | null);
     account_id: string;
+    config?: {
+        [key: string]: unknown;
+    };
 };
 
 export type BotLogPublic = {
@@ -56,6 +59,9 @@ export type BotPublic = {
     id: string;
     account_id: string;
     status: BotStatusEnum;
+    config: {
+        [key: string]: unknown;
+    };
     total_pnl: string;
     total_pnl_pct: string;
     created_at: string;
@@ -121,6 +127,30 @@ export type NewPassword = {
     new_password: string;
 };
 
+export type NotificationChannelEnum = 'email' | 'telegram' | 'web_push';
+
+export type NotificationDeliveryStatusEnum = 'pending' | 'sent' | 'failed';
+
+export type NotificationPublic = {
+    channel?: NotificationChannelEnum;
+    event_type: string;
+    title: string;
+    body: string;
+    is_read?: boolean;
+    payload?: {
+        [key: string]: unknown;
+    };
+    id: string;
+    user_id: string;
+    bot_id: (string | null);
+    delivery_status: NotificationDeliveryStatusEnum;
+    attempt_count: number;
+    last_error: (string | null);
+    sent_at: (string | null);
+    failed_at: (string | null);
+    created_at: string;
+};
+
 export type NotificationSettingsPublic = {
     email_enabled?: boolean;
     telegram_enabled?: boolean;
@@ -147,12 +177,46 @@ export type NotificationSettingsUpdate = {
     notify_account_error?: (boolean | null);
 };
 
+export type NotificationsPublic = {
+    data: Array<NotificationPublic>;
+    count: number;
+};
+
 export type PrivateUserCreate = {
     email: string;
     password: string;
     full_name: string;
     is_verified?: boolean;
 };
+
+export type SubscriptionPlanPublic = {
+    id: string;
+    name: string;
+    display_name: string;
+    price_krw: number;
+    max_bots: number;
+    max_accounts: number;
+    features: {
+        [key: string]: unknown;
+    };
+    is_active: boolean;
+    created_at: string;
+};
+
+export type SubscriptionPublic = {
+    id: string;
+    user_id: string;
+    plan_id: string;
+    status: SubscriptionStatusEnum;
+    pg_subscription_id: (string | null);
+    started_at: string;
+    expires_at: (string | null);
+    cancelled_at: (string | null);
+    created_at: string;
+    updated_at: string;
+};
+
+export type SubscriptionStatusEnum = 'active' | 'cancelled' | 'expired' | 'past_due';
 
 export type Token = {
     access_token: string;
@@ -253,6 +317,38 @@ export type AccountsGetAccountBalanceData = {
 
 export type AccountsGetAccountBalanceResponse = (Array<BalanceItem>);
 
+export type AdminAdminListUsersData = {
+    limit?: number;
+    skip?: number;
+};
+
+export type AdminAdminListUsersResponse = (UsersPublic);
+
+export type AdminAdminGetUserData = {
+    userId: string;
+};
+
+export type AdminAdminGetUserResponse = (UserPublic);
+
+export type AdminAdminDeactivateUserData = {
+    userId: string;
+};
+
+export type AdminAdminDeactivateUserResponse = (Message);
+
+export type AdminAdminActivateUserData = {
+    userId: string;
+};
+
+export type AdminAdminActivateUserResponse = (Message);
+
+export type AdminAdminListBotsData = {
+    limit?: number;
+    skip?: number;
+};
+
+export type AdminAdminListBotsResponse = (BotsPublic);
+
 export type BotsReadBotsData = {
     limit?: number;
     skip?: number;
@@ -331,6 +427,22 @@ export type LoginRecoverPasswordHtmlContentData = {
 
 export type LoginRecoverPasswordHtmlContentResponse = (string);
 
+export type NotificationsReadNotificationsData = {
+    limit?: number;
+    skip?: number;
+    unreadOnly?: boolean;
+};
+
+export type NotificationsReadNotificationsResponse = (NotificationsPublic);
+
+export type NotificationsMarkNotificationAsReadData = {
+    id: string;
+};
+
+export type NotificationsMarkNotificationAsReadResponse = (NotificationPublic);
+
+export type NotificationsMarkAllNotificationsReadResponse = (Message);
+
 export type NotificationsReadNotificationSettingsResponse = (NotificationSettingsPublic);
 
 export type NotificationsUpdateNotificationSettingsData = {
@@ -344,6 +456,18 @@ export type PrivateCreateUserData = {
 };
 
 export type PrivateCreateUserResponse = (UserPublic);
+
+export type SubscriptionsListPlansResponse = (Array<SubscriptionPlanPublic>);
+
+export type SubscriptionsGetPlanData = {
+    planId: string;
+};
+
+export type SubscriptionsGetPlanResponse = (SubscriptionPlanPublic);
+
+export type SubscriptionsGetMySubscriptionResponse = ((SubscriptionPublic | null));
+
+export type SubscriptionsCancelMySubscriptionResponse = (Message);
 
 export type UsersReadUsersData = {
     limit?: number;

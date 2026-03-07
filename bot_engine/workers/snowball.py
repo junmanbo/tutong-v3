@@ -44,7 +44,7 @@ def run_snowball(self, *, bot_id: str) -> None:
     """Position Snowball 봇 실행 Task."""
 
     async def _run() -> None:
-        from sqlmodel import Session, create_engine, select
+        from sqlmodel import select
 
         from app.core.config import settings
         from app.exchange_adapters.base import OrderRequest
@@ -62,8 +62,7 @@ def run_snowball(self, *, bot_id: str) -> None:
         from bot_engine.utils.crypto import decrypt
 
         # ── DB에서 봇/계좌 정보 로드 ────────────────────────────────────────
-        engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
-        with Session(engine) as session:
+        with _get_db_session() as session:
             bot = session.exec(
                 select(Bot).where(Bot.id == uuid.UUID(bot_id))
             ).first()
@@ -135,20 +134,20 @@ def run_snowball(self, *, bot_id: str) -> None:
             # 포지션이 없으면 초기 매수
             if not buys:
                 ticker = await adapter.get_ticker(symbol)
-                price = ticker.last
+                price = ticker.price
                 qty = calc_buy_qty(config.amount_per_buy, price, config.step_size)
                 if qty > Decimal("0"):
                     order = await adapter.place_order(
                         OrderRequest(
                             symbol=symbol, side="buy",
-                            order_type="market", quantity=qty,
+                            order_type="market", qty=qty,
                         )
                     )
                     buys.append(BuyRecord(price=price, qty=qty))
                     save_state()
                     logger.info(
                         "Snowball initial buy: price=%s qty=%s order_id=%s",
-                        price, qty, order.order_id,
+                        price, qty, order.exchange_order_id,
                     )
                     _create_bot_log(
                         bot_id=bot_id,
@@ -156,7 +155,7 @@ def run_snowball(self, *, bot_id: str) -> None:
                         level="info",
                         message="Snowball initial buy order placed",
                         payload={
-                            "order_id": order.order_id,
+                            "order_id": order.exchange_order_id,
                             "price": str(price),
                             "qty": str(qty),
                         },
@@ -188,7 +187,7 @@ def run_snowball(self, *, bot_id: str) -> None:
                                     symbol=symbol,
                                     side="sell",
                                     order_type="market",
-                                    quantity=total_qty,
+                                    qty=total_qty,
                                 )
                             )
                             logger.info(
@@ -197,7 +196,7 @@ def run_snowball(self, *, bot_id: str) -> None:
                                 current_price,
                                 avg_price,
                                 total_qty,
-                                order.order_id,
+                                order.exchange_order_id,
                             )
                             _create_bot_log(
                                 bot_id=bot_id,
@@ -206,7 +205,7 @@ def run_snowball(self, *, bot_id: str) -> None:
                                 message="Snowball risk-exit sell order placed",
                                 payload={
                                     "status": status,
-                                    "order_id": order.order_id,
+                                    "order_id": order.exchange_order_id,
                                     "qty": str(total_qty),
                                 },
                             )
@@ -232,12 +231,12 @@ def run_snowball(self, *, bot_id: str) -> None:
                         order = await adapter.place_order(
                             OrderRequest(
                                 symbol=symbol, side="sell",
-                                order_type="market", quantity=total_qty,
+                                order_type="market", qty=total_qty,
                             )
                         )
                         logger.info(
                             "Snowball take profit: price=%s avg=%s qty=%s order_id=%s",
-                            current_price, avg_price, total_qty, order.order_id,
+                            current_price, avg_price, total_qty, order.exchange_order_id,
                         )
                         _create_bot_log(
                             bot_id=bot_id,
@@ -245,7 +244,7 @@ def run_snowball(self, *, bot_id: str) -> None:
                             level="info",
                             message="Snowball take-profit sell order placed",
                             payload={
-                                "order_id": order.order_id,
+                                "order_id": order.exchange_order_id,
                                 "qty": str(total_qty),
                                 "price": str(current_price),
                             },
@@ -274,14 +273,14 @@ def run_snowball(self, *, bot_id: str) -> None:
                             order = await adapter.place_order(
                                 OrderRequest(
                                     symbol=symbol, side="buy",
-                                    order_type="market", quantity=qty,
+                                    order_type="market", qty=qty,
                                 )
                             )
                             buys.append(BuyRecord(price=current_price, qty=qty))
                             save_state()
                             logger.info(
                                 "Snowball add buy #%d: price=%s qty=%s order_id=%s",
-                                len(buys), current_price, qty, order.order_id,
+                                len(buys), current_price, qty, order.exchange_order_id,
                             )
                             _create_bot_log(
                                 bot_id=bot_id,
@@ -290,7 +289,7 @@ def run_snowball(self, *, bot_id: str) -> None:
                                 message="Snowball additional buy order placed",
                                 payload={
                                     "buy_count": len(buys),
-                                    "order_id": order.order_id,
+                                    "order_id": order.exchange_order_id,
                                     "qty": str(qty),
                                     "price": str(current_price),
                                 },

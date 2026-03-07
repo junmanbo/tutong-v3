@@ -48,7 +48,7 @@ def run_spot_grid(self, *, bot_id: str) -> None:
     """Spot Grid 봇 실행 Task."""
 
     async def _run() -> None:
-        from sqlmodel import Session, create_engine, select
+        from sqlmodel import select
 
         from app.core.config import settings
         from app.exchange_adapters.base import OrderRequest
@@ -65,8 +65,7 @@ def run_spot_grid(self, *, bot_id: str) -> None:
         from bot_engine.utils.decimal_utils import to_decimal
 
         # ── DB에서 봇/계좌 정보 로드 ────────────────────────────────────────
-        engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
-        with Session(engine) as session:
+        with _get_db_session() as session:
             bot = session.exec(
                 select(Bot).where(Bot.id == uuid.UUID(bot_id))
             ).first()
@@ -149,7 +148,7 @@ def run_spot_grid(self, *, bot_id: str) -> None:
             # 신규 시작: 그리드 초기화 및 초기 매수 주문 배치
             levels = build_grid(config)
             ticker = await adapter.get_ticker(symbol)
-            current_price = ticker.last
+            current_price = ticker.price
             if initial_price is None and current_price > Decimal("0"):
                 initial_price = current_price
                 r.set(risk_key, json.dumps({"initial_price": str(initial_price)}))
@@ -162,14 +161,14 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                 symbol=symbol,
                                 side="buy",
                                 order_type="limit",
-                                quantity=level.qty,
+                                qty=level.qty,
                                 price=level.price,
                             )
                         )
-                        level.order_id = order.order_id
+                        level.order_id = order.exchange_order_id
                         logger.debug(
                             "Grid buy order placed: price=%s qty=%s order_id=%s",
-                            level.price, level.qty, order.order_id,
+                            level.price, level.qty, order.exchange_order_id,
                         )
                         _create_bot_log(
                             bot_id=bot_id,
@@ -180,7 +179,7 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                 "side": "buy",
                                 "price": str(level.price),
                                 "qty": str(level.qty),
-                                "order_id": order.order_id,
+                                "order_id": order.exchange_order_id,
                             },
                         )
                     except Exception as exc:
@@ -222,7 +221,7 @@ def run_spot_grid(self, *, bot_id: str) -> None:
 
                 try:
                     ticker = await adapter.get_ticker(symbol)
-                    current_price = ticker.last
+                    current_price = ticker.price
                     if initial_price is None and current_price > Decimal("0"):
                         initial_price = current_price
                         r.set(risk_key, json.dumps({"initial_price": str(initial_price)}))
@@ -277,11 +276,11 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                                 symbol=symbol,
                                                 side="sell",
                                                 order_type="limit",
-                                                quantity=new_level.qty,
+                                                qty=new_level.qty,
                                                 price=new_level.price,
                                             )
                                         )
-                                        new_level.order_id = order.order_id
+                                        new_level.order_id = order.exchange_order_id
                                         _create_bot_log(
                                             bot_id=bot_id,
                                             event_type="counter_order_placed",
@@ -291,7 +290,7 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                                 "side": "sell",
                                                 "price": str(new_level.price),
                                                 "qty": str(new_level.qty),
-                                                "order_id": order.order_id,
+                                                "order_id": order.exchange_order_id,
                                             },
                                         )
                                     except Exception as exc:
@@ -315,11 +314,11 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                                 symbol=symbol,
                                                 side="buy",
                                                 order_type="limit",
-                                                quantity=new_level.qty,
+                                                qty=new_level.qty,
                                                 price=new_level.price,
                                             )
                                         )
-                                        new_level.order_id = order.order_id
+                                        new_level.order_id = order.exchange_order_id
                                         _create_bot_log(
                                             bot_id=bot_id,
                                             event_type="counter_order_placed",
@@ -329,7 +328,7 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                                 "side": "buy",
                                                 "price": str(new_level.price),
                                                 "qty": str(new_level.qty),
-                                                "order_id": order.order_id,
+                                                "order_id": order.exchange_order_id,
                                             },
                                         )
                                     except Exception as exc:

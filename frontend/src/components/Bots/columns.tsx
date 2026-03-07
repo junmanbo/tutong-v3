@@ -1,5 +1,5 @@
-import type { ColumnDef } from "@tanstack/react-table"
 import { Link } from "@tanstack/react-router"
+import type { ColumnDef } from "@tanstack/react-table"
 
 import type { BotPublic, BotStatusEnum } from "@/client"
 import { Badge } from "@/components/ui/badge"
