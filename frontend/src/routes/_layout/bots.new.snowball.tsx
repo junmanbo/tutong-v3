@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
-import { type FormEvent, useState } from "react"
+import { type FormEvent, useMemo, useState } from "react"
 
 import { AccountsService, BotsService } from "@/client"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,7 @@ import { handleError } from "@/utils"
 export const Route = createFileRoute("/_layout/bots/new/snowball")({
   component: SnowballBotPage,
   head: () => ({
-    meta: [{ title: "Create Snowball Bot - AutoTrade" }],
+    meta: [{ title: "Position Snowball 봇 생성 - AutoTrade" }],
   }),
 })
 
@@ -38,12 +38,11 @@ function SnowballBotPage() {
   const [accountId, setAccountId] = useState("")
   const [name, setName] = useState("")
   const [symbol, setSymbol] = useState("BTC/KRW")
-  const [initialBuyAmount, setInitialBuyAmount] = useState("100")
+  const [initialBuyAmount, setInitialBuyAmount] = useState("100000")
   const [dropTriggerPct, setDropTriggerPct] = useState("5")
   const [multiplier, setMultiplier] = useState("2.0")
   const [maxAdds, setMaxAdds] = useState("5")
   const [takeProfitPct, setTakeProfitPct] = useState("5")
-  const [stopLossPct, setStopLossPct] = useState("")
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -54,7 +53,6 @@ function SnowballBotPage() {
           account_id: accountId,
           symbol: symbol.trim().toUpperCase(),
           investment_amount: initialBuyAmount.trim(),
-          stop_loss_pct: stopLossPct.trim() || undefined,
           take_profit_pct: takeProfitPct.trim() || undefined,
           config: {
             drop_pct: dropTriggerPct.trim(),
@@ -66,7 +64,7 @@ function SnowballBotPage() {
         },
       }),
     onSuccess: () => {
-      showSuccessToast("Snowball bot created")
+      showSuccessToast("Position Snowball 봇이 생성되었습니다")
       queryClient.invalidateQueries({ queryKey: ["bots"] })
       navigate({ to: "/bots" })
     },
@@ -75,18 +73,33 @@ function SnowballBotPage() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    if (!accountId || !symbol.trim() || !initialBuyAmount.trim()) {
-      showErrorToast("Account, symbol, and initial buy amount are required.")
+    const amount = Number(initialBuyAmount)
+    const drop = Number(dropTriggerPct)
+    const mult = Number(multiplier)
+    const max = Number(maxAdds)
+    const tp = Number(takeProfitPct)
+
+    if (!accountId || !symbol.trim()) {
+      showErrorToast("계좌와 거래 자산을 입력해주세요.")
+      return
+    }
+    if (![amount, drop, mult, max, tp].every((v) => Number.isFinite(v) && v > 0)) {
+      showErrorToast("금액/비율/횟수는 0보다 큰 숫자여야 합니다.")
       return
     }
     mutation.mutate()
   }
 
-  const estimatedMaxCapital =
-    Number(initialBuyAmount) *
-    (Number.isFinite(Number(multiplier))
-      ? Number(multiplier) ** Number(maxAdds)
-      : 0)
+  const estimatedMaxCapital = useMemo(() => {
+    const amount = Number(initialBuyAmount)
+    const mult = Number(multiplier)
+    const adds = Number(maxAdds)
+    if (!Number.isFinite(amount) || !Number.isFinite(mult) || !Number.isFinite(adds)) {
+      return 0
+    }
+    if (mult === 1) return amount * (adds + 1)
+    return amount * ((mult ** (adds + 1) - 1) / (mult - 1))
+  }, [initialBuyAmount, multiplier, maxAdds])
 
   return (
     <div className="flex flex-col gap-6">
@@ -96,21 +109,21 @@ function SnowballBotPage() {
         onClick={() => navigate({ to: "/bots/new" })}
       >
         <ArrowLeft className="mr-2 size-4" />
-        Back
+        이전
       </Button>
 
       <Card>
         <CardHeader>
-          <CardTitle>Position Snowball Bot 만들기</CardTitle>
+          <CardTitle>Position Snowball 봇 만들기</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Exchange Account *</Label>
+                <Label>거래소 계좌 *</Label>
                 <Select value={accountId} onValueChange={setAccountId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select account" />
+                    <SelectValue placeholder="계좌 선택" />
                   </SelectTrigger>
                   <SelectContent>
                     {accounts?.data.map((acc) => (
@@ -122,57 +135,59 @@ function SnowballBotPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Bot Name</Label>
+                <Label>봇 이름 (선택)</Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="BTC Snowball Bot"
+                  placeholder="예) BTC Snowball Bot"
                 />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Trading Pair *</Label>
+                <Label>거래 자산 *</Label>
                 <Input
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
-                  placeholder="BTC/KRW"
+                  placeholder="예) BTC/KRW"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Initial Buy Amount (KRW) *</Label>
+                <Label>초기 매수 금액 (KRW) *</Label>
                 <Input
                   value={initialBuyAmount}
                   onChange={(e) => setInitialBuyAmount(e.target.value)}
+                  inputMode="numeric"
                 />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
               <div className="space-y-2">
-                <Label>Drop Trigger %</Label>
+                <Label>추가 매수 트리거(하락 %)</Label>
                 <Input
                   value={dropTriggerPct}
                   onChange={(e) => setDropTriggerPct(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Add Multiplier</Label>
+                <Label>추가 매수 배수</Label>
                 <Input
                   value={multiplier}
                   onChange={(e) => setMultiplier(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Max Add Count</Label>
+                <Label>최대 추가 매수 횟수</Label>
                 <Input
                   value={maxAdds}
                   onChange={(e) => setMaxAdds(e.target.value)}
+                  inputMode="numeric"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Take Profit %</Label>
+                <Label>목표 수익률(전량 매도) %</Label>
                 <Input
                   value={takeProfitPct}
                   onChange={(e) => setTakeProfitPct(e.target.value)}
@@ -180,21 +195,8 @@ function SnowballBotPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Stop Loss %</Label>
-              <Input
-                value={stopLossPct}
-                onChange={(e) => setStopLossPct(e.target.value)}
-                placeholder="optional"
-              />
-            </div>
-
             <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-              예상 최대 누적 투자금(대략):{" "}
-              {Number.isFinite(estimatedMaxCapital)
-                ? estimatedMaxCapital.toFixed(2)
-                : "0"}{" "}
-              KRW
+              예상 최대 누적 투자금: {Math.round(estimatedMaxCapital).toLocaleString()} KRW
             </div>
 
             <div className="flex justify-end">

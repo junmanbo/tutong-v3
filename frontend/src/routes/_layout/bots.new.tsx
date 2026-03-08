@@ -8,7 +8,6 @@ import {
   Target,
 } from "lucide-react"
 
-import AddBot from "@/components/Bots/AddBot"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -23,7 +22,7 @@ const botTypes = [
   {
     title: "Position Snowball",
     icon: Snowflake,
-    description: "가격 하락 시 분할 매수로 단가를 조정",
+    description: "가격 하락 시 분할 매수로 단가를 낮추는 전략",
     fit: "적합: 하락 후 반등",
     to: "/bots/new/snowball",
   },
@@ -53,7 +52,7 @@ const botTypes = [
 export const Route = createFileRoute("/_layout/bots/new")({
   component: BotsNewPage,
   head: () => ({
-    meta: [{ title: "Create Bot - AutoTrade" }],
+    meta: [{ title: "봇 생성 - AutoTrade" }],
   }),
 })
 
@@ -64,19 +63,14 @@ function BotsNewPage() {
         <Link to="/bots">
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-2 size-4" />
-            Back to Bots
+            봇 목록으로
           </Button>
         </Link>
-        <AddBot />
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          어떤 봇을 만들까요?
-        </h1>
-        <p className="text-muted-foreground">
-          전략 유형을 확인한 뒤 우측 상단 버튼으로 새 봇을 생성하세요.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">어떤 봇을 만들까요?</h1>
+        <p className="text-muted-foreground">전략 유형을 선택해 생성 화면으로 이동하세요.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

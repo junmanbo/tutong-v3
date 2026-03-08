@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from bot_engine.celery_app import celery_app
@@ -31,6 +32,7 @@ from bot_engine.workers.base import (
 )
 
 logger = logging.getLogger(__name__)
+UTC = timezone.utc
 
 
 @celery_app.task(
@@ -57,7 +59,7 @@ def run_rebalancing(self, *, bot_id: str) -> None:
             needs_rebalance,
         )
         from bot_engine.utils.crypto import decrypt
-        from bot_engine.utils.decimal_utils import apply_lot_size, to_decimal
+        from bot_engine.utils.decimal_utils import apply_lot_size
 
         # ── DB에서 봇/계좌 정보 로드 ────────────────────────────────────────
         with _get_db_session() as session:
@@ -115,6 +117,7 @@ def run_rebalancing(self, *, bot_id: str) -> None:
             },
         )
         initial_total_value: Decimal | None = None
+        last_rebalance_at: datetime | None = None
         final_status = "stopped"
         final_reason: str | None = None
 
@@ -125,6 +128,8 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                     clear_stop_signal(bot_id)
                     break
 
+                should_rebalance = False
+                now = datetime.now(UTC)
                 try:
                     # 잔고 및 현재가 조회
                     balance_items = await adapter.get_balance()
@@ -191,7 +196,19 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                         total_value,
                     )
 
-                    if needs_rebalance(current_weights, config.assets, config.threshold_pct):
+                    trigger = ""
+                    if config.mode == "time":
+                        if (
+                            last_rebalance_at is None
+                            or (now - last_rebalance_at).total_seconds() >= config.interval_seconds
+                        ):
+                            should_rebalance = True
+                            trigger = "time"
+                    elif needs_rebalance(current_weights, config.assets, config.threshold_pct):
+                        should_rebalance = True
+                        trigger = "deviation"
+
+                    if should_rebalance:
                         orders = calc_rebalance_orders(
                             current_weights, config.assets, total_value, quote
                         )
@@ -203,8 +220,8 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                             bot_id=bot_id,
                             event_type="rebalance_triggered",
                             level="info",
-                            message="Rebalancing condition met",
-                            payload={"orders": len(orders)},
+                            message=f"Rebalancing triggered ({trigger})",
+                            payload={"orders": len(orders), "mode": config.mode},
                         )
                         for rb_order in orders:
                             if rb_order.asset not in prices:
@@ -269,8 +286,17 @@ def run_rebalancing(self, *, bot_id: str) -> None:
                         message=f"Rebalancing check error: {exc}",
                     )
 
-                # 1분 단위로 stop 신호 확인
-                await asyncio.sleep(min(config.interval_seconds, 60))
+                if should_rebalance:
+                    last_rebalance_at = now
+
+                # stop 신호는 빠르게 확인하되, time 모드는 다음 주기까지의 잔여 시간을 고려
+                if config.mode == "time" and last_rebalance_at is not None:
+                    elapsed = (datetime.now(UTC) - last_rebalance_at).total_seconds()
+                    remaining = max(1, int(config.interval_seconds - elapsed))
+                    sleep_seconds = min(60, remaining)
+                else:
+                    sleep_seconds = min(60, config.interval_seconds)
+                await asyncio.sleep(max(1, sleep_seconds))
 
         finally:
             await adapter.close()

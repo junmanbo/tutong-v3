@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
-from bot_engine.utils.decimal_utils import apply_lot_size, to_decimal
+from bot_engine.utils.decimal_utils import to_decimal
 
 
 @dataclass(frozen=True)
@@ -24,16 +24,21 @@ class RebalancingConfig:
     """Rebalancing 봇 설정."""
 
     assets: dict[str, Decimal]  # {"BTC": Decimal("50"), ...} 목표 비중(%)
+    mode: str                   # "time" | "deviation"
     threshold_pct: Decimal       # 리밸런싱 임계값 (%)
     interval_seconds: int        # 주기 체크 간격 (초)
     quote: str                   # 기준 통화 (예: "KRW")
 
     @classmethod
     def from_dict(cls, config: dict) -> "RebalancingConfig":
+        mode = str(config.get("mode", "deviation")).lower()
+        if mode not in {"time", "deviation"}:
+            mode = "deviation"
         return cls(
             assets={k: to_decimal(v) for k, v in config.get("assets", {}).items()},
+            mode=mode,
             threshold_pct=to_decimal(config.get("threshold_pct", "5")),
-            interval_seconds=int(config.get("interval_seconds", 3600)),
+            interval_seconds=max(1, int(config.get("interval_seconds", 3600))),
             quote=config.get("quote", "KRW"),
         )
 

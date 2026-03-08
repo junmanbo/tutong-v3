@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
-import { type FormEvent, useState } from "react"
+import { type FormEvent, useMemo, useState } from "react"
 
 import { AccountsService, BotsService } from "@/client"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,7 @@ import { handleError } from "@/utils"
 export const Route = createFileRoute("/_layout/bots/new/dca")({
   component: DcaBotPage,
   head: () => ({
-    meta: [{ title: "Create Spot DCA Bot - AutoTrade" }],
+    meta: [{ title: "Spot DCA 봇 생성 - AutoTrade" }],
   }),
 })
 
@@ -38,7 +38,7 @@ function DcaBotPage() {
   const [accountId, setAccountId] = useState("")
   const [name, setName] = useState("")
   const [symbol, setSymbol] = useState("BTC/KRW")
-  const [buyAmount, setBuyAmount] = useState("100")
+  const [buyAmount, setBuyAmount] = useState("100000")
   const [frequency, setFrequency] = useState("daily")
   const [buyTime, setBuyTime] = useState("09:00")
   const [runMode, setRunMode] = useState("count")
@@ -66,11 +66,14 @@ function DcaBotPage() {
                   : 2592000,
             order_type: "market",
             total_orders: runMode === "count" ? Number(cycles) : undefined,
+            run_mode: runMode,
+            buy_time: buyTime,
+            end_date: runMode === "date" ? endDate : undefined,
           },
         },
       }),
     onSuccess: () => {
-      showSuccessToast("Spot DCA bot created")
+      showSuccessToast("Spot DCA 봇이 생성되었습니다")
       queryClient.invalidateQueries({ queryKey: ["bots"] })
       navigate({ to: "/bots" })
     },
@@ -79,17 +82,33 @@ function DcaBotPage() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    if (!accountId || !symbol.trim() || !buyAmount.trim()) {
-      showErrorToast("Account, symbol, and buy amount are required.")
+    const amount = Number(buyAmount)
+    const count = Number(cycles)
+
+    if (!accountId || !symbol.trim()) {
+      showErrorToast("계좌와 매수 자산을 입력해주세요.")
       return
     }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showErrorToast("1회 매수 금액은 0보다 큰 숫자여야 합니다.")
+      return
+    }
+    if (runMode === "count" && (!Number.isFinite(count) || count <= 0)) {
+      showErrorToast("총 매수 횟수는 0보다 큰 숫자여야 합니다.")
+      return
+    }
+    if (runMode === "date" && !endDate) {
+      showErrorToast("날짜 지정 모드에서는 종료일이 필요합니다.")
+      return
+    }
+
     mutation.mutate()
   }
 
-  const totalPlanned =
-    runMode === "count"
-      ? Number(buyAmount || 0) * Number(cycles || 0)
-      : Number(buyAmount || 0)
+  const totalPlanned = useMemo(() => {
+    if (runMode !== "count") return Number(buyAmount || 0)
+    return Number(buyAmount || 0) * Number(cycles || 0)
+  }, [buyAmount, cycles, runMode])
 
   return (
     <div className="flex flex-col gap-6">
@@ -99,21 +118,21 @@ function DcaBotPage() {
         onClick={() => navigate({ to: "/bots/new" })}
       >
         <ArrowLeft className="mr-2 size-4" />
-        Back
+        이전
       </Button>
 
       <Card>
         <CardHeader>
-          <CardTitle>Spot DCA Bot 만들기</CardTitle>
+          <CardTitle>Spot DCA 봇 만들기</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Exchange Account *</Label>
+                <Label>거래소 계좌 *</Label>
                 <Select value={accountId} onValueChange={setAccountId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select account" />
+                    <SelectValue placeholder="계좌 선택" />
                   </SelectTrigger>
                   <SelectContent>
                     {accounts?.data.map((acc) => (
@@ -125,55 +144,50 @@ function DcaBotPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Bot Name</Label>
+                <Label>봇 이름 (선택)</Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="BTC DCA Bot"
+                  placeholder="예) BTC DCA Bot"
                 />
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Trading Pair *</Label>
+                <Label>매수 자산 *</Label>
                 <Input
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
+                  placeholder="예) BTC/KRW"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Buy Amount per Cycle (KRW) *</Label>
+                <Label>1회 매수 금액 (KRW) *</Label>
                 <Input
                   value={buyAmount}
                   onChange={(e) => setBuyAmount(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Take Profit %</Label>
-                <Input
-                  value={takeProfitPct}
-                  onChange={(e) => setTakeProfitPct(e.target.value)}
+                  inputMode="numeric"
                 />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label>Frequency</Label>
+                <Label>매수 주기</Label>
                 <Select value={frequency} onValueChange={setFrequency}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="daily">매일</SelectItem>
+                    <SelectItem value="weekly">매주</SelectItem>
+                    <SelectItem value="monthly">매월</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Buy Time</Label>
+                <Label>매수 시간</Label>
                 <Input
                   type="time"
                   value={buyTime}
@@ -181,14 +195,14 @@ function DcaBotPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Run Mode</Label>
+                <Label>운영 모드</Label>
                 <Select value={runMode} onValueChange={setRunMode}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="count">By Count</SelectItem>
-                    <SelectItem value="date">Until Date</SelectItem>
+                    <SelectItem value="count">횟수 지정</SelectItem>
+                    <SelectItem value="date">날짜 지정</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -196,15 +210,16 @@ function DcaBotPage() {
 
             {runMode === "count" ? (
               <div className="space-y-2">
-                <Label>Cycles</Label>
+                <Label>총 매수 횟수</Label>
                 <Input
                   value={cycles}
                   onChange={(e) => setCycles(e.target.value)}
+                  inputMode="numeric"
                 />
               </div>
             ) : (
               <div className="space-y-2">
-                <Label>End Date</Label>
+                <Label>종료일</Label>
                 <Input
                   type="date"
                   value={endDate}
@@ -213,9 +228,16 @@ function DcaBotPage() {
               </div>
             )}
 
+            <div className="space-y-2">
+              <Label>목표 수익률 달성 시 종료 % (선택)</Label>
+              <Input
+                value={takeProfitPct}
+                onChange={(e) => setTakeProfitPct(e.target.value)}
+              />
+            </div>
+
             <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-              계획 투자금(대략):{" "}
-              {Number.isFinite(totalPlanned) ? totalPlanned.toFixed(2) : "0"}
+              계획 투자금(대략): {Math.round(totalPlanned).toLocaleString()} KRW
             </div>
 
             <div className="flex justify-end">
