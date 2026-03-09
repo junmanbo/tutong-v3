@@ -22,15 +22,15 @@
 | # | 문서명 | 파일명 | 상태 |
 |---|--------|--------|------|
 | 5 | **화면 설계서 / UI 기획서** | `05_UI_DESIGN_SPEC.md` | ✅ 작성 완료 |
-| 6 | **API 명세서** | `06_API_SPEC.md` | 📝 추후 작성 |
-| 7 | **데이터베이스 설계서 (ERD)** | `07_DATABASE_DESIGN.md` | 📝 추후 작성 |
-| 8 | **외부 API 연동 명세서** | `08_EXTERNAL_API_INTEGRATION.md` | 📝 추후 작성 |
+| 6 | **API 명세서** | `06_API_SPEC.md` | 📝 작성 필요 |
+| 7 | **데이터베이스 설계서 (ERD)** | `07_DATABASE_DESIGN.md` | ✅ 작성 완료 |
+| 8 | **외부 API 연동 명세서** | `08_EXTERNAL_API_INTEGRATION.md` | ✅ 작성 완료 |
 
 ### Phase 2 — 개발 (Development)
 
 | # | 문서명 | 파일명 | 상태 |
 |---|--------|--------|------|
-| 9 | **개발 가이드라인 / 코딩 컨벤션** | `09_DEV_GUIDELINES.md` | 📝 추후 작성 |
+| 9 | **개발 가이드라인 / 코딩 컨벤션** | `09_DEV_GUIDELINES.md` | ✅ 작성 완료 |
 | 10 | **WBS / 개발 일정표** | `10_WBS_SCHEDULE.md` | ✅ 작성 완료 |
 | 11 | **보안 정책 문서** | `11_SECURITY_POLICY.md` | 📝 추후 작성 |
 

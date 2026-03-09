@@ -582,6 +582,7 @@
 |------|------|-----------|--------|
 | v1.0 | 2025년 | 최초 작성 | PM |
 | v1.1 | 2026-03-07 | 구현 반영 — 봇 생성 5종 상세 경로(/bots/new/*) 분리, 봇 상세 운영 카드/타임라인 확장, 설정 경로(/settings/profile, /settings/security, /settings/notifications) 분리, 빌링 경로(/billing/plans, /billing/history) 분리, 계좌 추가 시 KIS/키움 추가 필드 반영 | Dev |
+| v1.2 | 2026-03-08 | 봇 생성 UX 보강 — Rebalancing 생성 화면에서 다중 자산/비중 입력(행 추가/삭제) 반영, 생성 모달에서도 동일 입력 패턴 지원 및 긴 폼 스크롤 처리, 리밸런싱 mode/time 설정과 실행 로직 정합성 반영 | Dev |
 
 ---
 

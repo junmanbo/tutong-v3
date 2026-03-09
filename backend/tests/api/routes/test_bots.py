@@ -7,6 +7,7 @@ Celery·Redis 외부 의존성은 mock으로 대체합니다.
 import uuid
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -57,6 +58,52 @@ def _bot_payload(account_id: str, **overrides) -> dict:
     }
     data.update(overrides)
     return data
+
+
+def _strategy_bot_payload(account_id: str, bot_type: str) -> dict:
+    payload = _bot_payload(account_id, bot_type=bot_type)
+    if bot_type == "spot_grid":
+        payload["config"] = {
+            "upper": "120000000",
+            "lower": "90000000",
+            "grid_count": 20,
+            "arithmetic": True,
+            "amount_per_grid": "50000",
+        }
+    elif bot_type == "position_snowball":
+        payload["config"] = {
+            "drop_pct": "5",
+            "amount_per_buy": "100000",
+            "take_profit_pct": "5",
+            "max_buys": 5,
+        }
+    elif bot_type == "rebalancing":
+        payload["symbol"] = None
+        payload["base_currency"] = "BTC"
+        payload["quote_currency"] = "KRW"
+        payload["config"] = {
+            "assets": {"BTC": "40", "ETH": "30", "KRW": "30"},
+            "mode": "deviation",
+            "threshold_pct": "5",
+            "interval_seconds": 604800,
+            "quote": "KRW",
+        }
+    elif bot_type == "spot_dca":
+        payload["config"] = {
+            "amount_per_order": "100000",
+            "interval_seconds": 86400,
+            "order_type": "market",
+            "total_orders": 30,
+        }
+    elif bot_type == "algo_orders":
+        payload["config"] = {
+            "side": "buy",
+            "total_qty": "0.1",
+            "num_slices": 12,
+            "duration_seconds": 3600,
+            "order_type": "market",
+        }
+    return payload
 
 
 def _setup_user_with_account(
@@ -866,3 +913,82 @@ class TestReadBotLogs:
             headers=headers_other,
         )
         assert r_other.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("bot_type", "expected_task"),
+    [
+        ("spot_grid", "bot_engine.workers.spot_grid.run"),
+        ("position_snowball", "bot_engine.workers.snowball.run"),
+        ("rebalancing", "bot_engine.workers.rebalancing.run"),
+        ("spot_dca", "bot_engine.workers.spot_dca.run"),
+        ("algo_orders", "bot_engine.workers.algo_orders.run"),
+    ],
+)
+def test_strategy_start_dispatch_mapping_integration(
+    client: TestClient,
+    db: Session,
+    bot_type: str,
+    expected_task: str,
+) -> None:
+    """5개 전략별 시작 요청이 올바른 worker task로 매핑되는지 검증."""
+    _, headers, account_id = _setup_user_with_account(client, db)
+    create_r = client.post(
+        f"{settings.API_V1_STR}/bots/",
+        headers=headers,
+        json=_strategy_bot_payload(account_id, bot_type),
+    )
+    assert create_r.status_code == 201
+    bot_id = create_r.json()["id"]
+
+    mock_celery = MagicMock()
+    with patch("app.api.routes.bots.Celery", return_value=mock_celery):
+        start_r = client.post(
+            f"{settings.API_V1_STR}/bots/{bot_id}/start",
+            headers=headers,
+        )
+
+    assert start_r.status_code == 200
+    assert start_r.json()["status"] == "pending"
+    mock_celery.send_task.assert_called_once()
+    assert mock_celery.send_task.call_args[0][0] == expected_task
+    assert mock_celery.send_task.call_args[1]["kwargs"]["bot_id"] == bot_id
+
+
+@pytest.mark.parametrize(
+    "bot_type",
+    ["spot_grid", "position_snowball", "rebalancing", "spot_dca", "algo_orders"],
+)
+def test_strategy_stop_from_pending_integration(
+    client: TestClient,
+    db: Session,
+    bot_type: str,
+) -> None:
+    """5개 전략 모두 pending 상태에서 stop 요청이 정상 동작해야 한다."""
+    _, headers, account_id = _setup_user_with_account(client, db)
+    create_r = client.post(
+        f"{settings.API_V1_STR}/bots/",
+        headers=headers,
+        json=_strategy_bot_payload(account_id, bot_type),
+    )
+    assert create_r.status_code == 201
+    bot_id = create_r.json()["id"]
+
+    mock_celery = MagicMock()
+    with patch("app.api.routes.bots.Celery", return_value=mock_celery):
+        start_r = client.post(
+            f"{settings.API_V1_STR}/bots/{bot_id}/start",
+            headers=headers,
+        )
+    assert start_r.status_code == 200
+    assert start_r.json()["status"] == "pending"
+
+    mock_redis = MagicMock()
+    with patch("redis.from_url", return_value=mock_redis):
+        stop_r = client.post(
+            f"{settings.API_V1_STR}/bots/{bot_id}/stop",
+            headers=headers,
+        )
+    assert stop_r.status_code == 200
+    assert stop_r.json()["status"] == "stopped"
+    mock_redis.set.assert_called_once_with(f"bot:{bot_id}:stop", "1")

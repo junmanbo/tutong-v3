@@ -20,6 +20,7 @@ from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
     _create_bot_log,
+    _get_db_session,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,

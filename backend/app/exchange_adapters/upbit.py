@@ -14,11 +14,15 @@ class UpbitAdapter(CcxtExchangeAdapter):
     """Upbit 거래소 어댑터."""
 
     def _build_exchange(self, config: dict) -> ccxt.upbit:
+        options = config.get("options") or {}
         return ccxt.upbit(
             {
                 **config,
                 "options": {
                     "defaultType": "spot",
+                    # Market buy에서 amount를 수량이 아닌 quote cost로 해석
+                    "createMarketBuyOrderRequiresPrice": False,
+                    **options,
                 },
             }
         )

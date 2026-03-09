@@ -187,8 +187,10 @@ class CcxtExchangeAdapter(AbstractExchangeAdapter):
 
         # 업비트 시장가 매수: cost 기준
         if order.amount is not None and order.order_type == "market" and order.side == "buy":
-            params["cost"] = float(order.amount)
-            amount = None
+            cost = float(order.amount)
+            params["cost"] = cost
+            # 일부 거래소(예: Upbit)는 market buy에서 amount를 cost로 전달해야 함
+            amount = cost
 
         raw = await self._exchange.create_order(
             symbol=order.symbol,

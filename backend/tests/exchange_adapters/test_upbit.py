@@ -15,3 +15,4 @@ def test_upbit_build_exchange_uses_spot_default_type() -> None:
     assert config["secret"] == "s"
     assert config["enableRateLimit"] is True
     assert config["options"]["defaultType"] == "spot"
+    assert config["options"]["createMarketBuyOrderRequiresPrice"] is False

@@ -19,6 +19,7 @@ from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
     _create_bot_log,
+    _get_db_session,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
@@ -197,14 +198,24 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                                 bot_id, price, config.amount_per_order,
                             )
                         else:
-                            order = await adapter.place_order(
-                                OrderRequest(
+                            exchange_name = str(getattr(exchange, "value", exchange)).lower()
+                            if config.order_type == "market" and exchange_name == "upbit":
+                                # Upbit market buy는 수량이 아니라 KRW 금액(cost) 기준
+                                request = OrderRequest(
+                                    symbol=symbol,
+                                    side="buy",
+                                    order_type=config.order_type,
+                                    amount=config.amount_per_order,
+                                )
+                            else:
+                                request = OrderRequest(
                                     symbol=symbol,
                                     side="buy",
                                     order_type=config.order_type,
                                     qty=qty,
                                 )
-                            )
+
+                            order = await adapter.place_order(request)
                             order_count += 1
                             last_order_time = now
                             r.set(

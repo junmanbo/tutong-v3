@@ -335,7 +335,7 @@ class TestPlaceOrder:
 
         call_kwargs = mock_ex.create_order.call_args.kwargs
         assert call_kwargs["params"]["cost"] == 100000.0
-        assert call_kwargs["amount"] is None
+        assert call_kwargs["amount"] == 100000.0
 
 
 # ── cancel_order ──────────────────────────────────────────────────────────────

@@ -30,10 +30,11 @@ def _get_engine():
     global _db_engine
     if _db_engine is None:
         from sqlmodel import create_engine
-        db_url = os.environ.get(
-            "SQLALCHEMY_DATABASE_URI",
-            "postgresql+psycopg://postgres:changethis@localhost:5432/app",
-        )
+        db_url = os.environ.get("SQLALCHEMY_DATABASE_URI")
+        if not db_url:
+            from app.core.config import settings
+
+            db_url = str(settings.SQLALCHEMY_DATABASE_URI)
         _db_engine = create_engine(db_url, pool_pre_ping=True)
     return _db_engine
 

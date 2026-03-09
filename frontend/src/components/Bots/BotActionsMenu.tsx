@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import { EllipsisVertical, Play, Square } from "lucide-react"
 import { useState } from "react"
 
@@ -21,6 +22,7 @@ interface BotActionsMenuProps {
 
 export const BotActionsMenu = ({ bot }: BotActionsMenuProps) => {
   const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
@@ -60,6 +62,17 @@ export const BotActionsMenu = ({ bot }: BotActionsMenuProps) => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={() => {
+            navigate({
+              to: "/bots/$botId",
+              params: { botId: String(bot.id) },
+            })
+            setOpen(false)
+          }}
+        >
+          상세 보기
+        </DropdownMenuItem>
         {canStart && (
           <DropdownMenuItem
             onClick={() => startMutation.mutate()}

@@ -33,7 +33,7 @@ Week 1-2
 │   ├── 기술 스택 정의서 ✅
 │   ├── UI 설계서 ✅
 │   ├── API 명세서 (작성 필요)
-│   └── DB 설계서 (작성 필요)
+│   └── DB 설계서 ✅
 │
 ├── [Dev] 개발 환경 구축
 │   ├── GitHub 레포지토리 생성 ✅
@@ -115,8 +115,13 @@ Week 8-9: Snowball + Rebalancing 봇
 │   ├── 비중 계산 로직 (calc_weights) ✅
 │   ├── 임계값 기반 트리거 (needs_rebalance) ✅
 │   └── 매도 우선 리밸런싱 주문 발행 ✅
+├── [Bot] Rebalancing 실행 제어 보강 ✅
+│   ├── mode(time/deviation) 기반 실제 실행 분기 ✅
+│   └── interval_seconds 기반 주기 실행 반영 ✅
 ├── [FE] 봇 생성 UI - Position Snowball 폼 반영 ✅
 └── [FE] 봇 생성 UI - Rebalancing 폼 반영 ✅
+    ├── 전용 페이지: 다중 자산/비중 입력 + 행 추가/삭제 ✅
+    └── 모달: 다중 자산/비중 입력 + 행 추가/삭제 + 스크롤 처리 ✅
 
 Week 9-10: Algo Orders + 공통 봇 기능
 ├── [Bot] Spot Algo Orders (TWAP) 로직 구현 ✅
@@ -174,9 +179,12 @@ Week 11-12: 알림 + 대시보드 고도화
 
 ```
 Week 12-13: 통합 테스트 및 버그 수정
-├── [QA] 회원가입 / 로그인 테스트
-├── [QA] 계좌 연동 테스트 (4개 기관)
-├── [QA] 5가지 봇 시나리오 테스트
+├── [QA] 회원가입 / 로그인 테스트 ✅
+├── [QA] 계좌 연동 테스트 (4개 기관) ✅
+│   └── API 자동화: accounts create/balance 파라미터 테스트 (binance/upbit/kis/kiwoom) ✅
+├── [QA] 5가지 봇 시나리오 테스트 ✅
+│   ├── 전략 자동화: bot_engine strategy 테스트 5종 통합 실행 ✅
+│   └── API 자동화: 봇 5종 생성→시작(worker dispatch)→중지 흐름 파라미터 테스트 ✅
 ├── [QA] 봇 중지/손절 동작 테스트
 ├── [QA] 보안 테스트 (API Key 암호화 검증)
 ├── [QA] 부하 테스트 (동시 봇 100개 이상)
@@ -246,6 +254,8 @@ Week 14    │ 🚀 MVP 베타 론칭
 | v2.0 | 2026-03-07 | 운영 변경 반영 — GitHub Actions 워크플로우 비활성화(.github/workflows.disabled로 이동), 배포/CI는 수동 운영 기준으로 임시 전환 | Dev |
 | v2.1 | 2026-03-07 | 봇 실행 로그 후속 완성 — BotLog 테이블/CRUD/API 추가, worker 주문/체결 이벤트 로그 저장, 봇 상세 로그 타임라인 실데이터 연동 | Dev |
 | v2.2 | 2026-03-07 | Phase 1-3 완료 — Bot.config JSONB 추가, Worker 3종 버그 수정(ticker.price/exchange_order_id/qty), DB 엔진 싱글턴, 알림 목록 API, 계좌 등록 API Key 검증, Admin 라우터, Subscription 라우터, 봇 생성 폼 config 전달, TS 클라이언트 재생성 | Dev |
+| v2.3 | 2026-03-08 | 리밸런싱 후속 완료 — worker mode(time/deviation) 실제 반영, interval_seconds 주기 반영, 리밸런싱 생성 UI(전용 페이지/모달) 다중 자산 입력 강화 및 모달 스크롤 개선 | Dev |
+| v2.4 | 2026-03-08 | Phase 1-4 QA 착수 — 계좌 4개 기관 balance API 자동화 테스트, 봇 5종 생성/시작/중지 통합 API 테스트, 5개 전략 테스트 통합 실행(140 pass) 반영 | Dev |
 
 ---
 

@@ -41,7 +41,7 @@ export const columns: ColumnDef<BotPublic>[] = [
     cell: ({ row }) => (
       <Link
         to="/bots/$botId"
-        params={{ botId: row.original.id }}
+        params={{ botId: String(row.original.id) }}
         className="font-medium hover:underline"
       >
         {row.original.name}

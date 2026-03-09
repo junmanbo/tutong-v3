@@ -12,6 +12,7 @@ from sqlmodel import Session
 
 from app import crud
 from app.core.config import settings
+from app.exchange_adapters.base import BalanceItem
 from app.exchange_adapters.kis import KisApiError
 from app.models import UserCreate
 from tests.utils.user import user_authentication_headers
@@ -476,6 +477,66 @@ class TestDeleteAccount:
 
 
 class TestGetAccountBalance:
+    @pytest.mark.parametrize(
+        ("exchange", "extra_params", "expected_asset"),
+        [
+            ("binance", None, "USDT"),
+            ("upbit", None, "KRW"),
+            ("kis", {"CANO": "12345678"}, "005930"),
+            ("kiwoom", {"account_number": "1234567890"}, "005930"),
+        ],
+    )
+    def test_balance_success_for_all_supported_exchanges(
+        self,
+        client: TestClient,
+        db: Session,
+        exchange: str,
+        extra_params: dict | None,
+        expected_asset: str,
+    ) -> None:
+        """4개 지원 기관의 balance 조회가 공통 흐름으로 동작하는지 검증."""
+        _, headers = _user_and_headers(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/accounts/",
+            headers=headers,
+            json=_account_payload(
+                exchange=exchange,
+                label=f"{exchange}-account",
+                extra_params=extra_params,
+            ),
+        )
+        assert create_r.status_code == 201
+        account_id = create_r.json()["id"]
+
+        class _BalanceAdapter:
+            async def get_balance(self):
+                return [
+                    BalanceItem(asset=expected_asset, free="1", locked="0"),
+                    BalanceItem(asset="DUST", free="0", locked="0"),
+                ]
+
+            async def close(self):
+                return None
+
+        with patch(
+            "app.api.routes.accounts.get_adapter",
+            return_value=_BalanceAdapter(),
+        ) as mock_get_adapter:
+            r = client.get(
+                f"{settings.API_V1_STR}/accounts/{account_id}/balance",
+                headers=headers,
+            )
+
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data) == 1
+        assert data[0]["asset"] == expected_asset
+        assert data[0]["free"] == "1"
+        called_exchange = mock_get_adapter.call_args.kwargs["exchange"]
+        if hasattr(called_exchange, "value"):
+            called_exchange = called_exchange.value
+        assert called_exchange == exchange
+
     def test_balance_decrypt_failure_triggers_notification(
         self, client: TestClient, db: Session
     ) -> None:
