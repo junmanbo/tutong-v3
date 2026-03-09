@@ -1,5 +1,10 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
+import {
+  Outlet,
+  createFileRoute,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router"
 import { BookOpen } from "lucide-react"
 import { Suspense } from "react"
 
@@ -26,7 +31,7 @@ function getBotsQueryOptions() {
 }
 
 export const Route = createFileRoute("/_layout/bots")({
-  component: Bots,
+  component: BotsRouteLayout,
   head: () => ({
     meta: [{ title: "Bots - AutoTrade" }],
   }),
@@ -34,8 +39,20 @@ export const Route = createFileRoute("/_layout/bots")({
 
 function BotsTableContent() {
   const { data: bots } = useSuspenseQuery(getBotsQueryOptions())
+  const navigate = useNavigate()
 
-  return <DataTable columns={columns} data={bots.data} />
+  return (
+    <DataTable
+      columns={columns}
+      data={bots.data}
+      onRowClick={(bot) =>
+        navigate({
+          to: "/bots/$botId",
+          params: { botId: String(bot.id) },
+        })
+      }
+    />
+  )
 }
 
 function BotsTable() {
@@ -46,7 +63,20 @@ function BotsTable() {
   )
 }
 
-function Bots() {
+function BotsRouteLayout() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const isBotsListPage = pathname === "/bots"
+
+  if (!isBotsListPage) {
+    return <Outlet />
+  }
+
+  return <BotsListPage />
+}
+
+function BotsListPage() {
   const botTypeGuide = [
     {
       title: "Spot DCA",

@@ -1,5 +1,6 @@
 import {
   type ColumnDef,
+  type Row,
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
@@ -11,6 +12,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react"
+import type { MouseEvent } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -32,11 +34,13 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  onRowClick?: (rowData: TData) => void
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -44,6 +48,18 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
+
+  const handleRowClick = (
+    event: MouseEvent<HTMLTableRowElement>,
+    row: Row<TData>,
+  ) => {
+    if (!onRowClick) return
+    const target = event.target as HTMLElement
+    if (target.closest("a,button,input,select,textarea,[role='menuitem']")) {
+      return
+    }
+    onRowClick(row.original)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -69,7 +85,11 @@ export function DataTable<TData, TValue>({
         <TableBody>
           {table.getRowModel().rows.length ? (
             table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow
+                key={row.id}
+                className={onRowClick ? "cursor-pointer" : undefined}
+                onClick={(event) => handleRowClick(event, row)}
+              >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
