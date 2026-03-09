@@ -221,10 +221,13 @@ function BotDetailPage() {
     }))
 
   const toneClassName: Record<NonNullable<TimelineItem["tone"]>, string> = {
-    default: "border-border bg-background",
-    success: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900",
-    warning: "border-amber-200 bg-amber-50/60 dark:border-amber-900",
-    danger: "border-red-200 bg-red-50/60 dark:border-red-900",
+    default: "border-border bg-background text-foreground",
+    success:
+      "border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/70 dark:bg-emerald-950/35 dark:text-emerald-100",
+    warning:
+      "border-amber-200 bg-amber-50/70 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/35 dark:text-amber-100",
+    danger:
+      "border-red-200 bg-red-50/70 text-red-900 dark:border-red-900/70 dark:bg-red-950/35 dark:text-red-100",
   }
 
   return (
@@ -417,7 +420,7 @@ function BotDetailPage() {
                     <p className="text-sm font-medium">{item.title}</p>
                     <p className="text-xs text-muted-foreground">{item.at}</p>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-1 text-sm text-muted-foreground dark:text-slate-300">
                     {item.description}
                   </p>
                 </div>
@@ -449,7 +452,7 @@ function BotDetailPage() {
                     </div>
                     <p className="text-xs text-muted-foreground">{item.at}</p>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-1 text-sm text-muted-foreground dark:text-slate-300">
                     {item.description}
                   </p>
                 </div>
