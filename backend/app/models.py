@@ -6,8 +6,8 @@ from enum import Enum as PyEnum
 from typing import Optional
 
 from pydantic import EmailStr
-from sqlalchemy import Column, DateTime, Numeric, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, DateTime, Numeric, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -68,7 +68,7 @@ class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = True
     is_superuser: bool = False
-    full_name: str | None = Field(default=None, max_length=255)
+    full_name: str | None = Field(default=None, max_length=100)
 
 
 # Properties to receive via API on creation
@@ -101,11 +101,28 @@ class UpdatePassword(SQLModel):
 # Database model, database table inferred from class name
 class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    hashed_password: str
+    full_name: str | None = Field(
+        default=None,
+        sa_column=Column("display_name", String(100), nullable=False, server_default=""),
+    )
+    hashed_password: str = Field(sa_column=Column("password_hash", String(255), nullable=True))
+    is_email_verified: bool = False
+    totp_secret: str | None = Field(default=None, max_length=64)
+    totp_enabled: bool = False
+    failed_login_count: int = 0
+    locked_until: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    oauth_provider: str | None = Field(default=None, max_length=20)
+    oauth_id: str | None = Field(default=None, max_length=255)
+    role: str = Field(default="user", max_length=20)
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
     )
+    updated_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+    deleted_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     exchange_accounts: list["ExchangeAccount"] = Relationship(
         back_populates="owner", cascade_delete=True
     )
@@ -304,7 +321,7 @@ class BotLogBase(SQLModel):
     message: str = Field(sa_type=Text())
     payload: dict = Field(
         default={},
-        sa_column=Column(JSONB, nullable=False, server_default="{}"),
+        sa_column=Column("metadata", JSONB, nullable=False, server_default="{}"),
     )
 
 
@@ -471,4 +488,320 @@ class NotificationPublic(NotificationBase):
 
 class NotificationsPublic(SQLModel):
     data: list[NotificationPublic]
+    count: int
+
+
+# ── Additional Tables from DB Design ─────────────────────────────────────────
+
+
+class UserSession(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE")
+    refresh_token_hash: str = Field(unique=True, max_length=255)
+    ip_address: str | None = Field(default=None, sa_type=INET())
+    user_agent: str | None = Field(default=None, sa_type=Text())
+    expires_at: datetime = Field(sa_type=DateTime(timezone=True))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+    revoked_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+
+
+class PaymentHistory(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE")
+    subscription_id: uuid.UUID | None = Field(
+        default=None, foreign_key="usersubscription.id", ondelete="SET NULL"
+    )
+    plan_id: uuid.UUID = Field(foreign_key="subscriptionplan.id", ondelete="RESTRICT")
+    amount_krw: int
+    status: str = Field(max_length=20)
+    pg_provider: str | None = Field(default=None, max_length=50)
+    pg_payment_id: str | None = Field(default=None, unique=True, max_length=255)
+    paid_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class BotConfigGrid(SQLModel, table=True):
+    bot_id: uuid.UUID = Field(primary_key=True, foreign_key="bot.id", ondelete="CASCADE")
+    upper_price: Decimal = Field(sa_type=Numeric(precision=36, scale=18))
+    lower_price: Decimal = Field(sa_type=Numeric(precision=36, scale=18))
+    grid_count: int
+    grid_type: str = Field(max_length=20)
+    quantity_per_grid: Decimal = Field(sa_type=Numeric(precision=36, scale=18))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class BotConfigSnowball(SQLModel, table=True):
+    bot_id: uuid.UUID = Field(primary_key=True, foreign_key="bot.id", ondelete="CASCADE")
+    initial_amount: Decimal = Field(sa_type=Numeric(precision=36, scale=18))
+    drop_trigger_pct: Decimal = Field(sa_type=Numeric(precision=10, scale=4))
+    max_layers: int
+    multiplier: Decimal = Field(default=Decimal("1"), sa_type=Numeric(precision=10, scale=4))
+    take_profit_pct: Decimal = Field(sa_type=Numeric(precision=10, scale=4))
+    current_layer: int = 0
+    avg_entry_price: Decimal | None = Field(default=None, sa_type=Numeric(precision=36, scale=18))
+    total_invested: Decimal = Field(default=Decimal("0"), sa_type=Numeric(precision=36, scale=18))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class BotConfigRebalancing(SQLModel, table=True):
+    bot_id: uuid.UUID = Field(primary_key=True, foreign_key="bot.id", ondelete="CASCADE")
+    rebal_mode: str = Field(max_length=30)
+    interval_unit: str | None = Field(default=None, max_length=20)
+    interval_value: int | None = None
+    deviation_threshold_pct: Decimal | None = Field(
+        default=None, sa_type=Numeric(precision=10, scale=4)
+    )
+    last_rebalanced_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class BotConfigRebalAsset(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("bot_id", "asset_symbol", name="uq_botconfigrebalasset_bot_asset"),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    bot_id: uuid.UUID = Field(foreign_key="bot.id", ondelete="CASCADE")
+    asset_symbol: str = Field(max_length=20)
+    target_weight_pct: Decimal = Field(sa_type=Numeric(precision=10, scale=4))
+    current_weight_pct: Decimal | None = Field(default=None, sa_type=Numeric(precision=10, scale=4))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class BotConfigDca(SQLModel, table=True):
+    bot_id: uuid.UUID = Field(primary_key=True, foreign_key="bot.id", ondelete="CASCADE")
+    order_amount: Decimal = Field(sa_type=Numeric(precision=36, scale=18))
+    interval_unit: str = Field(max_length=20)
+    interval_value: int = 1
+    total_orders: int | None = None
+    executed_orders: int = 0
+    avg_entry_price: Decimal | None = Field(default=None, sa_type=Numeric(precision=36, scale=18))
+    next_execute_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class BotConfigAlgo(SQLModel, table=True):
+    bot_id: uuid.UUID = Field(primary_key=True, foreign_key="bot.id", ondelete="CASCADE")
+    order_side: str = Field(max_length=10)
+    total_quantity: Decimal | None = Field(default=None, sa_type=Numeric(36, 18))
+    total_amount: Decimal | None = Field(default=None, sa_type=Numeric(36, 18))
+    algo_type: str = Field(default="twap", max_length=20)
+    execute_start_at: datetime = Field(sa_type=DateTime(timezone=True))
+    execute_end_at: datetime = Field(sa_type=DateTime(timezone=True))
+    split_count: int
+    executed_count: int = 0
+    avg_fill_price: Decimal | None = Field(default=None, sa_type=Numeric(36, 18))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class BotOrder(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    bot_id: uuid.UUID = Field(foreign_key="bot.id", ondelete="CASCADE")
+    exchange_order_id: str = Field(max_length=100)
+    symbol: str = Field(max_length=30)
+    side: str = Field(max_length=10)
+    order_type: str = Field(max_length=20)
+    status: str = Field(max_length=30)
+    quantity: Decimal = Field(sa_type=Numeric(precision=36, scale=18))
+    price: Decimal | None = Field(default=None, sa_type=Numeric(precision=36, scale=18))
+    avg_fill_price: Decimal | None = Field(default=None, sa_type=Numeric(precision=36, scale=18))
+    filled_quantity: Decimal = Field(default=Decimal("0"), sa_type=Numeric(precision=36, scale=18))
+    fee: Decimal = Field(default=Decimal("0"), sa_type=Numeric(precision=36, scale=18))
+    fee_currency: str | None = Field(default=None, max_length=20)
+    grid_level: int | None = None
+    layer_index: int | None = None
+    placed_at: datetime = Field(sa_type=DateTime(timezone=True))
+    filled_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class BotTrade(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    order_id: uuid.UUID = Field(foreign_key="botorder.id", ondelete="CASCADE")
+    bot_id: uuid.UUID = Field(foreign_key="bot.id", ondelete="CASCADE")
+    exchange_trade_id: str | None = Field(default=None, max_length=100)
+    quantity: Decimal = Field(sa_type=Numeric(precision=36, scale=18))
+    price: Decimal = Field(sa_type=Numeric(precision=36, scale=18))
+    fee: Decimal = Field(default=Decimal("0"), sa_type=Numeric(precision=36, scale=18))
+    fee_currency: str | None = Field(default=None, max_length=20)
+    is_maker: bool | None = None
+    traded_at: datetime = Field(sa_type=DateTime(timezone=True))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class BotSnapshot(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    bot_id: uuid.UUID = Field(foreign_key="bot.id", ondelete="CASCADE")
+    total_pnl: Decimal = Field(sa_type=Numeric(precision=36, scale=18))
+    total_pnl_pct: Decimal = Field(sa_type=Numeric(precision=10, scale=4))
+    portfolio_value: Decimal = Field(sa_type=Numeric(precision=36, scale=18))
+    snapshot_at: datetime = Field(sa_type=DateTime(timezone=True))
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class Announcement(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    title: str = Field(max_length=255)
+    content: str = Field(sa_type=Text())
+    is_pinned: bool = False
+    is_published: bool = False
+    published_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_by: uuid.UUID = Field(foreign_key="user.id", ondelete="RESTRICT")
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc, sa_type=DateTime(timezone=True)
+    )
+
+
+class PaymentHistoryPublic(SQLModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    subscription_id: uuid.UUID | None
+    plan_id: uuid.UUID
+    amount_krw: int
+    status: str
+    pg_provider: str | None
+    pg_payment_id: str | None
+    paid_at: datetime | None
+    created_at: datetime
+
+
+class PaymentHistoriesPublic(SQLModel):
+    data: list[PaymentHistoryPublic]
+    count: int
+
+
+class BotOrderPublic(SQLModel):
+    id: uuid.UUID
+    bot_id: uuid.UUID
+    exchange_order_id: str
+    symbol: str
+    side: str
+    order_type: str
+    status: str
+    quantity: Decimal
+    price: Decimal | None
+    avg_fill_price: Decimal | None
+    filled_quantity: Decimal
+    fee: Decimal
+    fee_currency: str | None
+    grid_level: int | None
+    layer_index: int | None
+    placed_at: datetime
+    filled_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class BotOrdersPublic(SQLModel):
+    data: list[BotOrderPublic]
+    count: int
+
+
+class BotTradePublic(SQLModel):
+    id: uuid.UUID
+    order_id: uuid.UUID
+    bot_id: uuid.UUID
+    exchange_trade_id: str | None
+    quantity: Decimal
+    price: Decimal
+    fee: Decimal
+    fee_currency: str | None
+    is_maker: bool | None
+    traded_at: datetime
+    created_at: datetime
+
+
+class BotTradesPublic(SQLModel):
+    data: list[BotTradePublic]
+    count: int
+
+
+class BotSnapshotPublic(SQLModel):
+    id: uuid.UUID
+    bot_id: uuid.UUID
+    total_pnl: Decimal
+    total_pnl_pct: Decimal
+    portfolio_value: Decimal
+    snapshot_at: datetime
+    created_at: datetime
+
+
+class BotSnapshotsPublic(SQLModel):
+    data: list[BotSnapshotPublic]
+    count: int
+
+
+class AnnouncementCreate(SQLModel):
+    title: str = Field(max_length=255)
+    content: str
+    is_pinned: bool = False
+    is_published: bool = False
+    published_at: datetime | None = None
+
+
+class AnnouncementUpdate(SQLModel):
+    title: str | None = Field(default=None, max_length=255)
+    content: str | None = None
+    is_pinned: bool | None = None
+    is_published: bool | None = None
+    published_at: datetime | None = None
+
+
+class AnnouncementPublic(SQLModel):
+    id: uuid.UUID
+    title: str
+    content: str
+    is_pinned: bool
+    is_published: bool
+    published_at: datetime | None
+    created_by: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class AnnouncementsPublic(SQLModel):
+    data: list[AnnouncementPublic]
     count: int

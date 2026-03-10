@@ -11,7 +11,10 @@ from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     BotCreate,
     BotLogsPublic,
+    BotOrdersPublic,
     BotPublic,
+    BotSnapshotsPublic,
+    BotTradesPublic,
     BotsPublic,
     BotStatusEnum,
     BotTypeEnum,
@@ -83,6 +86,72 @@ def read_bot_logs(
         limit=limit,
     )
     return BotLogsPublic(data=logs, count=len(logs))
+
+
+@router.get("/{id}/orders", response_model=BotOrdersPublic)
+def read_bot_orders(
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+) -> Any:
+    """봇 주문 내역 조회."""
+    bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    orders = crud.get_bot_orders_by_user(
+        session=session,
+        bot_id=id,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit,
+    )
+    return BotOrdersPublic(data=orders, count=len(orders))
+
+
+@router.get("/{id}/trades", response_model=BotTradesPublic)
+def read_bot_trades(
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+) -> Any:
+    """봇 체결 내역 조회."""
+    bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    trades = crud.get_bot_trades_by_user(
+        session=session,
+        bot_id=id,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit,
+    )
+    return BotTradesPublic(data=trades, count=len(trades))
+
+
+@router.get("/{id}/snapshots", response_model=BotSnapshotsPublic)
+def read_bot_snapshots(
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+) -> Any:
+    """봇 수익 스냅샷 내역 조회."""
+    bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    snapshots = crud.get_bot_snapshots_by_user(
+        session=session,
+        bot_id=id,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit,
+    )
+    return BotSnapshotsPublic(data=snapshots, count=len(snapshots))
 
 
 @router.post("/", response_model=BotPublic, status_code=201)

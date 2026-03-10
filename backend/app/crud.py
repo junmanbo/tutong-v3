@@ -7,7 +7,11 @@ from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
 from app.models import (
+    Announcement,
     Bot,
+    BotOrder,
+    BotSnapshot,
+    BotTrade,
     BotCreate,
     BotLog,
     BotUpdate,
@@ -19,6 +23,7 @@ from app.models import (
     NotificationDeliveryStatusEnum,
     NotificationSettings,
     NotificationSettingsUpdate,
+    PaymentHistory,
     SubscriptionStatusEnum,
     User,
     UserCreate,
@@ -32,7 +37,11 @@ from app.models import (
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
     db_obj = User.model_validate(
-        user_create, update={"hashed_password": get_password_hash(user_create.password)}
+        user_create,
+        update={
+            "hashed_password": get_password_hash(user_create.password),
+            "full_name": user_create.full_name or "",
+        },
     )
     session.add(db_obj)
     session.commit()
@@ -42,6 +51,8 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
 
 def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
     user_data = user_in.model_dump(exclude_unset=True)
+    if "full_name" in user_data and user_data["full_name"] is None:
+        user_data["full_name"] = ""
     extra_data = {}
     if "password" in user_data:
         password = user_data["password"]
@@ -70,6 +81,9 @@ def authenticate(*, session: Session, email: str, password: str) -> User | None:
     if not db_user:
         # Prevent timing attacks by running password verification even when user doesn't exist
         # This ensures the response time is similar whether or not the email exists
+        verify_password(password, DUMMY_HASH)
+        return None
+    if not db_user.hashed_password:
         verify_password(password, DUMMY_HASH)
         return None
     verified, updated_password_hash = verify_password(password, db_user.hashed_password)
@@ -325,6 +339,75 @@ def get_bot_logs_by_user(
     return list(session.exec(statement).all())
 
 
+def get_bot_orders_by_user(
+    *,
+    session: Session,
+    bot_id: uuid.UUID,
+    user_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+) -> list[BotOrder]:
+    statement = (
+        select(BotOrder)
+        .join(Bot, Bot.id == BotOrder.bot_id)
+        .where(
+            BotOrder.bot_id == bot_id,
+            Bot.user_id == user_id,
+            Bot.deleted_at.is_(None),
+        )
+        .order_by(BotOrder.placed_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
+def get_bot_trades_by_user(
+    *,
+    session: Session,
+    bot_id: uuid.UUID,
+    user_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+) -> list[BotTrade]:
+    statement = (
+        select(BotTrade)
+        .join(Bot, Bot.id == BotTrade.bot_id)
+        .where(
+            BotTrade.bot_id == bot_id,
+            Bot.user_id == user_id,
+            Bot.deleted_at.is_(None),
+        )
+        .order_by(BotTrade.traded_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
+def get_bot_snapshots_by_user(
+    *,
+    session: Session,
+    bot_id: uuid.UUID,
+    user_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+) -> list[BotSnapshot]:
+    statement = (
+        select(BotSnapshot)
+        .join(Bot, Bot.id == BotSnapshot.bot_id)
+        .where(
+            BotSnapshot.bot_id == bot_id,
+            Bot.user_id == user_id,
+            Bot.deleted_at.is_(None),
+        )
+        .order_by(BotSnapshot.snapshot_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
 # ── Notification ──────────────────────────────────────────────────────────────
 
 
@@ -473,3 +556,78 @@ def mark_notification_failed(
     session.commit()
     session.refresh(notification)
     return notification
+
+
+# ── PaymentHistory ───────────────────────────────────────────────────────────
+
+
+def get_payment_history_by_user(
+    *,
+    session: Session,
+    user_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+) -> list[PaymentHistory]:
+    statement = (
+        select(PaymentHistory)
+        .where(PaymentHistory.user_id == user_id)
+        .order_by(PaymentHistory.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
+# ── Announcements ────────────────────────────────────────────────────────────
+
+
+def get_announcements(
+    *,
+    session: Session,
+    include_unpublished: bool = False,
+    skip: int = 0,
+    limit: int = 100,
+) -> list[Announcement]:
+    statement = select(Announcement)
+    if not include_unpublished:
+        statement = statement.where(Announcement.is_published == True)  # noqa: E712
+    statement = (
+        statement.order_by(Announcement.is_pinned.desc(), Announcement.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
+def get_announcement(*, session: Session, announcement_id: uuid.UUID) -> Announcement | None:
+    return session.get(Announcement, announcement_id)
+
+
+def create_announcement(
+    *,
+    session: Session,
+    announcement: Announcement,
+) -> Announcement:
+    session.add(announcement)
+    session.commit()
+    session.refresh(announcement)
+    return announcement
+
+
+def update_announcement(
+    *,
+    session: Session,
+    announcement: Announcement,
+    data: dict[str, Any],
+) -> Announcement:
+    announcement.sqlmodel_update(data)
+    announcement.updated_at = datetime.now(timezone.utc)
+    session.add(announcement)
+    session.commit()
+    session.refresh(announcement)
+    return announcement
+
+
+def delete_announcement(*, session: Session, announcement: Announcement) -> None:
+    session.delete(announcement)
+    session.commit()

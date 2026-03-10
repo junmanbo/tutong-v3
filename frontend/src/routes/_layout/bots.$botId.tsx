@@ -6,7 +6,6 @@ import {
   Clock3,
   ListOrdered,
   RefreshCw,
-  ScrollText,
   TrendingUp,
 } from "lucide-react"
 
@@ -152,43 +151,13 @@ function BotDetailPage() {
   const pnlValue = Number(bot.total_pnl ?? "0")
   const lastSyncedAt = new Date().toLocaleTimeString()
 
-  const systemTimeline: TimelineItem[] = [
-    {
-      id: "created",
-      title: "봇 생성됨",
-      description: "초기 설정이 저장되었으며 실행할 준비가 완료되었습니다.",
-      at: new Date(bot.created_at).toLocaleString(),
-      tone: "default",
-    },
-    {
-      id: "status",
-      title: `상태: ${statusMeta.label}`,
-      description:
-        bot.status === "running"
-          ? "봇이 전략 사이클을 활발하게 처리 중입니다."
-          : bot.status === "pending"
-            ? "봇 시작이 요청되어 워커 처리를 기다리고 있습니다."
-            : bot.status === "error"
-              ? "재시작 전에 수동 점검이 필요합니다."
-              : "봇이 현재 새 사이클을 처리하고 있지 않습니다.",
-      at: `마지막 동기화: ${lastSyncedAt}`,
-      tone:
-        bot.status === "running"
-          ? "success"
-          : bot.status === "pending"
-            ? "warning"
-            : bot.status === "error"
-              ? "danger"
-              : "default",
-    },
-  ]
-
   const recentOrders: TimelineItem[] = (botLogs?.data ?? [])
     .filter(
       (log) =>
-        log.event_type.includes("order") ||
-        log.event_type.includes("slice") ||
-        log.event_type.includes("filled"),
+        log.level !== "error" &&
+        (log.event_type.includes("order") ||
+          log.event_type.includes("slice") ||
+          log.event_type.includes("filled")),
     )
     .slice(0, 20)
     .map((log) => ({
@@ -202,22 +171,6 @@ function BotDetailPage() {
           : log.level === "warning"
             ? "warning"
             : "success",
-    }))
-
-  const recentLogs: TimelineItem[] = (botLogs?.data ?? [])
-    .filter((log) => !recentOrders.some((orderLog) => orderLog.id === log.id))
-    .slice(0, 20)
-    .map((log) => ({
-      id: log.id,
-      title: log.event_type.split("_").join(" ").toUpperCase(),
-      description: log.message,
-      at: new Date(log.created_at).toLocaleString(),
-      tone:
-        log.level === "error"
-          ? "danger"
-          : log.level === "warning"
-            ? "warning"
-            : "default",
     }))
 
   const toneClassName: Record<NonNullable<TimelineItem["tone"]>, string> = {
@@ -395,7 +348,7 @@ function BotDetailPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle>최근 주문</CardTitle>
@@ -418,38 +371,6 @@ function BotDetailPage() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">{item.at}</p>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground dark:text-slate-300">
-                    {item.description}
-                  </p>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>로그 타임라인</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {logsLoading ? (
-              <Skeleton className="h-24 w-full" />
-            ) : (
-              [...systemTimeline, ...recentLogs].map((item) => (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "rounded-md border p-3",
-                    toneClassName[item.tone ?? "default"],
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <ScrollText className="size-4 text-muted-foreground" />
-                      <p className="text-sm font-medium">{item.title}</p>
-                    </div>
                     <p className="text-xs text-muted-foreground">{item.at}</p>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground dark:text-slate-300">

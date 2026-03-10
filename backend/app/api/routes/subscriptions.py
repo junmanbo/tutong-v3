@@ -9,9 +9,11 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from sqlmodel import SQLModel, select
 
+from app import crud
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     Message,
+    PaymentHistoriesPublic,
     SubscriptionPlan,
     SubscriptionStatusEnum,
     UserSubscription,
@@ -114,3 +116,20 @@ def cancel_my_subscription(
     session.add(subscription)
     session.commit()
     return Message(message="Subscription cancelled successfully")
+
+
+@router.get("/history", response_model=PaymentHistoriesPublic)
+def get_my_payment_history(
+    session: SessionDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+) -> Any:
+    """현재 사용자의 결제 내역 조회."""
+    history = crud.get_payment_history_by_user(
+        session=session,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit,
+    )
+    return PaymentHistoriesPublic(data=history, count=len(history))

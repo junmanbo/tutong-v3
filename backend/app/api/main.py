@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    announcements,
     accounts,
     admin,
     bots,
@@ -21,6 +22,7 @@ api_router.include_router(accounts.router)
 api_router.include_router(bots.router)
 api_router.include_router(notifications.router)
 api_router.include_router(subscriptions.router)
+api_router.include_router(announcements.router)
 api_router.include_router(admin.router)
 
 
