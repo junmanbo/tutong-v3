@@ -10,17 +10,17 @@ const ErrorComponent = () => {
       <div className="flex items-center z-10">
         <div className="flex flex-col ml-4 items-center justify-center p-4">
           <span className="text-6xl md:text-8xl font-bold leading-none mb-4">
-            Error
+            오류
           </span>
-          <span className="text-2xl font-bold mb-2">Oops!</span>
+          <span className="text-2xl font-bold mb-2">문제가 발생했습니다</span>
         </div>
       </div>
 
       <p className="text-lg text-muted-foreground mb-4 text-center z-10">
-        Something went wrong. Please try again.
+        요청을 처리하는 중 오류가 발생했습니다. 다시 시도해주세요.
       </p>
       <Link to="/">
-        <Button>Go Home</Button>
+        <Button>홈으로 이동</Button>
       </Link>
     </div>
   )

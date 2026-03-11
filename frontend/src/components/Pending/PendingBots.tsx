@@ -12,14 +12,14 @@ const PendingBots = () => (
   <Table>
     <TableHeader>
       <TableRow>
-        <TableHead>Name</TableHead>
-        <TableHead>Type</TableHead>
-        <TableHead>Symbol</TableHead>
-        <TableHead>Investment</TableHead>
-        <TableHead>Status</TableHead>
-        <TableHead>P&L</TableHead>
+        <TableHead>이름</TableHead>
+        <TableHead>유형</TableHead>
+        <TableHead>종목</TableHead>
+        <TableHead>투자금액</TableHead>
+        <TableHead>상태</TableHead>
+        <TableHead>수익/손실</TableHead>
         <TableHead>
-          <span className="sr-only">Actions</span>
+          <span className="sr-only">작업</span>
         </TableHead>
       </TableRow>
     </TableHeader>

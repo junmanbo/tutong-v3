@@ -18,7 +18,7 @@ function getAccountsQueryOptions() {
 export const Route = createFileRoute("/_layout/accounts")({
   component: Accounts,
   head: () => ({
-    meta: [{ title: "Accounts - AutoTrade" }],
+    meta: [{ title: "계좌 - AutoTrade" }],
   }),
 })
 

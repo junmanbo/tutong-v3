@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 export const Route = createFileRoute("/_layout/billing")({
   component: BillingPage,
   head: () => ({
-    meta: [{ title: "Billing - AutoTrade" }],
+    meta: [{ title: "결제 - AutoTrade" }],
   }),
 })
 

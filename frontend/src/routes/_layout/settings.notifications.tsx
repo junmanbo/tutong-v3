@@ -21,7 +21,7 @@ import { handleError } from "@/utils"
 export const Route = createFileRoute("/_layout/settings/notifications")({
   component: NotificationsSettingsPage,
   head: () => ({
-    meta: [{ title: "Notification Settings - AutoTrade" }],
+    meta: [{ title: "알림 설정 - AutoTrade" }],
   }),
 })
 
@@ -186,7 +186,7 @@ function NotificationsSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label htmlFor="telegram-enabled">Telegram 알림 전체</Label>
+            <Label htmlFor="telegram-enabled">텔레그램 알림 전체</Label>
             <Checkbox
               id="telegram-enabled"
               checked={telegramEnabled}
@@ -195,12 +195,12 @@ function NotificationsSettingsPage() {
               }
             />
           </div>
-          <Label htmlFor="telegram-chat-id">Telegram Chat ID</Label>
+          <Label htmlFor="telegram-chat-id">텔레그램 채팅 ID</Label>
           <Input
             id="telegram-chat-id"
             value={telegramChatId}
             onChange={(e) => setTelegramChatId(e.target.value)}
-            placeholder="텔레그램 Chat ID를 입력하세요"
+            placeholder="텔레그램 채팅 ID를 입력하세요"
           />
         </CardContent>
       </Card>

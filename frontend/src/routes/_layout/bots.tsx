@@ -33,7 +33,7 @@ function getBotsQueryOptions() {
 export const Route = createFileRoute("/_layout/bots")({
   component: BotsRouteLayout,
   head: () => ({
-    meta: [{ title: "Bots - AutoTrade" }],
+    meta: [{ title: "트레이딩 봇 - AutoTrade" }],
   }),
 })
 
@@ -79,23 +79,23 @@ function BotsRouteLayout() {
 function BotsListPage() {
   const botTypeGuide = [
     {
-      title: "Spot DCA",
+      title: "현물 DCA",
       description: "정해진 주기마다 KRW 기준으로 분할 매수합니다.",
     },
     {
-      title: "Spot Grid",
+      title: "현물 그리드",
       description: "설정한 가격 범위에서 자동으로 매수/매도를 반복합니다.",
     },
     {
-      title: "Position Snowball",
+      title: "포지션 스노우볼",
       description: "하락 구간에 분할 매수 후 반등 시 청산합니다.",
     },
     {
-      title: "Rebalancing",
+      title: "리밸런싱",
       description: "포트폴리오 목표 비중을 KRW 기준으로 자동 재조정합니다.",
     },
     {
-      title: "Algo Orders",
+      title: "알고 주문",
       description: "대량 주문을 여러 조각으로 나눠 체결 슬리피지를 줄입니다.",
     },
   ]

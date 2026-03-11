@@ -18,11 +18,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
 const BOT_TYPE_LABELS: Record<string, string> = {
-  spot_grid: "Spot Grid",
-  position_snowball: "Snowball",
-  rebalancing: "Rebalancing",
-  spot_dca: "Spot DCA",
-  algo_orders: "Algo Orders",
+  spot_grid: "현물 그리드",
+  position_snowball: "스노우볼",
+  rebalancing: "리밸런싱",
+  spot_dca: "현물 DCA",
+  algo_orders: "알고 주문",
 }
 
 const STATUS_STYLES: Record<
@@ -42,7 +42,7 @@ const STATUS_STYLES: Record<
 export const Route = createFileRoute("/_layout/bots/$botId")({
   component: BotDetailPage,
   head: () => ({
-    meta: [{ title: "Bot Detail - AutoTrade" }],
+    meta: [{ title: "봇 상세 - AutoTrade" }],
   }),
 })
 
@@ -78,7 +78,18 @@ function formatDurationFrom(isoDate: string) {
   const hours = Math.floor(diff / (1000 * 60 * 60))
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
 
-  return `${hours}h ${minutes}m`
+  return `${hours}시간 ${minutes}분`
+}
+
+function mapEventTypeLabel(eventType: string) {
+  const labelMap: Record<string, string> = {
+    order_placed: "주문 등록",
+    order_filled: "주문 체결",
+    order_cancelled: "주문 취소",
+    dca_order_placed: "DCA 주문 등록",
+    dca_order_filled: "DCA 주문 체결",
+  }
+  return labelMap[eventType] ?? "주문 이벤트"
 }
 
 type TimelineItem = {
@@ -162,7 +173,7 @@ function BotDetailPage() {
     .slice(0, 20)
     .map((log) => ({
       id: log.id,
-      title: log.event_type.split("_").join(" ").toUpperCase(),
+      title: mapEventTypeLabel(log.event_type),
       description: log.message,
       at: new Date(log.created_at).toLocaleString(),
       tone:

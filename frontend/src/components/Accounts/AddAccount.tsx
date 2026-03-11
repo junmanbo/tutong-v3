@@ -77,8 +77,8 @@ type FormData = z.input<typeof formSchema>
 type SubmitData = z.output<typeof formSchema>
 
 const EXCHANGE_OPTIONS = [
-  { value: "binance", label: "Binance" },
-  { value: "upbit", label: "Upbit" },
+  { value: "binance", label: "바이낸스" },
+  { value: "upbit", label: "업비트" },
   { value: "kis", label: "한국투자증권 (KIS)" },
   { value: "kiwoom", label: "키움증권" },
 ]
@@ -215,7 +215,7 @@ const AddAccount = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      API Key <span className="text-destructive">*</span>
+                      API 키 <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -236,7 +236,7 @@ const AddAccount = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      API Secret <span className="text-destructive">*</span>
+                      API 시크릿 <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input

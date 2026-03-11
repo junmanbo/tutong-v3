@@ -22,7 +22,7 @@ import { handleError } from "@/utils"
 export const Route = createFileRoute("/_layout/bots/new/spot-grid")({
   component: SpotGridBotPage,
   head: () => ({
-    meta: [{ title: "Spot Grid 봇 생성 - AutoTrade" }],
+    meta: [{ title: "현물 그리드 봇 생성 - AutoTrade" }],
   }),
 })
 
@@ -50,7 +50,7 @@ function SpotGridBotPage() {
     mutationFn: () =>
       BotsService.createBot({
         requestBody: {
-          name: name.trim() || "Spot Grid Bot",
+          name: name.trim() || "현물 그리드 봇",
           bot_type: "spot_grid",
           account_id: accountId,
           symbol: symbol.trim().toUpperCase(),
@@ -69,7 +69,7 @@ function SpotGridBotPage() {
         },
       }),
     onSuccess: () => {
-      showSuccessToast("Spot Grid 봇이 생성되었습니다")
+      showSuccessToast("현물 그리드 봇이 생성되었습니다")
       queryClient.invalidateQueries({ queryKey: ["bots"] })
       navigate({ to: "/bots" })
     },
@@ -123,7 +123,7 @@ function SpotGridBotPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Spot Grid 봇 만들기</CardTitle>
+          <CardTitle>현물 그리드 봇 만들기</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
@@ -148,7 +148,7 @@ function SpotGridBotPage() {
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="예) BTC Grid Bot"
+                  placeholder="예) 비트코인 그리드 봇"
                 />
               </div>
             </div>
@@ -207,8 +207,8 @@ function SpotGridBotPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="arithmetic">등간격 (Arithmetic)</SelectItem>
-                    <SelectItem value="geometric">등비 (Geometric)</SelectItem>
+                    <SelectItem value="arithmetic">등간격</SelectItem>
+                    <SelectItem value="geometric">등비</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

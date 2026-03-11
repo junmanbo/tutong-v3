@@ -13,18 +13,18 @@ import { type Item, Main } from "./Main"
 import { User } from "./User"
 
 const baseItems: Item[] = [
-  { icon: Home, title: "Dashboard", path: "/" },
-  { icon: Bot, title: "Bots", path: "/bots" },
-  { icon: Wallet, title: "Accounts", path: "/accounts" },
-  { icon: CreditCard, title: "Billing", path: "/billing" },
-  { icon: Settings, title: "Settings", path: "/settings" },
+  { icon: Home, title: "대시보드", path: "/" },
+  { icon: Bot, title: "트레이딩 봇", path: "/bots" },
+  { icon: Wallet, title: "계좌", path: "/accounts" },
+  { icon: CreditCard, title: "결제", path: "/billing" },
+  { icon: Settings, title: "설정", path: "/settings" },
 ]
 
 export function AppSidebar() {
   const { user: currentUser } = useAuth()
 
   const items = currentUser?.is_superuser
-    ? [...baseItems, { icon: Users, title: "Admin", path: "/admin" }]
+    ? [...baseItems, { icon: Users, title: "관리자", path: "/admin" }]
     : baseItems
 
   return (

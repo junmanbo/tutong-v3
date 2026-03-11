@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils"
 import { AccountActionsMenu } from "./AccountActionsMenu"
 
 const EXCHANGE_LABELS: Record<string, string> = {
-  binance: "Binance",
-  upbit: "Upbit",
+  binance: "바이낸스",
+  upbit: "업비트",
   kis: "KIS",
-  kiwoom: "Kiwoom",
+  kiwoom: "키움",
 }
 
 export const columns: ColumnDef<ExchangeAccountPublic>[] = [
@@ -71,7 +71,7 @@ export const columns: ColumnDef<ExchangeAccountPublic>[] = [
   },
   {
     id: "actions",
-    header: () => <span className="sr-only">Actions</span>,
+    header: () => <span className="sr-only">작업</span>,
     cell: ({ row }) => (
       <div className="flex justify-end">
         <AccountActionsMenu account={row.original} />

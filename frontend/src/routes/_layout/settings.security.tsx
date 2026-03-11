@@ -6,7 +6,7 @@ import DeleteAccount from "@/components/UserSettings/DeleteAccount"
 export const Route = createFileRoute("/_layout/settings/security")({
   component: SettingsSecurityPage,
   head: () => ({
-    meta: [{ title: "Security Settings - AutoTrade" }],
+    meta: [{ title: "보안 설정 - AutoTrade" }],
   }),
 })
 

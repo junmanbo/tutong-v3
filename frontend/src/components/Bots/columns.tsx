@@ -7,11 +7,11 @@ import { cn } from "@/lib/utils"
 import { BotActionsMenu } from "./BotActionsMenu"
 
 const BOT_TYPE_LABELS: Record<string, string> = {
-  spot_grid: "Spot Grid",
-  position_snowball: "Snowball",
-  rebalancing: "Rebalancing",
-  spot_dca: "Spot DCA",
-  algo_orders: "Algo Orders",
+  spot_grid: "현물 그리드",
+  position_snowball: "스노우볼",
+  rebalancing: "리밸런싱",
+  spot_dca: "현물 DCA",
+  algo_orders: "알고 주문",
 }
 
 const STATUS_STYLES: Record<
@@ -107,7 +107,7 @@ export const columns: ColumnDef<BotPublic>[] = [
   },
   {
     id: "actions",
-    header: () => <span className="sr-only">Actions</span>,
+    header: () => <span className="sr-only">작업</span>,
     cell: ({ row }) => (
       <div className="flex justify-end">
         <BotActionsMenu bot={row.original} />

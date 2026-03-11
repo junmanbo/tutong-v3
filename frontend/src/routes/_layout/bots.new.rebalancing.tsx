@@ -24,7 +24,7 @@ type AssetRow = { symbol: string; weight: string }
 export const Route = createFileRoute("/_layout/bots/new/rebalancing")({
   component: RebalancingBotPage,
   head: () => ({
-    meta: [{ title: "Rebalancing 봇 생성 - AutoTrade" }],
+    meta: [{ title: "리밸런싱 봇 생성 - AutoTrade" }],
   }),
 })
 
@@ -70,7 +70,7 @@ function RebalancingBotPage() {
 
       return BotsService.createBot({
         requestBody: {
-          name: name.trim() || "Rebalancing Bot",
+          name: name.trim() || "리밸런싱 봇",
           bot_type: "rebalancing",
           account_id: accountId,
           base_currency: baseAsset,
@@ -92,7 +92,7 @@ function RebalancingBotPage() {
       })
     },
     onSuccess: () => {
-      showSuccessToast("Rebalancing 봇이 생성되었습니다")
+      showSuccessToast("리밸런싱 봇이 생성되었습니다")
       queryClient.invalidateQueries({ queryKey: ["bots"] })
       navigate({ to: "/bots" })
     },
@@ -182,7 +182,7 @@ function RebalancingBotPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Rebalancing Bot 만들기</CardTitle>
+          <CardTitle>리밸런싱 봇 만들기</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
@@ -207,13 +207,13 @@ function RebalancingBotPage() {
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="예) Portfolio Rebalance Bot"
+                  placeholder="예) 포트폴리오 리밸런싱 봇"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>기준 통화 (Quote)</Label>
+              <Label>기준 통화</Label>
               <Input
                 value={quoteCurrency}
                 onChange={(e) => setQuoteCurrency(e.target.value)}

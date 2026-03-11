@@ -12,13 +12,13 @@ const PendingAccounts = () => (
   <Table>
     <TableHeader>
       <TableRow>
-        <TableHead>Exchange</TableHead>
-        <TableHead>Label</TableHead>
-        <TableHead>Status</TableHead>
-        <TableHead>Valid</TableHead>
-        <TableHead>Created</TableHead>
+        <TableHead>거래소</TableHead>
+        <TableHead>계좌명</TableHead>
+        <TableHead>상태</TableHead>
+        <TableHead>인증</TableHead>
+        <TableHead>등록일</TableHead>
         <TableHead>
-          <span className="sr-only">Actions</span>
+          <span className="sr-only">작업</span>
         </TableHead>
       </TableRow>
     </TableHeader>

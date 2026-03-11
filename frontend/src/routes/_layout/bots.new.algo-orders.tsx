@@ -22,7 +22,7 @@ import { handleError } from "@/utils"
 export const Route = createFileRoute("/_layout/bots/new/algo-orders")({
   component: AlgoOrdersBotPage,
   head: () => ({
-    meta: [{ title: "Spot Algo Orders 봇 생성 - AutoTrade" }],
+    meta: [{ title: "알고 주문 봇 생성 - AutoTrade" }],
   }),
 })
 
@@ -76,7 +76,7 @@ function AlgoOrdersBotPage() {
 
       return BotsService.createBot({
         requestBody: {
-          name: name.trim() || "Algo Orders Bot",
+          name: name.trim() || "알고 주문 봇",
           bot_type: "algo_orders",
           account_id: accountId,
           symbol: symbol.trim().toUpperCase(),
@@ -96,7 +96,7 @@ function AlgoOrdersBotPage() {
       })
     },
     onSuccess: () => {
-      showSuccessToast("Spot Algo Orders 봇이 생성되었습니다")
+      showSuccessToast("알고 주문 봇이 생성되었습니다")
       queryClient.invalidateQueries({ queryKey: ["bots"] })
       navigate({ to: "/bots" })
     },
@@ -158,7 +158,7 @@ function AlgoOrdersBotPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Spot Algo Orders 만들기 (TWAP)</CardTitle>
+          <CardTitle>알고 주문 봇 만들기 (TWAP)</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
@@ -183,7 +183,7 @@ function AlgoOrdersBotPage() {
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="예) BTC TWAP Bot"
+                  placeholder="예) 비트코인 TWAP 봇"
                 />
               </div>
             </div>
@@ -200,8 +200,8 @@ function AlgoOrdersBotPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="buy">매수 (BUY)</SelectItem>
-                    <SelectItem value="sell">매도 (SELL)</SelectItem>
+                    <SelectItem value="buy">매수</SelectItem>
+                    <SelectItem value="sell">매도</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -227,7 +227,7 @@ function AlgoOrdersBotPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="quote">금액 (KRW)</SelectItem>
-                    <SelectItem value="base">수량 (Base)</SelectItem>
+                    <SelectItem value="base">수량</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

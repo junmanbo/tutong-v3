@@ -5,7 +5,7 @@ import UserInformation from "@/components/UserSettings/UserInformation"
 export const Route = createFileRoute("/_layout/settings/profile")({
   component: SettingsProfilePage,
   head: () => ({
-    meta: [{ title: "Profile Settings - AutoTrade" }],
+    meta: [{ title: "프로필 설정 - AutoTrade" }],
   }),
 })
 

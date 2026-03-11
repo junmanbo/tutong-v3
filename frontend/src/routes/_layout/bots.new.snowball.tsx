@@ -22,7 +22,7 @@ import { handleError } from "@/utils"
 export const Route = createFileRoute("/_layout/bots/new/snowball")({
   component: SnowballBotPage,
   head: () => ({
-    meta: [{ title: "Position Snowball 봇 생성 - AutoTrade" }],
+    meta: [{ title: "포지션 스노우볼 봇 생성 - AutoTrade" }],
   }),
 })
 
@@ -48,7 +48,7 @@ function SnowballBotPage() {
     mutationFn: () =>
       BotsService.createBot({
         requestBody: {
-          name: name.trim() || "Snowball Bot",
+          name: name.trim() || "스노우볼 봇",
           bot_type: "position_snowball",
           account_id: accountId,
           symbol: symbol.trim().toUpperCase(),
@@ -64,7 +64,7 @@ function SnowballBotPage() {
         },
       }),
     onSuccess: () => {
-      showSuccessToast("Position Snowball 봇이 생성되었습니다")
+      showSuccessToast("포지션 스노우볼 봇이 생성되었습니다")
       queryClient.invalidateQueries({ queryKey: ["bots"] })
       navigate({ to: "/bots" })
     },
@@ -114,7 +114,7 @@ function SnowballBotPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Position Snowball 봇 만들기</CardTitle>
+          <CardTitle>포지션 스노우볼 봇 만들기</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
@@ -139,7 +139,7 @@ function SnowballBotPage() {
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="예) BTC Snowball Bot"
+                  placeholder="예) 비트코인 스노우볼 봇"
                 />
               </div>
             </div>

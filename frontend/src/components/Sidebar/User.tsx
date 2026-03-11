@@ -27,11 +27,11 @@ interface UserInfoProps {
 function UserInfo({ fullName, email }: UserInfoProps) {
   return (
     <div className="flex items-center gap-2.5 w-full min-w-0">
-      <Avatar className="size-8">
-        <AvatarFallback className="bg-zinc-600 text-white">
-          {getInitials(fullName || "User")}
-        </AvatarFallback>
-      </Avatar>
+        <Avatar className="size-8">
+          <AvatarFallback className="bg-zinc-600 text-white">
+          {getInitials(fullName || "사용자")}
+          </AvatarFallback>
+        </Avatar>
       <div className="flex flex-col items-start min-w-0">
         <p className="text-sm font-medium truncate w-full">{fullName}</p>
         <p className="text-xs text-muted-foreground truncate w-full">{email}</p>
@@ -82,12 +82,12 @@ export function User({ user }: { user: any }) {
             <RouterLink to="/settings" onClick={handleMenuClick}>
               <DropdownMenuItem>
                 <Settings />
-                User Settings
+                사용자 설정
               </DropdownMenuItem>
             </RouterLink>
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut />
-              Log Out
+              로그아웃
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

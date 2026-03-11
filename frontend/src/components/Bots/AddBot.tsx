@@ -236,11 +236,11 @@ const formSchema = z
 type FormData = z.infer<typeof formSchema>
 
 const BOT_TYPE_OPTIONS = [
-  { value: "spot_dca", label: "Spot DCA" },
-  { value: "spot_grid", label: "Spot Grid" },
-  { value: "position_snowball", label: "Position Snowball" },
-  { value: "rebalancing", label: "Rebalancing" },
-  { value: "algo_orders", label: "Algo Orders (TWAP)" },
+  { value: "spot_dca", label: "현물 DCA" },
+  { value: "spot_grid", label: "현물 그리드" },
+  { value: "position_snowball", label: "포지션 스노우볼" },
+  { value: "rebalancing", label: "리밸런싱" },
+  { value: "algo_orders", label: "알고 주문 (TWAP)" },
 ]
 
 const BOT_TYPE_DESCRIPTIONS: Record<BotTypeEnum, string> = {

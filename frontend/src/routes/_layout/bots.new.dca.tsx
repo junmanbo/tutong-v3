@@ -22,7 +22,7 @@ import { handleError } from "@/utils"
 export const Route = createFileRoute("/_layout/bots/new/dca")({
   component: DcaBotPage,
   head: () => ({
-    meta: [{ title: "Spot DCA 봇 생성 - AutoTrade" }],
+    meta: [{ title: "현물 DCA 봇 생성 - AutoTrade" }],
   }),
 })
 
@@ -50,7 +50,7 @@ function DcaBotPage() {
     mutationFn: () =>
       BotsService.createBot({
         requestBody: {
-          name: name.trim() || "Spot DCA Bot",
+          name: name.trim() || "현물 DCA 봇",
           bot_type: "spot_dca",
           account_id: accountId,
           symbol: symbol.trim().toUpperCase(),
@@ -73,7 +73,7 @@ function DcaBotPage() {
         },
       }),
     onSuccess: () => {
-      showSuccessToast("Spot DCA 봇이 생성되었습니다")
+      showSuccessToast("현물 DCA 봇이 생성되었습니다")
       queryClient.invalidateQueries({ queryKey: ["bots"] })
       navigate({ to: "/bots" })
     },
@@ -123,7 +123,7 @@ function DcaBotPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Spot DCA 봇 만들기</CardTitle>
+          <CardTitle>현물 DCA 봇 만들기</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
@@ -148,7 +148,7 @@ function DcaBotPage() {
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="예) BTC DCA Bot"
+                  placeholder="예) 비트코인 DCA 봇"
                 />
               </div>
             </div>

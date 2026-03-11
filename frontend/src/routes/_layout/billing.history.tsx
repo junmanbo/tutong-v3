@@ -15,7 +15,7 @@ import {
 export const Route = createFileRoute("/_layout/billing/history")({
   component: BillingHistoryPage,
   head: () => ({
-    meta: [{ title: "Billing History - AutoTrade" }],
+    meta: [{ title: "결제 내역 - AutoTrade" }],
   }),
 })
 

@@ -13,35 +13,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const botTypes = [
   {
-    title: "Spot Grid",
+    title: "현물 그리드",
     icon: ChartColumnIncreasing,
     description: "설정한 가격 범위에서 자동 반복 매매",
     fit: "적합: 횡보장",
     to: "/bots/new/spot-grid",
   },
   {
-    title: "Position Snowball",
+    title: "포지션 스노우볼",
     icon: Snowflake,
     description: "가격 하락 시 분할 매수로 단가를 낮추는 전략",
     fit: "적합: 하락 후 반등",
     to: "/bots/new/snowball",
   },
   {
-    title: "Rebalancing",
+    title: "리밸런싱",
     icon: Scale,
     description: "포트폴리오 목표 비중을 자동 유지",
     fit: "적합: 장기 보유",
     to: "/bots/new/rebalancing",
   },
   {
-    title: "Spot DCA",
+    title: "현물 DCA",
     icon: Gauge,
     description: "정기적으로 일정 금액을 자동 매수",
     fit: "적합: 장기 투자",
     to: "/bots/new/dca",
   },
   {
-    title: "Spot Algo Orders",
+    title: "현물 알고 주문",
     icon: Target,
     description: "대량 주문을 분할 실행해 슬리피지 최소화",
     fit: "적합: 대규모 매매",

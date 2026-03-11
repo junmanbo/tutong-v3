@@ -12,16 +12,16 @@ const NotFound = () => {
           <span className="text-6xl md:text-8xl font-bold leading-none mb-4">
             404
           </span>
-          <span className="text-2xl font-bold mb-2">Oops!</span>
+          <span className="text-2xl font-bold mb-2">페이지를 찾을 수 없습니다</span>
         </div>
       </div>
 
       <p className="text-lg text-muted-foreground mb-4 text-center z-10">
-        The page you are looking for was not found.
+        요청하신 페이지가 존재하지 않거나 이동되었습니다.
       </p>
       <div className="z-10">
         <Link to="/">
-          <Button className="mt-4">Go Back</Button>
+          <Button className="mt-4">이전 화면으로</Button>
         </Link>
       </div>
     </div>

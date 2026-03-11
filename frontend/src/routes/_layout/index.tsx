@@ -19,7 +19,7 @@ import useAuth from "@/hooks/useAuth"
 export const Route = createFileRoute("/_layout/")({
   component: Dashboard,
   head: () => ({
-    meta: [{ title: "Dashboard - AutoTrade" }],
+    meta: [{ title: "대시보드 - AutoTrade" }],
   }),
 })
 
@@ -122,7 +122,7 @@ function Dashboard() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight truncate max-w-sm">
-          Hi, {currentUser?.full_name || currentUser?.email} 👋
+          안녕하세요, {currentUser?.full_name || currentUser?.email}님
         </h1>
         <p className="text-muted-foreground">
           AutoTrade 플랫폼에 오신 것을 환영합니다
@@ -315,11 +315,27 @@ function Dashboard() {
                 activeBots.map((bot) => (
                   <TableRow key={bot.id}>
                     <TableCell>{bot.name}</TableCell>
-                    <TableCell>{bot.bot_type}</TableCell>
+                    <TableCell>
+                      {{
+                        spot_grid: "현물 그리드",
+                        position_snowball: "스노우볼",
+                        rebalancing: "리밸런싱",
+                        spot_dca: "현물 DCA",
+                        algo_orders: "알고 주문",
+                      }[bot.bot_type] ?? bot.bot_type}
+                    </TableCell>
                     <TableCell>
                       {Number(bot.total_pnl_pct).toFixed(2)}%
                     </TableCell>
-                    <TableCell className="capitalize">{bot.status}</TableCell>
+                    <TableCell>
+                      {{
+                        running: "실행 중",
+                        pending: "대기 중",
+                        stopped: "중지됨",
+                        error: "오류",
+                        completed: "완료",
+                      }[bot.status] ?? bot.status}
+                    </TableCell>
                   </TableRow>
                 ))
               )}

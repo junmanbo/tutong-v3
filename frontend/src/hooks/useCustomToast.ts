@@ -2,13 +2,13 @@ import { toast } from "sonner"
 
 const useCustomToast = () => {
   const showSuccessToast = (description: string) => {
-    toast.success("Success!", {
+    toast.success("완료", {
       description,
     })
   }
 
   const showErrorToast = (description: string) => {
-    toast.error("Something went wrong!", {
+    toast.error("오류가 발생했습니다", {
       description,
     })
   }
