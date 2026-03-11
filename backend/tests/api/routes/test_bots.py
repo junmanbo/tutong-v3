@@ -5,6 +5,7 @@
 Celery·Redis 외부 의존성은 mock으로 대체합니다.
 """
 import uuid
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,6 +15,7 @@ from sqlmodel import Session
 from app import crud
 from app.core.config import settings
 from app.models import BotStatusEnum, UserCreate
+from app.models import BotOrder, BotSnapshot, BotTrade
 from tests.utils.account import create_random_account, create_random_bot
 from tests.utils.user import user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
@@ -913,6 +915,135 @@ class TestReadBotLogs:
             headers=headers_other,
         )
         assert r_other.status_code == 404
+
+
+class TestReadBotOrdersTradesSnapshots:
+    def test_read_bot_orders(
+        self, client: TestClient, db: Session
+    ) -> None:
+        user, headers, account_id = _setup_user_with_account(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/bots/",
+            headers=headers,
+            json=_bot_payload(account_id),
+        )
+        bot_id = uuid.UUID(create_r.json()["id"])
+
+        db.add(
+            BotOrder(
+                bot_id=bot_id,
+                exchange_order_id=f"ord-{uuid.uuid4()}",
+                symbol="BTC/USDT",
+                side="buy",
+                order_type="market",
+                status="filled",
+                quantity="0.01",
+                filled_quantity="0.01",
+                fee="0.0001",
+                fee_currency="USDT",
+                placed_at=datetime.now(timezone.utc),
+                filled_at=datetime.now(timezone.utc),
+            )
+        )
+        db.commit()
+
+        r = client.get(
+            f"{settings.API_V1_STR}/bots/{bot_id}/orders",
+            headers=headers,
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["count"] == 1
+        assert data["data"][0]["bot_id"] == str(bot_id)
+
+        _, headers_other, _ = _setup_user_with_account(client, db)
+        r_other = client.get(
+            f"{settings.API_V1_STR}/bots/{bot_id}/orders",
+            headers=headers_other,
+        )
+        assert r_other.status_code == 404
+
+    def test_read_bot_trades(
+        self, client: TestClient, db: Session
+    ) -> None:
+        _, headers, account_id = _setup_user_with_account(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/bots/",
+            headers=headers,
+            json=_bot_payload(account_id),
+        )
+        bot_id = uuid.UUID(create_r.json()["id"])
+        order = BotOrder(
+            bot_id=bot_id,
+            exchange_order_id=f"ord-{uuid.uuid4()}",
+            symbol="BTC/USDT",
+            side="buy",
+            order_type="market",
+            status="filled",
+            quantity="0.01",
+            filled_quantity="0.01",
+            fee="0.0001",
+            fee_currency="USDT",
+            placed_at=datetime.now(timezone.utc),
+            filled_at=datetime.now(timezone.utc),
+        )
+        db.add(order)
+        db.commit()
+        db.refresh(order)
+        db.add(
+            BotTrade(
+                id=uuid.uuid4(),
+                order_id=order.id,
+                bot_id=bot_id,
+                exchange_trade_id=f"trd-{uuid.uuid4()}",
+                quantity="0.01",
+                price="50000",
+                fee="0.0001",
+                fee_currency="USDT",
+                traded_at=datetime.now(timezone.utc),
+            )
+        )
+        db.commit()
+
+        r = client.get(
+            f"{settings.API_V1_STR}/bots/{bot_id}/trades",
+            headers=headers,
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["count"] == 1
+        assert data["data"][0]["bot_id"] == str(bot_id)
+
+    def test_read_bot_snapshots(
+        self, client: TestClient, db: Session
+    ) -> None:
+        _, headers, account_id = _setup_user_with_account(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/bots/",
+            headers=headers,
+            json=_bot_payload(account_id),
+        )
+        bot_id = uuid.UUID(create_r.json()["id"])
+
+        db.add(
+            BotSnapshot(
+                bot_id=bot_id,
+                total_pnl="1000",
+                total_pnl_pct="1.25",
+                portfolio_value="101000",
+                snapshot_at=datetime.now(timezone.utc),
+            )
+        )
+        db.commit()
+
+        r = client.get(
+            f"{settings.API_V1_STR}/bots/{bot_id}/snapshots",
+            headers=headers,
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["count"] == 1
+        assert data["data"][0]["bot_id"] == str(bot_id)
 
 
 @pytest.mark.parametrize(

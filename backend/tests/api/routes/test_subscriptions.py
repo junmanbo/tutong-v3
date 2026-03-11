@@ -12,6 +12,7 @@ from sqlmodel import Session
 from app import crud
 from app.core.config import settings
 from app.models import (
+    PaymentHistory,
     SubscriptionPlan,
     SubscriptionStatusEnum,
     UserCreate,
@@ -255,3 +256,50 @@ class TestCancelMySubscription:
             f"{settings.API_V1_STR}/subscriptions/me", headers=headers
         )
         assert r.json() is None
+
+
+class TestGetPaymentHistory:
+    def test_returns_empty_history_for_new_user(
+        self, client: TestClient, db: Session
+    ) -> None:
+        _, headers = _user_and_headers(client, db)
+        r = client.get(
+            f"{settings.API_V1_STR}/subscriptions/history", headers=headers
+        )
+        assert r.status_code == 200
+        assert r.json()["count"] == 0
+        assert r.json()["data"] == []
+
+    def test_returns_user_payment_history(
+        self, client: TestClient, db: Session
+    ) -> None:
+        user, headers = _user_and_headers(client, db)
+        plan = _create_plan(db, f"plan_{random_lower_string()}")
+        subscription = _create_subscription(db, user.id, plan.id)
+        history = PaymentHistory(
+            user_id=user.id,
+            subscription_id=subscription.id,
+            plan_id=plan.id,
+            amount_krw=9900,
+            status="paid",
+            pg_provider="test-pg",
+            pg_payment_id=f"pay-{uuid.uuid4()}",
+            paid_at=datetime.now(UTC),
+        )
+        db.add(history)
+        db.commit()
+        db.refresh(history)
+
+        r = client.get(
+            f"{settings.API_V1_STR}/subscriptions/history",
+            headers=headers,
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["count"] == 1
+        assert data["data"][0]["id"] == str(history.id)
+        assert data["data"][0]["amount_krw"] == 9900
+
+    def test_requires_auth(self, client: TestClient) -> None:
+        r = client.get(f"{settings.API_V1_STR}/subscriptions/history")
+        assert r.status_code == 401

@@ -29,6 +29,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     cd /workspace/bot_engine && uv sync --no-dev
 
 ENV PATH="/workspace/bot_engine/.venv/bin:$PATH"
+ENV PYTHONPATH="/workspace"
 
 WORKDIR /workspace/bot_engine/
 

@@ -36,12 +36,12 @@ from app.models import (
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
-    db_obj = User.model_validate(
-        user_create,
-        update={
-            "hashed_password": get_password_hash(user_create.password),
-            "full_name": user_create.full_name or "",
-        },
+    db_obj = User(
+        email=user_create.email,
+        is_active=user_create.is_active,
+        is_superuser=user_create.is_superuser,
+        full_name=user_create.full_name or "",
+        hashed_password=get_password_hash(user_create.password),
     )
     session.add(db_obj)
     session.commit()

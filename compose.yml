@@ -152,6 +152,7 @@ services:
     networks:
       - traefik-public
       - default
+    command: ["celery", "-A", "bot_engine.celery_app", "worker", "--loglevel=info"]
     build:
       context: .
       dockerfile: bot_engine/Dockerfile
@@ -162,8 +163,6 @@ services:
       redis:
         condition: service_healthy
         restart: true
-      prestart:
-        condition: service_completed_successfully
     env_file:
       - .env
     environment:
@@ -174,6 +173,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
       - REDIS_URL=redis://redis:6379/0
       - ENCRYPTION_KEY=${ENCRYPTION_KEY?Variable not set}
+      - PYTHONPATH=/workspace
       - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
 
   frontend:
