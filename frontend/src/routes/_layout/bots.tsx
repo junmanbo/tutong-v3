@@ -6,9 +6,9 @@ import {
   useRouterState,
 } from "@tanstack/react-router"
 import { BookOpen } from "lucide-react"
-import { Suspense } from "react"
+import { Suspense, useMemo, useState } from "react"
 
-import { BotsService } from "@/client"
+import { AccountsService, BotsService } from "@/client"
 import AddBot from "@/components/Bots/AddBot"
 import { columns } from "@/components/Bots/columns"
 import { DataTable } from "@/components/Common/DataTable"
@@ -22,11 +22,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 function getBotsQueryOptions() {
   return {
     queryFn: () => BotsService.readBots({ skip: 0, limit: 100 }),
     queryKey: ["bots"],
+  }
+}
+
+function getAccountsQueryOptions() {
+  return {
+    queryFn: () => AccountsService.readAccounts({ skip: 0, limit: 200 }),
+    queryKey: ["accounts"],
   }
 }
 
@@ -37,14 +52,37 @@ export const Route = createFileRoute("/_layout/bots")({
   }),
 })
 
-function BotsTableContent() {
+function BotsTableContent({
+  statusFilter,
+  exchangeFilter,
+}: {
+  statusFilter: "all" | "running" | "stopped" | "completed" | "error"
+  exchangeFilter: "all" | "binance" | "upbit" | "kis" | "kiwoom"
+}) {
   const { data: bots } = useSuspenseQuery(getBotsQueryOptions())
+  const { data: accounts } = useSuspenseQuery(getAccountsQueryOptions())
   const navigate = useNavigate()
+  const accountExchangeMap = useMemo(
+    () => new Map(accounts.data.map((account) => [account.id, account.exchange])),
+    [accounts.data],
+  )
+  const filteredBots = useMemo(
+    () =>
+      bots.data.filter((bot) => {
+        const statusMatched =
+          statusFilter === "all" ? true : bot.status === statusFilter
+        const exchange = accountExchangeMap.get(bot.account_id)
+        const exchangeMatched =
+          exchangeFilter === "all" ? true : exchange === exchangeFilter
+        return statusMatched && exchangeMatched
+      }),
+    [bots.data, statusFilter, exchangeFilter, accountExchangeMap],
+  )
 
   return (
     <DataTable
       columns={columns}
-      data={bots.data}
+      data={filteredBots}
       onRowClick={(bot) =>
         navigate({
           to: "/bots/$botId",
@@ -55,10 +93,19 @@ function BotsTableContent() {
   )
 }
 
-function BotsTable() {
+function BotsTable({
+  statusFilter,
+  exchangeFilter,
+}: {
+  statusFilter: "all" | "running" | "stopped" | "completed" | "error"
+  exchangeFilter: "all" | "binance" | "upbit" | "kis" | "kiwoom"
+}) {
   return (
     <Suspense fallback={<PendingBots />}>
-      <BotsTableContent />
+      <BotsTableContent
+        statusFilter={statusFilter}
+        exchangeFilter={exchangeFilter}
+      />
     </Suspense>
   )
 }
@@ -77,6 +124,12 @@ function BotsRouteLayout() {
 }
 
 function BotsListPage() {
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "running" | "stopped" | "completed" | "error"
+  >("all")
+  const [exchangeFilter, setExchangeFilter] = useState<
+    "all" | "binance" | "upbit" | "kis" | "kiwoom"
+  >("all")
   const botTypeGuide = [
     {
       title: "현물 DCA",
@@ -137,7 +190,44 @@ function BotsListPage() {
           <AddBot />
         </div>
       </div>
-      <BotsTable />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <Tabs
+          value={statusFilter}
+          onValueChange={(value) =>
+            setStatusFilter(
+              value as "all" | "running" | "stopped" | "completed" | "error",
+            )
+          }
+        >
+          <TabsList>
+            <TabsTrigger value="all">전체</TabsTrigger>
+            <TabsTrigger value="running">실행 중</TabsTrigger>
+            <TabsTrigger value="stopped">중지</TabsTrigger>
+            <TabsTrigger value="completed">완료</TabsTrigger>
+            <TabsTrigger value="error">오류</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Select
+          value={exchangeFilter}
+          onValueChange={(value) =>
+            setExchangeFilter(
+              value as "all" | "binance" | "upbit" | "kis" | "kiwoom",
+            )
+          }
+        >
+          <SelectTrigger className="w-full lg:w-[220px]">
+            <SelectValue placeholder="거래소 필터" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">전체 거래소</SelectItem>
+            <SelectItem value="binance">바이낸스</SelectItem>
+            <SelectItem value="upbit">업비트</SelectItem>
+            <SelectItem value="kis">한국투자증권</SelectItem>
+            <SelectItem value="kiwoom">키움증권</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <BotsTable statusFilter={statusFilter} exchangeFilter={exchangeFilter} />
     </div>
   )
 }

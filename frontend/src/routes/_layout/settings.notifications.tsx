@@ -38,6 +38,7 @@ function NotificationsSettingsPage() {
   })
   const [emailEnabled, setEmailEnabled] = useState(true)
   const [telegramEnabled, setTelegramEnabled] = useState(false)
+  const [telegramBotToken, setTelegramBotToken] = useState("")
   const [telegramChatId, setTelegramChatId] = useState("")
 
   const { data, isLoading } = useQuery<NotificationSettingsPublic>({
@@ -81,6 +82,9 @@ function NotificationsSettingsPage() {
       notify_bot_error: events.botError,
       notify_account_error: events.accountError,
     })
+    if (telegramBotToken.trim()) {
+      showSuccessToast("Telegram Bot Token은 현재 로컬 UI 상태로만 관리됩니다.")
+    }
   }
 
   return (
@@ -195,6 +199,14 @@ function NotificationsSettingsPage() {
               }
             />
           </div>
+          <Label htmlFor="telegram-bot-token">텔레그램 Bot Token</Label>
+          <Input
+            id="telegram-bot-token"
+            value={telegramBotToken}
+            onChange={(e) => setTelegramBotToken(e.target.value)}
+            placeholder="예) 123456:ABCDEF..."
+            autoComplete="off"
+          />
           <Label htmlFor="telegram-chat-id">텔레그램 채팅 ID</Label>
           <Input
             id="telegram-chat-id"
@@ -202,6 +214,21 @@ function NotificationsSettingsPage() {
             onChange={(e) => setTelegramChatId(e.target.value)}
             placeholder="텔레그램 채팅 ID를 입력하세요"
           />
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                showSuccessToast("Telegram 연결 테스트 UI만 반영되었습니다.")
+              }
+              disabled={!telegramBotToken.trim() || !telegramChatId.trim()}
+            >
+              Telegram 연결 테스트
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Bot Token은 현재 UI 단계입니다. 백엔드 저장 필드는 추후 연동됩니다.
+          </p>
         </CardContent>
       </Card>
 

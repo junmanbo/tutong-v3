@@ -1,9 +1,12 @@
-import { useQuery } from "@tanstack/react-query"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import {
   Activity,
   ArrowLeft,
   Clock3,
+  Pause,
+  PencilLine,
+  Play,
   RefreshCw,
   ShieldAlert,
   TrendingUp,
@@ -15,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
+import useCustomToast from "@/hooks/useCustomToast"
 import { cn } from "@/lib/utils"
 
 const BOT_TYPE_LABELS: Record<string, string> = {
@@ -108,6 +112,19 @@ type BotTradesResponse = {
   count: number
 }
 
+type BotSnapshotItem = {
+  id: string
+  total_pnl: string
+  total_pnl_pct: string
+  portfolio_value: string
+  snapshot_at: string
+}
+
+type BotSnapshotsResponse = {
+  data: BotSnapshotItem[]
+  count: number
+}
+
 function formatQuantity(value: string) {
   const n = Number(value)
   if (!Number.isFinite(n)) return "-"
@@ -141,8 +158,17 @@ async function fetchAuthedJson<T>(path: string): Promise<T> {
   return (await response.json()) as T
 }
 
+function formatSignedPct(value: string) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return "-"
+  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`
+}
+
 function BotDetailPage() {
   const { botId } = Route.useParams()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { showSuccessToast, showErrorToast } = useCustomToast()
   const {
     data: bot,
     isLoading,
@@ -175,6 +201,38 @@ function BotDetailPage() {
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
     enabled: !!bot,
+  })
+  const { data: botSnapshots, isLoading: snapshotsLoading } = useQuery({
+    queryKey: ["bot-snapshots", botId],
+    queryFn: () =>
+      fetchAuthedJson<BotSnapshotsResponse>(
+        `/api/v1/bots/${botId}/snapshots?skip=0&limit=20`,
+      ),
+    refetchInterval: 10000,
+    refetchIntervalInBackground: true,
+    enabled: !!bot,
+  })
+
+  const startMutation = useMutation({
+    mutationFn: () => BotsService.startBot({ id: botId }),
+    onSuccess: () => {
+      showSuccessToast("봇 실행을 요청했습니다.")
+      queryClient.invalidateQueries({ queryKey: ["bot", botId] })
+    },
+    onError: (error) => {
+      showErrorToast(error instanceof Error ? error.message : "봇 실행에 실패했습니다.")
+    },
+  })
+
+  const stopMutation = useMutation({
+    mutationFn: () => BotsService.stopBot({ id: botId }),
+    onSuccess: () => {
+      showSuccessToast("봇 중지를 요청했습니다.")
+      queryClient.invalidateQueries({ queryKey: ["bot", botId] })
+    },
+    onError: (error) => {
+      showErrorToast(error instanceof Error ? error.message : "봇 중지에 실패했습니다.")
+    },
   })
 
   if (isLoading) {
@@ -240,6 +298,17 @@ function BotDetailPage() {
       orderedAt: order ? new Date(order.placed_at).toLocaleString() : "-",
     }
   })
+  const canStart = bot.status === "stopped" || bot.status === "error"
+  const canStop = bot.status === "running" || bot.status === "pending"
+  const snapshotPoints = (botSnapshots?.data ?? [])
+    .slice()
+    .reverse()
+    .map((snapshot) => Number(snapshot.total_pnl_pct))
+    .filter((value) => Number.isFinite(value))
+  const maxAbsPct =
+    snapshotPoints.length > 0
+      ? Math.max(...snapshotPoints.map((v) => Math.abs(v)), 0.1)
+      : 0.1
 
   return (
     <div className="flex flex-col gap-6">
@@ -250,12 +319,40 @@ function BotDetailPage() {
             봇 목록으로
           </Button>
         </Link>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw
-            className={cn("mr-2 size-4", isFetching && "animate-spin")}
-          />
-          새로고침
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => startMutation.mutate()}
+            disabled={!canStart || startMutation.isPending}
+          >
+            <Play className="mr-2 size-4" />
+            실행
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => stopMutation.mutate()}
+            disabled={!canStop || stopMutation.isPending}
+          >
+            <Pause className="mr-2 size-4" />
+            중지
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate({ to: "/bots/new" })}
+          >
+            <PencilLine className="mr-2 size-4" />
+            수정
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw
+              className={cn("mr-2 size-4", isFetching && "animate-spin")}
+            />
+            새로고침
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -405,6 +502,52 @@ function BotDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>수익률 추이</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {snapshotsLoading ? (
+            <Skeleton className="h-36 w-full" />
+          ) : snapshotPoints.length === 0 ? (
+            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+              아직 수익 스냅샷 데이터가 없습니다.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex h-36 items-end gap-1 rounded-md border bg-muted/20 p-3">
+                {snapshotPoints.map((point, idx) => {
+                  const ratio = Math.max(Math.abs(point) / maxAbsPct, 0.08)
+                  const height = `${Math.round(ratio * 100)}%`
+                  return (
+                    <div
+                      key={`${idx}-${point}`}
+                      className={cn(
+                        "flex-1 rounded-sm",
+                        point >= 0 ? "bg-emerald-500/70" : "bg-red-500/70",
+                      )}
+                      style={{ height }}
+                      title={`${point >= 0 ? "+" : ""}${point.toFixed(2)}%`}
+                    />
+                  )
+                })}
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  시작: {formatSignedPct(String(snapshotPoints[0] ?? 0))}
+                </span>
+                <span>
+                  최근:{" "}
+                  {formatSignedPct(
+                    String(snapshotPoints[snapshotPoints.length - 1] ?? 0),
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4">
         <Card>

@@ -362,6 +362,9 @@ const AddAccount = () => {
                   </FormItem>
                 )}
               />
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                출금 권한이 포함된 API 키는 사용하지 마세요. 읽기 + 거래 권한만 허용해주세요.
+              </div>
 
               {exchange === "kis" && (
                 <>
@@ -463,7 +466,7 @@ const AddAccount = () => {
                 loading={mutation.isPending}
                 disabled={!isConnectionValidated}
               >
-                저장
+                연결 테스트 후 저장
               </LoadingButton>
             </DialogFooter>
           </form>
