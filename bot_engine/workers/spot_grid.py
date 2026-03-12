@@ -21,6 +21,7 @@ from bot_engine.workers.base import (
     AsyncBotTask,
     _create_bot_log,
     _get_db_session,
+    _record_order_and_trade,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
@@ -166,6 +167,12 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                 price=level.price,
                             )
                         )
+                        _record_order_and_trade(
+                            bot_id=bot_id,
+                            order=order,
+                            qty_hint=level.qty,
+                            price_hint=level.price,
+                        )
                         level.order_id = order.exchange_order_id
                         logger.debug(
                             "Grid buy order placed: price=%s qty=%s order_id=%s",
@@ -251,6 +258,12 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                         continue
                     try:
                         order_status = await adapter.get_order(level.order_id, symbol)
+                        _record_order_and_trade(
+                            bot_id=bot_id,
+                            order=order_status,
+                            qty_hint=level.qty,
+                            price_hint=level.price,
+                        )
                         if order_status.status == "closed":
                             logger.info(
                                 "Grid order filled: side=%s price=%s qty=%s",
@@ -280,6 +293,12 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                                 qty=new_level.qty,
                                                 price=new_level.price,
                                             )
+                                        )
+                                        _record_order_and_trade(
+                                            bot_id=bot_id,
+                                            order=order,
+                                            qty_hint=new_level.qty,
+                                            price_hint=new_level.price,
                                         )
                                         new_level.order_id = order.exchange_order_id
                                         _create_bot_log(
@@ -318,6 +337,12 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                                                 qty=new_level.qty,
                                                 price=new_level.price,
                                             )
+                                        )
+                                        _record_order_and_trade(
+                                            bot_id=bot_id,
+                                            order=order,
+                                            qty_hint=new_level.qty,
+                                            price_hint=new_level.price,
                                         )
                                         new_level.order_id = order.exchange_order_id
                                         _create_bot_log(

@@ -20,6 +20,8 @@ from bot_engine.workers.base import (
     AsyncBotTask,
     _create_bot_log,
     _get_db_session,
+    _record_order_and_trade,
+    _resolve_order_fill,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
@@ -144,6 +146,17 @@ def run_snowball(self, *, bot_id: str) -> None:
                             order_type="market", qty=qty,
                         )
                     )
+                    order = await _resolve_order_fill(
+                        adapter=adapter,
+                        order=order,
+                        symbol=symbol,
+                    )
+                    _record_order_and_trade(
+                        bot_id=bot_id,
+                        order=order,
+                        qty_hint=qty,
+                        price_hint=price,
+                    )
                     buys.append(BuyRecord(price=price, qty=qty))
                     save_state()
                     logger.info(
@@ -191,6 +204,17 @@ def run_snowball(self, *, bot_id: str) -> None:
                                     qty=total_qty,
                                 )
                             )
+                            order = await _resolve_order_fill(
+                                adapter=adapter,
+                                order=order,
+                                symbol=symbol,
+                            )
+                            _record_order_and_trade(
+                                bot_id=bot_id,
+                                order=order,
+                                qty_hint=total_qty,
+                                price_hint=current_price,
+                            )
                             logger.info(
                                 "Snowball risk exit: status=%s price=%s avg=%s qty=%s order_id=%s",
                                 status,
@@ -235,6 +259,17 @@ def run_snowball(self, *, bot_id: str) -> None:
                                 order_type="market", qty=total_qty,
                             )
                         )
+                        order = await _resolve_order_fill(
+                            adapter=adapter,
+                            order=order,
+                            symbol=symbol,
+                        )
+                        _record_order_and_trade(
+                            bot_id=bot_id,
+                            order=order,
+                            qty_hint=total_qty,
+                            price_hint=current_price,
+                        )
                         logger.info(
                             "Snowball take profit: price=%s avg=%s qty=%s order_id=%s",
                             current_price, avg_price, total_qty, order.exchange_order_id,
@@ -276,6 +311,17 @@ def run_snowball(self, *, bot_id: str) -> None:
                                     symbol=symbol, side="buy",
                                     order_type="market", qty=qty,
                                 )
+                            )
+                            order = await _resolve_order_fill(
+                                adapter=adapter,
+                                order=order,
+                                symbol=symbol,
+                            )
+                            _record_order_and_trade(
+                                bot_id=bot_id,
+                                order=order,
+                                qty_hint=qty,
+                                price_hint=current_price,
                             )
                             buys.append(BuyRecord(price=current_price, qty=qty))
                             save_state()

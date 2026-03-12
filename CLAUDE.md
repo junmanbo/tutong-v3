@@ -437,6 +437,9 @@ test: BinanceAdapter 단위 테스트 추가
 - [x] Phase 1-2 마무리(1차): 전략 테스트 보강 + 봇 생성 5종 폼 + 봇 상세/운영 현황 페이지
 - [x] 프론트 E2E 테스트 정리: 템플릿 잔재(items) 제거, 현재 UI 기준 Playwright 정합화
 - [x] Phase 1-3: 알림/Admin/Subscription API 완성 + Worker 버그 수정 + Bot.config 추가
+- [x] UI 정합 1차(화면정의서 기준): 인증 경로(`/auth/*`), 회원가입 필수 동의, 상단 헤더 bell/profile
+- [x] 계좌 등록 UX 개선: 저장 전 연결 테스트 API + 프론트 강제 플로우 반영
+- [x] 봇 상세 최근 주문 개선: 로그 카드 → 실제 체결 매매내역 테이블 전환
 
 ### Phase 1-1 완료 세부 내역
 1. ✅ 템플릿 클론 및 환경 설정
@@ -473,11 +476,11 @@ test: BinanceAdapter 단위 테스트 추가
 8. ✅ 봇 생성 5종 폼에서 config 파라미터 API 전달
 9. ✅ TypeScript 클라이언트 재생성 (Admin/Notifications/Subscriptions 서비스 포함)
 
-### 지금 해야 할 작업 (Phase 1-4 진입 전)
-1. KIS `order_update_stream` 실시간 체결 WebSocket 구현
-2. Kiwoom `price_stream` / `order_update_stream` WebSocket 구현
-3. 통합 테스트 (봇 시나리오 E2E, 보안 테스트, 부하 테스트)
-4. 운영 환경 구성 (compose.prod.yml, Nginx, SSL, Prometheus/Grafana)
+### 지금 해야 할 작업 (Phase 1-4)
+1. UI 설계서 대비 미반영 화면/상태(탭/필터/버튼 동작) 잔여 항목 정리
+2. 봇/계좌 통합 E2E 시나리오 보강 (실행→주문→체결→상세 반영)
+3. KIS `order_update_stream`, Kiwoom `price_stream/order_update_stream` 실시간 연동
+4. 운영 환경 점검 (compose.prod.yml, Nginx, SSL, Prometheus/Grafana)
 
 ---
 

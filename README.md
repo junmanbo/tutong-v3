@@ -118,31 +118,28 @@ bash scripts/generate-client.sh
 
 - Phase 1-1 (기반 기능): 완료
 - Phase 1-2 (봇 엔진/전략): 5개 전략 + 자동 종료 로직 + 프론트 화면 고도화 완료
-- Phase 1-3 (추가 연동/알림): 부분 진행
-  - Upbit/KIS 어댑터 검증 테스트 추가 완료
-  - 알림 설정 페이지, 구독/결제 페이지, 대시보드 실데이터 기반 시각화 반영
+- Phase 1-3 (추가 연동/알림): 완료
+- Phase 1-4 (QA/운영 정합): 진행 중
 
-## 최근 반영 사항 (2026-03-07)
+## 최근 반영 사항 (2026-03-12)
 
-- 봇 생성 화면을 타입별 상세 라우트로 분리:
-  - `/bots/new/spot-grid`
-  - `/bots/new/snowball`
-  - `/bots/new/rebalancing`
-  - `/bots/new/dca`
-  - `/bots/new/algo-orders`
-- 봇 상세 페이지 운영 현황 카드/타임라인 확장
-- 계좌 추가 폼에서 KIS/키움 추가 파라미터 입력(`extra_params`) 지원
-- 설정 페이지 경로 분리:
-  - `/settings/profile`
-  - `/settings/security`
-  - `/settings/notifications`
-- 빌링 경로 분리:
-  - `/billing/plans`
-  - `/billing/history`
-- GitHub Actions 워크플로우 파일 비활성화(`.github/workflows.disabled/`로 이동)
+- 인증 경로를 화면정의서 기준으로 정합화:
+  - `/auth/login`
+  - `/auth/register`
+  - `/auth/forgot-password`
+- 로그인 화면 소셜 버튼(google/kakao) UI 반영(준비중 상태)
+- 회원가입 필수 동의(이용약관/투자위험고지) 체크박스 반영
+- 공통 상단 헤더에 알림(bell)/프로필 드롭다운 UI 반영
+- 계좌 추가 플로우 개선:
+  - `POST /api/v1/accounts/test-connection` 추가
+  - 연결 테스트 성공 시에만 저장 가능하도록 프론트 반영
+- 봇 상세 `최근 주문` 개선:
+  - 로그 메시지 기반 표시 → 실제 체결 기반 매매내역 테이블로 전환
+  - 표시 항목: 체결시간, 종목명, 매수/매도, 수량, 단가, 금액, 수수료, 주문시간
 
-## 다음 우선순위
+## 직전 반영 사항 (2026-03-07 ~ 2026-03-08)
 
-1. 알림 백엔드(이메일 이벤트 트리거) 구현 및 프론트 저장 연동
-2. 대시보드 수익 추이 API(일/주/월 집계) 추가로 차트 정식화
-3. 구독/결제 백엔드(PG 연동 + 결제 이력 API) 구현
+- 봇 생성 상세 라우트 분리(`/bots/new/*`)
+- 설정/빌링 상세 경로 분리(`/settings/*`, `/billing/*`)
+- 대시보드 실데이터 기반 시각화 반영
+- GitHub Actions 워크플로우 비활성화

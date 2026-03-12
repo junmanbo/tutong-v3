@@ -20,6 +20,8 @@ from bot_engine.workers.base import (
     AsyncBotTask,
     _create_bot_log,
     _get_db_session,
+    _record_order_and_trade,
+    _resolve_order_fill,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
@@ -216,6 +218,17 @@ def run_spot_dca(self, *, bot_id: str) -> None:
                                 )
 
                             order = await adapter.place_order(request)
+                            resolved_order = await _resolve_order_fill(
+                                adapter=adapter,
+                                order=order,
+                                symbol=symbol,
+                            )
+                            _record_order_and_trade(
+                                bot_id=bot_id,
+                                order=resolved_order,
+                                qty_hint=qty,
+                                price_hint=price,
+                            )
                             order_count += 1
                             last_order_time = now
                             r.set(

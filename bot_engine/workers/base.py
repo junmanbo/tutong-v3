@@ -346,6 +346,175 @@ def _create_bot_log(
         logger.error("Failed to create bot log: %s", e)
 
 
+def _normalize_order_status(status: str | None) -> str:
+    if not status:
+        return "open"
+    normalized = status.lower()
+    mapping = {
+        "closed": "filled",
+        "cancelled": "canceled",
+    }
+    return mapping.get(normalized, normalized)
+
+
+def _to_decimal_or_none(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    try:
+        return Decimal(str(value))
+    except Exception:
+        return None
+
+
+def _record_order_and_trade(
+    *,
+    bot_id: uuid.UUID | str,
+    order: Any,
+    qty_hint: Decimal | None = None,
+    price_hint: Decimal | None = None,
+) -> None:
+    """주문/체결 데이터를 bot_orders, bot_trades에 저장(또는 갱신).
+
+    - 동일 exchange_order_id가 존재하면 bot_orders를 upsert 업데이트
+    - filled_qty > 0 이면 bot_trades를 1건 생성(동일 order_id 중복 방지)
+    """
+    try:
+        from sqlmodel import select
+
+        from app.models import BotOrder, BotTrade
+
+        resolved_bot_id = (
+            bot_id if isinstance(bot_id, uuid.UUID) else uuid.UUID(str(bot_id))
+        )
+        now = datetime.now(UTC)
+
+        requested_qty = order.requested_qty or qty_hint or order.filled_qty or Decimal("0")
+        filled_qty = order.filled_qty or Decimal("0")
+        raw_price = _to_decimal_or_none((order.raw or {}).get("price"))
+        order_price = raw_price or price_hint
+        avg_fill_price = order.avg_fill_price or order_price
+        normalized_status = _normalize_order_status(order.status)
+        filled_at = (
+            now
+            if filled_qty > Decimal("0")
+            and normalized_status in {"filled", "partially_filled"}
+            else None
+        )
+
+        with _get_db_session() as session:
+            db_order = session.exec(
+                select(BotOrder).where(
+                    BotOrder.bot_id == resolved_bot_id,
+                    BotOrder.exchange_order_id == order.exchange_order_id,
+                )
+            ).first()
+
+            if db_order is None:
+                db_order = BotOrder(
+                    bot_id=resolved_bot_id,
+                    exchange_order_id=order.exchange_order_id,
+                    symbol=order.symbol,
+                    side=order.side,
+                    order_type=order.order_type,
+                    status=normalized_status,
+                    quantity=requested_qty,
+                    price=order_price,
+                    avg_fill_price=avg_fill_price,
+                    filled_quantity=filled_qty,
+                    fee=order.fee or Decimal("0"),
+                    fee_currency=order.fee_currency or None,
+                    placed_at=now,
+                    filled_at=filled_at,
+                )
+                session.add(db_order)
+                session.commit()
+                session.refresh(db_order)
+            else:
+                db_order.symbol = order.symbol or db_order.symbol
+                db_order.side = order.side or db_order.side
+                db_order.order_type = order.order_type or db_order.order_type
+                db_order.status = normalized_status
+                db_order.quantity = requested_qty
+                db_order.price = order_price
+                db_order.avg_fill_price = avg_fill_price
+                db_order.filled_quantity = filled_qty
+                db_order.fee = order.fee or Decimal("0")
+                db_order.fee_currency = order.fee_currency or db_order.fee_currency
+                if filled_at is not None:
+                    db_order.filled_at = filled_at
+                db_order.updated_at = now
+                session.add(db_order)
+                session.commit()
+                session.refresh(db_order)
+
+            # 동일 주문(order_id)에 대한 trade는 1건만 저장 (중복 방지)
+            if filled_qty > Decimal("0"):
+                existing_trade = session.exec(
+                    select(BotTrade).where(BotTrade.order_id == db_order.id)
+                ).first()
+                if existing_trade is None:
+                    trade_price = avg_fill_price or price_hint or Decimal("0")
+                    if trade_price > Decimal("0"):
+                        trade_id = None
+                        raw_trades = (order.raw or {}).get("trades")
+                        if (
+                            isinstance(raw_trades, list)
+                            and raw_trades
+                            and isinstance(raw_trades[0], dict)
+                        ):
+                            trade_id = raw_trades[0].get("id")
+                        session.add(
+                            BotTrade(
+                                order_id=db_order.id,
+                                bot_id=resolved_bot_id,
+                                exchange_trade_id=(
+                                    str(trade_id)
+                                    if trade_id
+                                    else f"{order.exchange_order_id}:fill"
+                                ),
+                                quantity=filled_qty,
+                                price=trade_price,
+                                fee=order.fee or Decimal("0"),
+                                fee_currency=order.fee_currency or db_order.fee_currency,
+                                traded_at=filled_at or now,
+                            )
+                        )
+                        session.commit()
+    except Exception as e:
+        logger.error("Failed to record order/trade: %s", e)
+
+
+async def _resolve_order_fill(
+    *,
+    adapter: Any,
+    order: Any,
+    symbol: str,
+    retries: int = 2,
+    delay_seconds: float = 1.0,
+) -> Any:
+    """주문 직후 체결 정보가 비어있는 경우 짧게 재조회하여 보정."""
+    resolved = order
+    try:
+        status = _normalize_order_status(getattr(resolved, "status", None))
+        filled_qty = getattr(resolved, "filled_qty", Decimal("0")) or Decimal("0")
+        if filled_qty > Decimal("0") or status in {"filled", "partially_filled"}:
+            return resolved
+
+        for _ in range(retries):
+            await asyncio.sleep(delay_seconds)
+            latest = await adapter.get_order(order.exchange_order_id, symbol)
+            if latest is None:
+                continue
+            resolved = latest
+            status = _normalize_order_status(getattr(resolved, "status", None))
+            filled_qty = getattr(resolved, "filled_qty", Decimal("0")) or Decimal("0")
+            if filled_qty > Decimal("0") or status in {"filled", "partially_filled"}:
+                break
+    except Exception as exc:
+        logger.warning("Failed to resolve order fill: %s", exc)
+    return resolved
+
+
 def calc_change_pct(current_value: Decimal, base_value: Decimal) -> Decimal:
     """기준값 대비 변동률(%) 계산."""
     if base_value <= Decimal("0"):

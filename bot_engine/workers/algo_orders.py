@@ -21,6 +21,8 @@ from bot_engine.workers.base import (
     AsyncBotTask,
     _create_bot_log,
     _get_db_session,
+    _record_order_and_trade,
+    _resolve_order_fill,
     _update_bot_status_completed,
     _update_bot_status_running,
     _update_bot_status_stopped,
@@ -159,6 +161,7 @@ def run_algo_orders(self, *, bot_id: str) -> None:
                     )
                     break
 
+                current_price: Decimal | None = None
                 try:
                     ticker = await adapter.get_ticker(symbol)
                     current_price = ticker.price
@@ -215,6 +218,17 @@ def run_algo_orders(self, *, bot_id: str) -> None:
                             order_type=config.order_type,
                             qty=qty,
                         )
+                    )
+                    order = await _resolve_order_fill(
+                        adapter=adapter,
+                        order=order,
+                        symbol=symbol,
+                    )
+                    _record_order_and_trade(
+                        bot_id=bot_id,
+                        order=order,
+                        qty_hint=qty,
+                        price_hint=current_price,
                     )
                     executed_slices += 1
                     r.set(

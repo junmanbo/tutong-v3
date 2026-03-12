@@ -256,6 +256,7 @@ Week 14    │ 🚀 MVP 베타 론칭
 | v2.2 | 2026-03-07 | Phase 1-3 완료 — Bot.config JSONB 추가, Worker 3종 버그 수정(ticker.price/exchange_order_id/qty), DB 엔진 싱글턴, 알림 목록 API, 계좌 등록 API Key 검증, Admin 라우터, Subscription 라우터, 봇 생성 폼 config 전달, TS 클라이언트 재생성 | Dev |
 | v2.3 | 2026-03-08 | 리밸런싱 후속 완료 — worker mode(time/deviation) 실제 반영, interval_seconds 주기 반영, 리밸런싱 생성 UI(전용 페이지/모달) 다중 자산 입력 강화 및 모달 스크롤 개선 | Dev |
 | v2.4 | 2026-03-08 | Phase 1-4 QA 착수 — 계좌 4개 기관 balance API 자동화 테스트, 봇 5종 생성/시작/중지 통합 API 테스트, 5개 전략 테스트 통합 실행(140 pass) 반영 | Dev |
+| v2.5 | 2026-03-12 | UI/운영 정합 업데이트 — 인증 경로 `/auth/*` 정합, 로그인/회원가입 UI 보강(소셜 버튼/필수 동의), 상단 헤더 bell/profile 반영, 계좌 `test-connection` API + 저장 전 검증 플로우 추가, 봇 상세 최근 주문을 실제 체결 매매내역 테이블로 전환 | Dev |
 
 ---
 

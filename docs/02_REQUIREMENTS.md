@@ -61,7 +61,7 @@
 | FR-ACCT-002 | 업비트 API Key / Secret 등록 | 필수 | ✅ 완료 |
 | FR-ACCT-003 | 한국투자증권 API Key 등록 | 필수 | ✅ 완료 |
 | FR-ACCT-004 | 키움증권 API 연동 (브릿지 방식) | 필수 | ✅ 완료 |
-| FR-ACCT-005 | 등록된 API Key 연결 상태 실시간 확인 | 필수 | 🔄 부분 (is_valid 필드 존재, UI 미반영) |
+| FR-ACCT-005 | 등록된 API Key 연결 상태 실시간 확인 | 필수 | 🔄 부분 (저장 전 연결 테스트 UI/API 반영 완료, 상시 상태 모니터링 UI는 미구현) |
 | FR-ACCT-006 | API Key 수정 / 삭제 | 필수 | ✅ 완료 |
 | FR-ACCT-007 | 등록 시 API Key 유효성 검증 (잔고 조회 테스트) | 필수 | ✅ 완료 |
 | FR-ACCT-008 | API Key는 AES-256 암호화하여 저장 | 필수 | ✅ 완료 |

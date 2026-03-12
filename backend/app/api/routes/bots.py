@@ -1,14 +1,24 @@
 import os
+import asyncio
+import json
 import uuid
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 import redis as redis_lib
 from celery import Celery
 from fastapi import APIRouter, BackgroundTasks, HTTPException
+from sqlmodel import select
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep
+from app.core.config import settings
+from app.core.crypto import decrypt
+from app.exchange_adapters.factory import get_adapter
 from app.models import (
+    BotOrder,
+    BotTrade,
     BotCreate,
     BotLogsPublic,
     BotOrdersPublic,
@@ -37,6 +47,116 @@ _BOT_TASK_MAP: dict[BotTypeEnum, str] = {
 }
 
 router = APIRouter(prefix="/bots", tags=["bots"])
+UTC = timezone.utc
+
+
+def _normalize_order_status(status: str | None) -> str:
+    if not status:
+        return "open"
+    normalized = status.lower()
+    return {
+        "closed": "filled",
+        "cancelled": "canceled",
+    }.get(normalized, normalized)
+
+
+def _sync_open_orders_for_bot(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    bot_id: uuid.UUID,
+) -> None:
+    """미체결(open) 주문 상태를 거래소에서 재조회해 orders/trades DB를 동기화."""
+    bot = crud.get_bot(session=session, bot_id=bot_id, user_id=current_user.id)
+    if not bot:
+        return
+
+    open_orders = list(
+        session.exec(
+            select(BotOrder).where(
+                BotOrder.bot_id == bot_id,
+                BotOrder.status.in_(["open", "partially_filled", "pending"]),
+            )
+        ).all()
+    )
+    if not open_orders:
+        return
+
+    account = crud.get_exchange_account(
+        session=session,
+        account_id=bot.account_id,
+        user_id=current_user.id,
+    )
+    if not account:
+        return
+
+    try:
+        api_key = decrypt(account.api_key_enc, settings.ENCRYPTION_KEY)
+        api_secret = decrypt(account.api_secret_enc, settings.ENCRYPTION_KEY)
+        extra_params: dict | None = None
+        if account.extra_params_enc:
+            extra_params = json.loads(
+                decrypt(account.extra_params_enc, settings.ENCRYPTION_KEY)
+            )
+    except Exception:
+        return
+
+    adapter = get_adapter(
+        exchange=account.exchange,
+        api_key=api_key,
+        api_secret=api_secret,
+        extra_params=extra_params,
+    )
+
+    loop = asyncio.new_event_loop()
+    try:
+        for order in open_orders:
+            try:
+                latest = loop.run_until_complete(
+                    adapter.get_order(order.exchange_order_id, order.symbol)
+                )
+            except Exception:
+                continue
+
+            status = _normalize_order_status(latest.status)
+            filled_qty = latest.filled_qty or Decimal("0")
+            avg_fill_price = latest.avg_fill_price or order.avg_fill_price or order.price
+            now = datetime.now(UTC)
+
+            order.status = status
+            order.filled_quantity = filled_qty
+            order.avg_fill_price = avg_fill_price
+            order.fee = latest.fee or order.fee
+            order.fee_currency = latest.fee_currency or order.fee_currency
+            order.updated_at = now
+            if filled_qty > Decimal("0") and order.filled_at is None:
+                order.filled_at = now
+            session.add(order)
+
+            if filled_qty > Decimal("0"):
+                existing_trade = session.exec(
+                    select(BotTrade).where(BotTrade.order_id == order.id)
+                ).first()
+                if existing_trade is None and avg_fill_price is not None:
+                    session.add(
+                        BotTrade(
+                            order_id=order.id,
+                            bot_id=bot_id,
+                            exchange_trade_id=f"{order.exchange_order_id}:sync",
+                            quantity=filled_qty,
+                            price=avg_fill_price,
+                            fee=latest.fee or order.fee,
+                            fee_currency=latest.fee_currency or order.fee_currency,
+                            traded_at=order.filled_at or now,
+                        )
+                    )
+        session.commit()
+    finally:
+        try:
+            loop.run_until_complete(adapter.close())
+        except Exception:
+            pass
+        loop.close()
 
 
 @router.get("/", response_model=BotsPublic)
@@ -100,6 +220,7 @@ def read_bot_orders(
     bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
+    _sync_open_orders_for_bot(session=session, current_user=current_user, bot_id=id)
     orders = crud.get_bot_orders_by_user(
         session=session,
         bot_id=id,
@@ -122,6 +243,7 @@ def read_bot_trades(
     bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
+    _sync_open_orders_for_bot(session=session, current_user=current_user, bot_id=id)
     trades = crud.get_bot_trades_by_user(
         session=session,
         bot_id=id,
