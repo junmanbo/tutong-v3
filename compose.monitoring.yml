@@ -41,7 +41,7 @@ services:
       - traefik.http.middlewares.monitoring-auth.basicauth.users=${MONITORING_HTPASSWD?Variable not set}
 
   grafana:
-    image: grafana/grafana:11.1.0
+    image: grafana/grafana:12.4.1
     restart: always
     environment:
       - GF_SECURITY_ADMIN_USER=${MONITORING_USER:-admin}
