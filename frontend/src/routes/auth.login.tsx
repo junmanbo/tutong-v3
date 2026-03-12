@@ -33,7 +33,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute("/auth/login")({
   component: Login,
   beforeLoad: async () => {
     if (isLoggedIn()) {
@@ -141,7 +141,10 @@ function Login() {
 
           <div className="text-center text-sm">
             아직 계정이 없으신가요?{" "}
-            <RouterLink to="/auth/register" className="underline underline-offset-4">
+            <RouterLink
+              to="/auth/register"
+              className="underline underline-offset-4"
+            >
               회원가입
             </RouterLink>
           </div>

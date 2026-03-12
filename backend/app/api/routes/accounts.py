@@ -13,6 +13,8 @@ from app.exchange_adapters.base import BalanceItem
 from app.exchange_adapters.factory import get_adapter
 from app.exchange_adapters.kis import KisApiError
 from app.models import (
+    ExchangeAccountConnectionTest,
+    ExchangeAccountConnectionTestResult,
     ExchangeAccountCreate,
     ExchangeAccountPublic,
     ExchangeAccountsPublic,
@@ -39,6 +41,43 @@ def read_accounts(
         session=session, user_id=current_user.id, skip=skip, limit=limit
     )
     return ExchangeAccountsPublic(data=accounts, count=len(accounts))
+
+
+@router.post("/test-connection", response_model=ExchangeAccountConnectionTestResult)
+def test_account_connection(
+    *,
+    current_user: CurrentUser,
+    account_in: ExchangeAccountConnectionTest,
+) -> ExchangeAccountConnectionTestResult:
+    """저장 전 거래소 API 자격증명 연결 테스트."""
+    _ = current_user
+    adapter = get_adapter(
+        exchange=account_in.exchange,
+        api_key=account_in.api_key,
+        api_secret=account_in.api_secret,
+        extra_params=account_in.extra_params,
+    )
+    loop = asyncio.new_event_loop()
+    try:
+        is_valid = loop.run_until_complete(adapter.validate_credentials())
+    except Exception:
+        is_valid = False
+    finally:
+        try:
+            loop.run_until_complete(adapter.close())
+        except Exception:
+            pass
+        loop.close()
+
+    if is_valid:
+        return ExchangeAccountConnectionTestResult(
+            is_valid=True,
+            message="연결 테스트에 성공했습니다.",
+        )
+    return ExchangeAccountConnectionTestResult(
+        is_valid=False,
+        message="연결 테스트에 실패했습니다. API Key/Secret 및 계좌 정보를 확인해주세요.",
+    )
 
 
 @router.get("/{id}", response_model=ExchangeAccountPublic)

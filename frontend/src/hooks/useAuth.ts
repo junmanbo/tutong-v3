@@ -30,7 +30,7 @@ const useAuth = () => {
     mutationFn: (data: UserRegister) =>
       UsersService.registerUser({ requestBody: data }),
     onSuccess: () => {
-      navigate({ to: "/login" })
+      navigate({ to: "/auth/login" })
     },
     onError: handleError.bind(showErrorToast),
     onSettled: () => {
@@ -55,7 +55,7 @@ const useAuth = () => {
 
   const logout = () => {
     localStorage.removeItem("access_token")
-    navigate({ to: "/login" })
+    navigate({ to: "/auth/login" })
   }
 
   return {

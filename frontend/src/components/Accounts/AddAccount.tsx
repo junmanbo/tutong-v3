@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { AccountsService, type ExchangeAccountCreate } from "@/client"
+import { AccountsService, OpenAPI, type ExchangeAccountCreate } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -75,6 +75,12 @@ const formSchema = z
 
 type FormData = z.input<typeof formSchema>
 type SubmitData = z.output<typeof formSchema>
+type AccountFormValues = FormData | SubmitData
+type ConnectionTestPayload = Omit<ExchangeAccountCreate, "label">
+type ConnectionTestResponse = {
+  is_valid: boolean
+  message: string
+}
 
 const EXCHANGE_OPTIONS = [
   { value: "binance", label: "바이낸스" },
@@ -83,8 +89,45 @@ const EXCHANGE_OPTIONS = [
   { value: "kiwoom", label: "키움증권" },
 ]
 
+const buildExtraParams = (
+  data: AccountFormValues,
+): Record<string, unknown> | undefined => {
+  const useMock = (data.use_mock ?? "real") === "mock"
+  if (data.exchange === "kis") {
+    return {
+      CANO: data.kis_cano?.trim(),
+      ACNT_PRDT_CD: data.kis_acnt_prdt_cd?.trim() || "01",
+      is_mock: useMock,
+    }
+  }
+
+  if (data.exchange === "kiwoom") {
+    return {
+      account_no: data.kiwoom_account_no?.trim(),
+      is_mock: useMock,
+    }
+  }
+
+  return undefined
+}
+
+const buildConnectionPayload = (
+  data: AccountFormValues,
+): ConnectionTestPayload => ({
+  exchange: data.exchange,
+  api_key: data.api_key,
+  api_secret: data.api_secret,
+  extra_params: buildExtraParams(data),
+})
+
+const getConnectionFingerprint = (data: AccountFormValues): string =>
+  JSON.stringify(buildConnectionPayload(data))
+
 const AddAccount = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const [validatedFingerprint, setValidatedFingerprint] = useState<string | null>(
+    null,
+  )
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
@@ -103,6 +146,9 @@ const AddAccount = () => {
     },
   })
   const exchange = form.watch("exchange")
+  const isConnectionValidated =
+    validatedFingerprint !== null &&
+    validatedFingerprint === getConnectionFingerprint(form.getValues())
 
   const mutation = useMutation({
     mutationFn: (data: ExchangeAccountCreate) =>
@@ -111,6 +157,7 @@ const AddAccount = () => {
       showSuccessToast("계좌가 추가되었습니다")
       form.reset()
       setIsOpen(false)
+      setValidatedFingerprint(null)
     },
     onError: handleError.bind(showErrorToast),
     onSettled: () => {
@@ -118,22 +165,87 @@ const AddAccount = () => {
     },
   })
 
-  const onSubmit = (data: SubmitData) => {
-    let extra_params: Record<string, unknown> | undefined
+  const connectionTestMutation = useMutation({
+    mutationFn: async (
+      data: AccountFormValues,
+    ): Promise<ConnectionTestResponse> => {
+      const accessToken = localStorage.getItem("access_token")
+      const response = await fetch(
+        `${OpenAPI.BASE}/api/v1/accounts/test-connection`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: JSON.stringify(buildConnectionPayload(data)),
+        },
+      )
 
-    if (data.exchange === "kis") {
-      extra_params = {
-        CANO: data.kis_cano?.trim(),
-        ACNT_PRDT_CD: data.kis_acnt_prdt_cd?.trim() || "01",
-        is_mock: data.use_mock === "mock",
+      const raw = (await response.json()) as
+        | ConnectionTestResponse
+        | { detail?: string }
+
+      if (!response.ok) {
+        const detail =
+          typeof raw === "object" && raw !== null && "detail" in raw
+            ? raw.detail
+            : "계좌 연결 테스트 중 오류가 발생했습니다."
+        throw new Error(detail)
       }
+
+      return raw as ConnectionTestResponse
+    },
+    onSuccess: (result, variables) => {
+      if (result.is_valid) {
+        setValidatedFingerprint(getConnectionFingerprint(variables))
+        showSuccessToast(result.message)
+        return
+      }
+      setValidatedFingerprint(null)
+      showErrorToast(result.message)
+    },
+    onError: (error) => {
+      setValidatedFingerprint(null)
+      showErrorToast(
+        error instanceof Error
+          ? error.message
+          : "계좌 연결 테스트 중 오류가 발생했습니다.",
+      )
+    },
+  })
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsOpen(open)
+    if (!open) {
+      form.reset()
+      setValidatedFingerprint(null)
+      connectionTestMutation.reset()
     }
+  }
 
-    if (data.exchange === "kiwoom") {
-      extra_params = {
-        account_no: data.kiwoom_account_no?.trim(),
-        is_mock: data.use_mock === "mock",
-      }
+  const handleConnectionTest = async () => {
+    const valid = await form.trigger([
+      "exchange",
+      "api_key",
+      "api_secret",
+      "kis_cano",
+      "kis_acnt_prdt_cd",
+      "kiwoom_account_no",
+      "use_mock",
+    ])
+    if (!valid) {
+      showErrorToast("필수 입력값을 확인해주세요.")
+      return
+    }
+    connectionTestMutation.mutate(form.getValues())
+  }
+
+  const onSubmit = (data: SubmitData) => {
+    const currentFingerprint = getConnectionFingerprint(data)
+    if (validatedFingerprint !== currentFingerprint) {
+      showErrorToast("연결 테스트를 먼저 완료해주세요.")
+      return
     }
 
     mutation.mutate({
@@ -141,12 +253,12 @@ const AddAccount = () => {
       label: data.label,
       api_key: data.api_key,
       api_secret: data.api_secret,
-      extra_params,
+      extra_params: buildExtraParams(data),
     })
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2" />
@@ -157,7 +269,7 @@ const AddAccount = () => {
         <DialogHeader>
           <DialogTitle>거래소 계좌 추가</DialogTitle>
           <DialogDescription>
-            거래소 API 자격증명을 입력하세요. API 키는 암호화되어 안전하게 저장됩니다.
+            거래소 API 자격증명을 입력한 뒤 연결 테스트를 완료하면 저장할 수 있습니다.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -333,12 +445,24 @@ const AddAccount = () => {
             </div>
 
             <DialogFooter>
+              <LoadingButton
+                type="button"
+                variant="secondary"
+                loading={connectionTestMutation.isPending}
+                onClick={handleConnectionTest}
+              >
+                연결 테스트
+              </LoadingButton>
               <DialogClose asChild>
                 <Button variant="outline" disabled={mutation.isPending}>
                   취소
                 </Button>
               </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
+              <LoadingButton
+                type="submit"
+                loading={mutation.isPending}
+                disabled={!isConnectionValidated}
+              >
                 저장
               </LoadingButton>
             </DialogFooter>

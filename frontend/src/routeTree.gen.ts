@@ -15,6 +15,9 @@ import { Route as RecoverPasswordRouteImport } from './routes/recover-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as AuthRegisterRouteImport } from './routes/auth.register'
+import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutBotsRouteImport } from './routes/_layout/bots'
 import { Route as LayoutBillingRouteImport } from './routes/_layout/billing'
@@ -61,6 +64,21 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => LayoutRoute,
+} as any)
+const AuthRegisterRoute = AuthRegisterRouteImport.update({
+  id: '/auth/register',
+  path: '/auth/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/auth/forgot-password',
+  path: '/auth/forgot-password',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   id: '/settings',
@@ -161,6 +179,9 @@ export interface FileRoutesByFullPath {
   '/billing': typeof LayoutBillingRouteWithChildren
   '/bots': typeof LayoutBotsRouteWithChildren
   '/settings': typeof LayoutSettingsRouteWithChildren
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
   '/billing/history': typeof LayoutBillingHistoryRoute
   '/billing/plans': typeof LayoutBillingPlansRoute
   '/bots/$botId': typeof LayoutBotsBotIdRoute
@@ -184,6 +205,9 @@ export interface FileRoutesByTo {
   '/billing': typeof LayoutBillingRouteWithChildren
   '/bots': typeof LayoutBotsRouteWithChildren
   '/settings': typeof LayoutSettingsRouteWithChildren
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
   '/': typeof LayoutIndexRoute
   '/billing/history': typeof LayoutBillingHistoryRoute
   '/billing/plans': typeof LayoutBillingPlansRoute
@@ -210,6 +234,9 @@ export interface FileRoutesById {
   '/_layout/billing': typeof LayoutBillingRouteWithChildren
   '/_layout/bots': typeof LayoutBotsRouteWithChildren
   '/_layout/settings': typeof LayoutSettingsRouteWithChildren
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/billing/history': typeof LayoutBillingHistoryRoute
   '/_layout/billing/plans': typeof LayoutBillingPlansRoute
@@ -237,6 +264,9 @@ export interface FileRouteTypes {
     | '/billing'
     | '/bots'
     | '/settings'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/register'
     | '/billing/history'
     | '/billing/plans'
     | '/bots/$botId'
@@ -260,6 +290,9 @@ export interface FileRouteTypes {
     | '/billing'
     | '/bots'
     | '/settings'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/register'
     | '/'
     | '/billing/history'
     | '/billing/plans'
@@ -285,6 +318,9 @@ export interface FileRouteTypes {
     | '/_layout/billing'
     | '/_layout/bots'
     | '/_layout/settings'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/register'
     | '/_layout/'
     | '/_layout/billing/history'
     | '/_layout/billing/plans'
@@ -306,6 +342,9 @@ export interface RootRouteChildren {
   RecoverPasswordRoute: typeof RecoverPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthRegisterRoute: typeof AuthRegisterRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -351,6 +390,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof LayoutIndexRouteImport
       parentRoute: typeof LayoutRoute
+    }
+    '/auth/register': {
+      id: '/auth/register'
+      path: '/auth/register'
+      fullPath: '/auth/register'
+      preLoaderRoute: typeof AuthRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/auth/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/settings': {
       id: '/_layout/settings'
@@ -565,6 +625,9 @@ const rootRouteChildren: RootRouteChildren = {
   RecoverPasswordRoute: RecoverPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthRegisterRoute: AuthRegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

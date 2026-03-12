@@ -290,6 +290,56 @@ class TestCreateAccount:
             assert r.json()["exchange"] == exchange
 
 
+# ── POST /test-connection ────────────────────────────────────────────────────
+
+
+class TestTestAccountConnection:
+    def test_requires_auth(self, client: TestClient) -> None:
+        r = client.post(
+            f"{settings.API_V1_STR}/accounts/test-connection",
+            json={
+                "exchange": "binance",
+                "api_key": "k",
+                "api_secret": "s",
+            },
+        )
+        assert r.status_code == 401
+
+    def test_success(self, client: TestClient, db: Session) -> None:
+        _, headers = _user_and_headers(client, db)
+        r = client.post(
+            f"{settings.API_V1_STR}/accounts/test-connection",
+            headers=headers,
+            json={
+                "exchange": "upbit",
+                "api_key": "k",
+                "api_secret": "s",
+            },
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["is_valid"] is True
+        assert "성공" in data["message"]
+
+    def test_failure(self, client: TestClient, db: Session, mock_exchange_adapter) -> None:
+        mock_exchange_adapter.validate_credentials.return_value = False
+        _, headers = _user_and_headers(client, db)
+        r = client.post(
+            f"{settings.API_V1_STR}/accounts/test-connection",
+            headers=headers,
+            json={
+                "exchange": "kis",
+                "api_key": "k",
+                "api_secret": "s",
+                "extra_params": {"CANO": "12345678", "ACNT_PRDT_CD": "01"},
+            },
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["is_valid"] is False
+        assert "실패" in data["message"]
+
+
 # ── PATCH /{id} ───────────────────────────────────────────────────────────────
 
 

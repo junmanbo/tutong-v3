@@ -54,7 +54,7 @@ export const Route = createFileRoute("/reset-password")({
       throw redirect({ to: "/" })
     }
     if (!search.token) {
-      throw redirect({ to: "/login" })
+      throw redirect({ to: "/auth/login" })
     }
   },
   head: () => ({
@@ -87,7 +87,7 @@ function ResetPassword() {
     onSuccess: () => {
       showSuccessToast("비밀번호가 변경되었습니다")
       form.reset()
-      navigate({ to: "/login" })
+      navigate({ to: "/auth/login" })
     },
     onError: handleError.bind(showErrorToast),
   })
@@ -155,7 +155,7 @@ function ResetPassword() {
 
           <div className="text-center text-sm">
             비밀번호가 기억나시나요?{" "}
-            <RouterLink to="/login" className="underline underline-offset-4">
+            <RouterLink to="/auth/login" className="underline underline-offset-4">
               로그인
             </RouterLink>
           </div>

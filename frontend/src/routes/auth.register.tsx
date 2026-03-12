@@ -46,7 +46,7 @@ const formSchema = z
 
 type FormData = z.infer<typeof formSchema>
 
-export const Route = createFileRoute("/signup")({
+export const Route = createFileRoute("/auth/register")({
   component: SignUp,
   beforeLoad: async () => {
     if (isLoggedIn()) {
@@ -83,7 +83,6 @@ function SignUp() {
   const onSubmit = (data: FormData) => {
     if (signUpMutation.isPending) return
 
-    // exclude local-only fields from submission data
     const {
       confirm_password: _confirm_password,
       terms_agreed: _terms_agreed,

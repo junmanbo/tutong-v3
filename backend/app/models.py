@@ -210,6 +210,18 @@ class ExchangeAccountCreate(SQLModel):
     extra_params: dict | None = None
 
 
+class ExchangeAccountConnectionTest(SQLModel):
+    exchange: ExchangeTypeEnum
+    api_key: str = Field(min_length=1)
+    api_secret: str = Field(min_length=1)
+    extra_params: dict | None = None
+
+
+class ExchangeAccountConnectionTestResult(SQLModel):
+    is_valid: bool
+    message: str
+
+
 class ExchangeAccountUpdate(SQLModel):
     label: str | None = Field(default=None, max_length=100)
     is_active: bool | None = None
