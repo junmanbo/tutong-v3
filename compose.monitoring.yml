@@ -76,7 +76,7 @@ services:
       - traefik.http.services.${STACK_NAME?Variable not set}-grafana.loadbalancer.server.port=3000
 
   loki:
-    image: grafana/loki:3.1.0
+    image: grafana/loki:3.6.7
     restart: always
     command: -config.file=/etc/loki/loki.yml
     volumes:
