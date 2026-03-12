@@ -4,12 +4,12 @@ import {
   Activity,
   ArrowLeft,
   Clock3,
-  ListOrdered,
   RefreshCw,
+  ShieldAlert,
   TrendingUp,
 } from "lucide-react"
 
-import { type BotStatusEnum, BotsService } from "@/client"
+import { type BotStatusEnum, BotsService, OpenAPI } from "@/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -81,23 +81,64 @@ function formatDurationFrom(isoDate: string) {
   return `${hours}시간 ${minutes}분`
 }
 
-function mapEventTypeLabel(eventType: string) {
-  const labelMap: Record<string, string> = {
-    order_placed: "주문 등록",
-    order_filled: "주문 체결",
-    order_cancelled: "주문 취소",
-    dca_order_placed: "DCA 주문 등록",
-    dca_order_filled: "DCA 주문 체결",
-  }
-  return labelMap[eventType] ?? "주문 이벤트"
+type BotOrderItem = {
+  id: string
+  symbol: string
+  side: string
+  placed_at: string
 }
 
-type TimelineItem = {
+type BotOrdersResponse = {
+  data: BotOrderItem[]
+  count: number
+}
+
+type BotTradeItem = {
   id: string
-  title: string
-  description: string
-  at: string
-  tone?: "default" | "success" | "warning" | "danger"
+  order_id: string
+  quantity: string
+  price: string
+  fee: string
+  fee_currency: string | null
+  traded_at: string
+}
+
+type BotTradesResponse = {
+  data: BotTradeItem[]
+  count: number
+}
+
+function formatQuantity(value: string) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return "-"
+  return n.toLocaleString("ko-KR", { maximumFractionDigits: 8 })
+}
+
+function formatUnitPrice(value: string) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return "-"
+  return n.toLocaleString("ko-KR", { maximumFractionDigits: 8 })
+}
+
+function formatAmount(value: number, currency: string | null | undefined) {
+  if (!Number.isFinite(value)) return "-"
+  const digits = currency?.toUpperCase() === "KRW" ? 0 : 8
+  return `${value.toLocaleString("ko-KR", { maximumFractionDigits: digits })} ${currency ?? ""}`.trim()
+}
+
+async function fetchAuthedJson<T>(path: string): Promise<T> {
+  const accessToken = localStorage.getItem("access_token")
+  const response = await fetch(`${OpenAPI.BASE}${path}`, {
+    method: "GET",
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  })
+  if (!response.ok) {
+    const raw = (await response.json().catch(() => null)) as
+      | { detail?: string }
+      | null
+    throw new Error(raw?.detail ?? "데이터를 불러오지 못했습니다.")
+  }
+  return (await response.json()) as T
 }
 
 function BotDetailPage() {
@@ -115,9 +156,22 @@ function BotDetailPage() {
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
   })
-  const { data: botLogs, isLoading: logsLoading } = useQuery({
-    queryKey: ["bot-logs", botId],
-    queryFn: () => BotsService.readBotLogs({ id: botId, limit: 100, skip: 0 }),
+  const { data: botOrders, isLoading: ordersLoading } = useQuery({
+    queryKey: ["bot-orders", botId],
+    queryFn: () =>
+      fetchAuthedJson<BotOrdersResponse>(
+        `/api/v1/bots/${botId}/orders?skip=0&limit=100`,
+      ),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    enabled: !!bot,
+  })
+  const { data: botTrades, isLoading: tradesLoading } = useQuery({
+    queryKey: ["bot-trades", botId],
+    queryFn: () =>
+      fetchAuthedJson<BotTradesResponse>(
+        `/api/v1/bots/${botId}/trades?skip=0&limit=100`,
+      ),
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
     enabled: !!bot,
@@ -162,37 +216,30 @@ function BotDetailPage() {
   const pnlValue = Number(bot.total_pnl ?? "0")
   const lastSyncedAt = new Date().toLocaleTimeString()
 
-  const recentOrders: TimelineItem[] = (botLogs?.data ?? [])
-    .filter(
-      (log) =>
-        log.level !== "error" &&
-        (log.event_type.includes("order") ||
-          log.event_type.includes("slice") ||
-          log.event_type.includes("filled")),
-    )
-    .slice(0, 20)
-    .map((log) => ({
-      id: log.id,
-      title: mapEventTypeLabel(log.event_type),
-      description: log.message,
-      at: new Date(log.created_at).toLocaleString(),
-      tone:
-        log.level === "error"
-          ? "danger"
-          : log.level === "warning"
-            ? "warning"
-            : "success",
-    }))
-
-  const toneClassName: Record<NonNullable<TimelineItem["tone"]>, string> = {
-    default: "border-border bg-background text-foreground",
-    success:
-      "border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/70 dark:bg-emerald-950/35 dark:text-emerald-100",
-    warning:
-      "border-amber-200 bg-amber-50/70 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/35 dark:text-amber-100",
-    danger:
-      "border-red-200 bg-red-50/70 text-red-900 dark:border-red-900/70 dark:bg-red-950/35 dark:text-red-100",
-  }
+  const orderById = new Map(
+    (botOrders?.data ?? []).map((order) => [order.id, order]),
+  )
+  const recentTrades = (botTrades?.data ?? []).slice(0, 20).map((trade) => {
+    const order = orderById.get(trade.order_id)
+    const side = order?.side?.toLowerCase() === "buy" ? "매수" : "매도"
+    const quantity = Number(trade.quantity)
+    const unitPrice = Number(trade.price)
+    const tradeAmount = quantity * unitPrice
+    return {
+      id: trade.id,
+      tradedAt: new Date(trade.traded_at).toLocaleString(),
+      symbol: order?.symbol ?? bot.symbol ?? "-",
+      side,
+      quantity: formatQuantity(trade.quantity),
+      unitPrice: formatUnitPrice(trade.price),
+      tradeAmount: formatAmount(tradeAmount, bot.quote_currency),
+      fee: formatAmount(
+        Number(trade.fee),
+        trade.fee_currency ?? bot.quote_currency,
+      ),
+      orderedAt: order ? new Date(order.placed_at).toLocaleString() : "-",
+    }
+  })
 
   return (
     <div className="flex flex-col gap-6">
@@ -286,7 +333,7 @@ function BotDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">리스크 한도</CardTitle>
-            <ListOrdered className="size-4 text-muted-foreground" />
+            <ShieldAlert className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="space-y-1">
             <p className="text-sm">
@@ -364,31 +411,56 @@ function BotDetailPage() {
           <CardHeader>
             <CardTitle>최근 주문</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {logsLoading ? (
+          <CardContent>
+            {ordersLoading || tradesLoading ? (
               <Skeleton className="h-24 w-full" />
-            ) : recentOrders.length === 0 ? (
+            ) : recentTrades.length === 0 ? (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
                 최근 실행된 주문이 없습니다.
               </div>
             ) : (
-              recentOrders.map((item) => (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "rounded-md border p-3",
-                    toneClassName[item.tone ?? "default"],
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">{item.at}</p>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground dark:text-slate-300">
-                    {item.description}
-                  </p>
-                </div>
-              ))
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full min-w-[980px] text-sm">
+                  <thead className="bg-muted/40 text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">체결시간</th>
+                      <th className="px-3 py-2 text-left font-medium">종목명</th>
+                      <th className="px-3 py-2 text-left font-medium">종류</th>
+                      <th className="px-3 py-2 text-right font-medium">거래수량</th>
+                      <th className="px-3 py-2 text-right font-medium">거래단가</th>
+                      <th className="px-3 py-2 text-right font-medium">거래금액</th>
+                      <th className="px-3 py-2 text-right font-medium">수수료</th>
+                      <th className="px-3 py-2 text-left font-medium">주문시간</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentTrades.map((trade) => (
+                      <tr key={trade.id} className="border-t">
+                        <td className="px-3 py-2">{trade.tradedAt}</td>
+                        <td className="px-3 py-2">{trade.symbol}</td>
+                        <td className="px-3 py-2">
+                          <Badge
+                            variant={trade.side === "매수" ? "default" : "secondary"}
+                          >
+                            {trade.side}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono">
+                          {trade.quantity}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono">
+                          {trade.unitPrice}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono">
+                          {trade.tradeAmount}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono">{trade.fee}</td>
+                        <td className="px-3 py-2">{trade.orderedAt}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </CardContent>
         </Card>
