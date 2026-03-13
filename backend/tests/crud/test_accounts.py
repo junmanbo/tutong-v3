@@ -3,11 +3,14 @@
 DB 레이어를 직접 테스트합니다.
 커버리지 목표: 80%+
 """
+import json
 import uuid
 
 from sqlmodel import Session
 
 from app import crud
+from app.core.config import settings
+from app.core.crypto import decrypt
 from app.models import (
     ExchangeAccountCreate,
     ExchangeAccountUpdate,
@@ -72,6 +75,43 @@ class TestCreateExchangeAccount:
         assert len(account.api_key_enc) > 0
         assert len(account.api_secret_enc) > 0
 
+    def test_api_keys_decrypt_back_to_original_plaintext(self, db: Session) -> None:
+        """암호화 저장된 키는 올바른 ENCRYPTION_KEY로 복호화 가능해야 한다."""
+        user = create_random_user(db)
+        plain_key = "my-plain-api-key"
+        plain_secret = "my-plain-secret"
+        account = crud.create_exchange_account(
+            session=db,
+            account_in=_account_in(api_key=plain_key, api_secret=plain_secret),
+            owner_id=user.id,
+        )
+
+        assert decrypt(account.api_key_enc, settings.ENCRYPTION_KEY) == plain_key
+        assert decrypt(account.api_secret_enc, settings.ENCRYPTION_KEY) == plain_secret
+
+    def test_same_plaintext_produces_different_ciphertext(self, db: Session) -> None:
+        """AES-GCM nonce 랜덤성으로 동일 평문도 다른 암호문이 저장되어야 한다."""
+        user = create_random_user(db)
+        account1 = crud.create_exchange_account(
+            session=db,
+            account_in=_account_in(
+                api_key="same-key",
+                api_secret="same-secret",
+            ),
+            owner_id=user.id,
+        )
+        account2 = crud.create_exchange_account(
+            session=db,
+            account_in=_account_in(
+                api_key="same-key",
+                api_secret="same-secret",
+            ),
+            owner_id=user.id,
+        )
+
+        assert account1.api_key_enc != account2.api_key_enc
+        assert account1.api_secret_enc != account2.api_secret_enc
+
     def test_extra_params_encrypted_when_provided(self, db: Session) -> None:
         user = create_random_user(db)
         extra = {"account_number": "987654321"}
@@ -83,6 +123,19 @@ class TestCreateExchangeAccount:
         assert account.extra_params_enc is not None
         # 암호화된 값에 평문이 노출되지 않아야 함
         assert "987654321" not in account.extra_params_enc
+
+    def test_extra_params_decrypt_round_trip(self, db: Session) -> None:
+        user = create_random_user(db)
+        extra = {"account_number": "987654321", "CANO": "12345678"}
+        account = crud.create_exchange_account(
+            session=db,
+            account_in=_account_in(extra_params=extra),
+            owner_id=user.id,
+        )
+
+        assert account.extra_params_enc is not None
+        decrypted = decrypt(account.extra_params_enc, settings.ENCRYPTION_KEY)
+        assert json.loads(decrypted) == extra
 
     def test_extra_params_none_when_not_provided(self, db: Session) -> None:
         user = create_random_user(db)

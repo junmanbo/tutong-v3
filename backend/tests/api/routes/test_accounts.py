@@ -12,6 +12,7 @@ from sqlmodel import Session
 
 from app import crud
 from app.core.config import settings
+from app.core.crypto import decrypt
 from app.exchange_adapters.base import BalanceItem
 from app.exchange_adapters.kis import KisApiError
 from app.models import UserCreate
@@ -247,6 +248,32 @@ class TestCreateAccount:
         assert "api_secret" not in data
         assert "api_key_enc" not in data
         assert "api_secret_enc" not in data
+
+    def test_create_account_persists_encrypted_credentials(
+        self, client: TestClient, db: Session
+    ) -> None:
+        """생성 API는 평문이 아닌 암호문을 저장하고 복호화 시 원문이 나와야 한다."""
+        user, headers = _user_and_headers(client, db)
+        plain_key = "persist-key-123"
+        plain_secret = "persist-secret-456"
+        r = client.post(
+            f"{settings.API_V1_STR}/accounts/",
+            headers=headers,
+            json=_account_payload(api_key=plain_key, api_secret=plain_secret),
+        )
+        assert r.status_code == 201
+        account_id = uuid.UUID(r.json()["id"])
+
+        stored = crud.get_exchange_account(
+            session=db,
+            account_id=account_id,
+            user_id=user.id,
+        )
+        assert stored is not None
+        assert stored.api_key_enc != plain_key
+        assert stored.api_secret_enc != plain_secret
+        assert decrypt(stored.api_key_enc, settings.ENCRYPTION_KEY) == plain_key
+        assert decrypt(stored.api_secret_enc, settings.ENCRYPTION_KEY) == plain_secret
 
     def test_create_account_with_extra_params(
         self, client: TestClient, db: Session
