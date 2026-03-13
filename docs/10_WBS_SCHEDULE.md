@@ -202,7 +202,8 @@ Week 12-13: 통합 테스트 및 버그 수정
 │   └── CRUD/API 테스트 보강: 암복호화 round-trip, 동일 평문 nonce 랜덤성, 응답 비노출 검증 ✅
 ├── [QA] 부하 테스트 (동시 봇 100개 이상) ✅
 │   └── API 자동화: 100개 봇 start/stop 디스패치·Redis stop signal 부하 테스트 추가 ✅
-└── [Dev] 발견된 버그 수정
+└── [Dev] 발견된 버그 수정 ✅
+    └── API Routes/CRUD 회귀 테스트 재검증 및 안정화 완료 (routes 189 pass, crud 78 pass)
 
 Week 13-14: 배포 준비 및 론칭
 ├── [Dev] 홈서버 운영 환경 구성
