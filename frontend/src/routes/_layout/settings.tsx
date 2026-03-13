@@ -1,10 +1,15 @@
-import { createFileRoute, Link as RouterLink } from "@tanstack/react-router"
+import {
+  Outlet,
+  createFileRoute,
+  Link as RouterLink,
+  useRouterState,
+} from "@tanstack/react-router"
 import { Bell, ShieldCheck, User } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export const Route = createFileRoute("/_layout/settings")({
-  component: SettingsHub,
+  component: SettingsRouteLayout,
   head: () => ({
     meta: [
       {
@@ -13,6 +18,19 @@ export const Route = createFileRoute("/_layout/settings")({
     ],
   }),
 })
+
+function SettingsRouteLayout() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const isSettingsHub = pathname === "/settings"
+
+  if (!isSettingsHub) {
+    return <Outlet />
+  }
+
+  return <SettingsHub />
+}
 
 function SettingsHub() {
   return (

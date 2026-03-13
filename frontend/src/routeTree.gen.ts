@@ -35,6 +35,7 @@ import { Route as LayoutBotsNewSnowballRouteImport } from './routes/_layout/bots
 import { Route as LayoutBotsNewRebalancingRouteImport } from './routes/_layout/bots.new.rebalancing'
 import { Route as LayoutBotsNewDcaRouteImport } from './routes/_layout/bots.new.dca'
 import { Route as LayoutBotsNewAlgoOrdersRouteImport } from './routes/_layout/bots.new.algo-orders'
+import { Route as LayoutBotsGuideBotTypeRouteImport } from './routes/_layout/bots.guide.$botType'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -167,6 +168,11 @@ const LayoutBotsNewAlgoOrdersRoute = LayoutBotsNewAlgoOrdersRouteImport.update({
   path: '/algo-orders',
   getParentRoute: () => LayoutBotsNewRoute,
 } as any)
+const LayoutBotsGuideBotTypeRoute = LayoutBotsGuideBotTypeRouteImport.update({
+  id: '/guide/$botType',
+  path: '/guide/$botType',
+  getParentRoute: () => LayoutBotsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/settings/notifications': typeof LayoutSettingsNotificationsRoute
   '/settings/profile': typeof LayoutSettingsProfileRoute
   '/settings/security': typeof LayoutSettingsSecurityRoute
+  '/bots/guide/$botType': typeof LayoutBotsGuideBotTypeRoute
   '/bots/new/algo-orders': typeof LayoutBotsNewAlgoOrdersRoute
   '/bots/new/dca': typeof LayoutBotsNewDcaRoute
   '/bots/new/rebalancing': typeof LayoutBotsNewRebalancingRoute
@@ -216,6 +223,7 @@ export interface FileRoutesByTo {
   '/settings/notifications': typeof LayoutSettingsNotificationsRoute
   '/settings/profile': typeof LayoutSettingsProfileRoute
   '/settings/security': typeof LayoutSettingsSecurityRoute
+  '/bots/guide/$botType': typeof LayoutBotsGuideBotTypeRoute
   '/bots/new/algo-orders': typeof LayoutBotsNewAlgoOrdersRoute
   '/bots/new/dca': typeof LayoutBotsNewDcaRoute
   '/bots/new/rebalancing': typeof LayoutBotsNewRebalancingRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/_layout/settings/notifications': typeof LayoutSettingsNotificationsRoute
   '/_layout/settings/profile': typeof LayoutSettingsProfileRoute
   '/_layout/settings/security': typeof LayoutSettingsSecurityRoute
+  '/_layout/bots/guide/$botType': typeof LayoutBotsGuideBotTypeRoute
   '/_layout/bots/new/algo-orders': typeof LayoutBotsNewAlgoOrdersRoute
   '/_layout/bots/new/dca': typeof LayoutBotsNewDcaRoute
   '/_layout/bots/new/rebalancing': typeof LayoutBotsNewRebalancingRoute
@@ -274,6 +283,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings/security'
+    | '/bots/guide/$botType'
     | '/bots/new/algo-orders'
     | '/bots/new/dca'
     | '/bots/new/rebalancing'
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/profile'
     | '/settings/security'
+    | '/bots/guide/$botType'
     | '/bots/new/algo-orders'
     | '/bots/new/dca'
     | '/bots/new/rebalancing'
@@ -329,6 +340,7 @@ export interface FileRouteTypes {
     | '/_layout/settings/notifications'
     | '/_layout/settings/profile'
     | '/_layout/settings/security'
+    | '/_layout/bots/guide/$botType'
     | '/_layout/bots/new/algo-orders'
     | '/_layout/bots/new/dca'
     | '/_layout/bots/new/rebalancing'
@@ -531,6 +543,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutBotsNewAlgoOrdersRouteImport
       parentRoute: typeof LayoutBotsNewRoute
     }
+    '/_layout/bots/guide/$botType': {
+      id: '/_layout/bots/guide/$botType'
+      path: '/guide/$botType'
+      fullPath: '/bots/guide/$botType'
+      preLoaderRoute: typeof LayoutBotsGuideBotTypeRouteImport
+      parentRoute: typeof LayoutBotsRoute
+    }
   }
 }
 
@@ -571,11 +590,13 @@ const LayoutBotsNewRouteWithChildren = LayoutBotsNewRoute._addFileChildren(
 interface LayoutBotsRouteChildren {
   LayoutBotsBotIdRoute: typeof LayoutBotsBotIdRoute
   LayoutBotsNewRoute: typeof LayoutBotsNewRouteWithChildren
+  LayoutBotsGuideBotTypeRoute: typeof LayoutBotsGuideBotTypeRoute
 }
 
 const LayoutBotsRouteChildren: LayoutBotsRouteChildren = {
   LayoutBotsBotIdRoute: LayoutBotsBotIdRoute,
   LayoutBotsNewRoute: LayoutBotsNewRouteWithChildren,
+  LayoutBotsGuideBotTypeRoute: LayoutBotsGuideBotTypeRoute,
 }
 
 const LayoutBotsRouteWithChildren = LayoutBotsRoute._addFileChildren(

@@ -1,5 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
 import {
+  Link as RouterLink,
   Outlet,
   createFileRoute,
   useNavigate,
@@ -132,22 +133,27 @@ function BotsListPage() {
   >("all")
   const botTypeGuide = [
     {
+      slug: "dca",
       title: "현물 DCA",
       description: "정해진 주기마다 KRW 기준으로 분할 매수합니다.",
     },
     {
+      slug: "spot-grid",
       title: "현물 그리드",
       description: "설정한 가격 범위에서 자동으로 매수/매도를 반복합니다.",
     },
     {
+      slug: "snowball",
       title: "포지션 스노우볼",
       description: "하락 구간에 분할 매수 후 반등 시 청산합니다.",
     },
     {
+      slug: "rebalancing",
       title: "리밸런싱",
       description: "포트폴리오 목표 비중을 KRW 기준으로 자동 재조정합니다.",
     },
     {
+      slug: "algo-orders",
       title: "알고 주문",
       description: "대량 주문을 여러 조각으로 나눠 체결 슬리피지를 줄입니다.",
     },
@@ -179,10 +185,15 @@ function BotsListPage() {
               </DialogHeader>
               <div className="space-y-3">
                 {botTypeGuide.map((item) => (
-                  <div key={item.title} className="rounded-md border p-3">
+                  <RouterLink
+                    key={item.title}
+                    to="/bots/guide/$botType"
+                    params={{ botType: item.slug }}
+                    className="block rounded-md border p-3 transition-colors hover:bg-muted/50"
+                  >
                     <p className="text-sm font-semibold">{item.title}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
-                  </div>
+                  </RouterLink>
                 ))}
               </div>
             </DialogContent>
