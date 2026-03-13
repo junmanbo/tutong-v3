@@ -36,6 +36,8 @@ AutoTrade Platform은 아래의 핵심 원칙을 기반으로 설계합니다.
 
 ## 2. 시스템 구성도
 
+### 2.1 Phase 1 (현재)
+
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │                         사용자 (Browser)                          │
@@ -55,8 +57,8 @@ AutoTrade Platform은 아래의 핵심 원칙을 기반으로 설계합니다.
                                │                 │                  │
                     ┌──────────▼─────┐  ┌────────▼───────┐  ┌──────▼──────┐
                     │  Message Queue  │  │   PostgreSQL   │  │    Redis    │
-                    │  (Redis/RabbitMQ│  │   (Main DB)    │  │  (Cache /   │
-                    │   /SQS)         │  │                │  │   Session)  │
+                    │  (Redis Broker) │  │   (Main DB)    │  │  (Cache /   │
+                    │                 │  │                │  │   Broker)   │
                     └──────────┬──────┘  └────────────────┘  └─────────────┘
                                │
                     ┌──────────▼──────────────────────────┐
@@ -87,6 +89,60 @@ AutoTrade Platform은 아래의 핵심 원칙을 기반으로 설계합니다.
 │  Binance        │  │  Upbit           │  │  한국투자증권          │  │  키움증권             │
 │  Exchange       │  │  Exchange        │  │  KIS API            │  │  Kiwoom REST API     │
 └─────────────────┘  └──────────────────┘  └─────────────────────┘  └──────────────────────┘
+```
+
+### 2.2 Phase 2 — 시장 데이터 인프라 추가
+
+Phase 2에서는 TimescaleDB(별도 인스턴스)와 마켓 데이터 수집기가 추가됩니다.
+기존 PostgreSQL(앱 DB)은 그대로 유지하고 OHLCV 시계열 데이터만 TimescaleDB에 저장합니다.
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                         사용자 (Browser)                                  │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                │ HTTPS
+                    ┌───────────▼───────────┐
+                    │   Backend API Server   │
+                    │   FastAPI (Python)     │
+                    └───────────┬───────────┘
+                                │
+          ┌─────────────────────┼──────────────────────┐
+          │                     │                      │
+┌─────────▼──────┐  ┌───────────▼────────┐  ┌─────────▼────────┐
+│  PostgreSQL    │  │   TimescaleDB      │  │   Redis          │
+│  (앱 DB)       │  │   (마켓 데이터 전용) │  │   (Broker/Cache) │
+│                │  │                   │  │                  │
+│  - users       │  │  - ohlcv_bar      │  │  - 봇 상태       │
+│  - bots        │  │    (hypertable)   │  │  - 중지 신호     │
+│  - bot_orders  │  │                   │  │                  │
+│  - symbols     │  │  ※ 기존 PostgreSQL │  │                  │
+│  - 구독/결제   │  │    과 완전 분리    │  │                  │
+└────────────────┘  └───────────────────┘  └──────────────────┘
+                                │
+          ┌─────────────────────┼──────────────────────┐
+          │                     │                      │
+┌─────────▼──────────┐  ┌───────▼──────────────────┐   │
+│  Bot Engine Workers │  │  Market Data Collector   │   │
+│  (봇 전략 실행)      │  │  (Celery Beat)           │   │
+│                    │  │                          │   │
+│  - spot_grid       │  │  - sync_symbols (매일)    │   │
+│  - snowball        │  │  - collect_ohlcv_1m      │   │
+│  - rebalancing     │  │  - collect_ohlcv_1h      │   │
+│  - spot_dca        │  │  - collect_ohlcv_1d      │   │
+│  - algo_orders     │  │  - backfill_ohlcv (요청시) │   │
+└─────────┬──────────┘  └───────┬──────────────────┘   │
+          │                     │                       │
+          └─────────────────────┴───────────────────────┘
+                                │
+                거래소 API (Binance, Upbit, KIS, Kiwoom)
+```
+
+**Symbol vs OHLCV 저장 위치 결정:**
+
+| 데이터 | 저장 위치 | 이유 |
+|--------|-----------|------|
+| `symbols` (종목 메타) | PostgreSQL (앱 DB) | 봇 config와 논리적 연관, 행 수가 적음 |
+| `ohlcv_bar` (캔들 데이터) | TimescaleDB (별도) | 시계열 최적화, 수억 행, 재수집 가능 |
 
 ---
 
@@ -175,13 +231,32 @@ bot_engine/
 │   ├── position_snowball.py# Celery Task — Position Snowball 워커
 │   ├── rebalancing.py      # Celery Task — Rebalancing 봇 워커
 │   ├── spot_dca.py         # Celery Task — Spot DCA 워커
-│   └── algo_orders.py      # Celery Task — Algo Orders 워커
+│   ├── algo_orders.py      # Celery Task — Algo Orders 워커
+│   └── market_data.py      # [Phase 2 추가] Celery Task — OHLCV 수집
 ├── strategies/             # 봇 전략 핵심 로직 (순수 Python)
-├── scheduler.py            # APScheduler — DCA·Rebalancing 주기 실행
+├── backtesting/            # [Phase 2 추가] 백테스팅 엔진
+│   └── engine.py           #   BacktestEngine (strategies/ 재사용)
+├── scheduler.py            # APScheduler — DCA·Rebalancing·OHLCV 주기 실행
 └── celery_app.py           # Celery 앱 설정 (Broker: Redis)
 ```
 
-> **거래소 어댑터 공유 방식:** Bot Engine은 `backend/app/exchange_adapters/`를 직접 참조하지 않습니다. `backend` 패키지를 `uv` workspace로 공유하거나, 어댑터를 별도 `exchange_adapters/` 패키지로 분리해 두 서비스에서 설치합니다. 구체적인 방식은 개발 초기에 확정합니다.
+### 3.4 Market Data 서비스 (Phase 2 신규)
+
+```
+backend/app/
+├── core/
+│   ├── db.py               # [템플릿] 앱 DB 엔진
+│   └── market_db.py        # [Phase 2 추가] TimescaleDB 엔진 (별도)
+├── api/routes/
+│   └── market.py           # [Phase 2 추가] 종목 검색·OHLCV 조회 API
+└── models.py               # Symbol 모델 추가 (앱 DB)
+
+# TimescaleDB 전용 모델 (market_db 사용)
+market_models.py (또는 별도 파일)
+└── OHLCVBar (hypertable)   # OHLCV 캔들 데이터
+```
+
+> **거래소 어댑터 공유 방식:** Bot Engine의 `exchange_adapters/`는 `backend/app/exchange_adapters/`를 `uv` path dependency로 참조합니다.
 
 ---
 
@@ -340,6 +415,18 @@ class AbstractExchangeAdapter(ABC):
 > **배포 전략:** 초기에는 집 서버(On-premise)로 서비스하고, 사용자 증가 시 클라우드로 단계적 전환합니다.
 > 이를 위해 모든 서비스는 Docker 컨테이너로 운영하여 이식성을 보장합니다.
 
+### 7.0 Phase 1 완료 / Phase 2 배포 목표
+
+Phase 1은 개발 완료 상태입니다. Phase 2의 첫 번째 작업은 운영 환경 구성입니다.
+
+| 항목 | Phase 1 (현재) | Phase 2 목표 |
+|------|---------------|-------------|
+| 배포 | 로컬 개발 환경 | 홈서버 On-premise |
+| SSL | 없음 (로컬) | Certbot (Let's Encrypt) |
+| CI/CD | 비활성 (workflows.disabled) | GitHub Actions 자동 배포 |
+| 모니터링 | 없음 | Prometheus + Grafana + Loki |
+| 에러 추적 | 없음 | Sentry |
+
 ### 7.1 Phase 1 — On-premise (홈서버)
 
 초기 MVP 및 베타 서비스 단계. 집 서버 한 대 또는 소수의 서버로 모든 컴포넌트를 운영합니다.
@@ -361,6 +448,7 @@ class AbstractExchangeAdapter(ABC):
 │                                                      │
 │  [Bot Engine Container]  (Celery Worker)            │
 │  [PostgreSQL Container]  (메인 DB, 볼륨 마운트)       │
+│  [TimescaleDB Container] (마켓 데이터 전용 — Phase 2) │
 │  [Redis Container]       (Celery Broker + 캐시)     │
 │                                                      │
 │  [Prometheus + Grafana]  (메트릭 모니터링)             │
@@ -373,13 +461,13 @@ class AbstractExchangeAdapter(ABC):
 
 **권장 홈서버 최소 사양:**
 
-| 항목 | 권장 사양 |
-|------|-----------|
-| CPU | 4코어 이상 (Intel/AMD x86-64) |
-| RAM | 8GB 이상 (16GB 권장) |
-| Storage | SSD 100GB 이상 (DB 볼륨 포함) |
-| OS | Ubuntu 22.04 LTS / 24.04 LTS |
-| 네트워크 | 유선 인터넷, 고정 IP 또는 DDNS |
+| 항목 | 권장 사양 | 비고 |
+|------|-----------|------|
+| CPU | 4코어 이상 (Intel/AMD x86-64) | OHLCV 수집 시 추가 부하 |
+| RAM | 16GB 이상 | TimescaleDB 추가로 8GB보다 16GB 권장 |
+| Storage | SSD 200GB 이상 | OHLCV 데이터 누적 고려 |
+| OS | Ubuntu 22.04 LTS / 24.04 LTS | |
+| 네트워크 | 유선 인터넷, 고정 IP 또는 DDNS | |
 
 **On-premise 핵심 구성 요소:**
 
@@ -423,12 +511,13 @@ find /mnt/backup -name "db_*.sql" -mtime +7 -delete
 **전환 용이성을 위해 Phase 1부터 Docker로 운영합니다.** 이미지를 ECR에 올리고
 ECS Task Definition만 작성하면 전환 완료입니다.
 
-| 컴포넌트 | On-premise (Phase 1) | AWS (Phase 2) |
-|----------|---------------------|---------------|
+| 컴포넌트 | On-premise (Phase 2) | AWS (Phase 3+) |
+|----------|---------------------|----------------|
 | Frontend | Nginx (컨테이너) | S3 + CloudFront |
 | Backend API | Docker Compose | ECS Fargate |
 | Bot Engine | Docker Compose | ECS Fargate |
-| Database | PostgreSQL 컨테이너 | RDS PostgreSQL |
+| 앱 DB | PostgreSQL 컨테이너 | RDS PostgreSQL |
+| 마켓 DB | TimescaleDB 컨테이너 | RDS TimescaleDB (또는 EC2) |
 | Cache | Redis 컨테이너 | ElastiCache Redis |
 | SSL | Certbot (Let's Encrypt) | ACM (자동 관리) |
 | 시크릿 | `.env` 파일 | Secrets Manager |
@@ -520,6 +609,7 @@ API 요청 시 Authorization: Bearer {access_token} 헤더 포함
 | v1.2 | 2025년 | Backend API 및 Bot Engine 언어/프레임워크 변경 — Node.js(NestJS/TS) → Python(FastAPI). 디렉토리 구조, Exchange Adapter 인터페이스(TS→Python ABC), Bot Engine Worker(TS→Celery Task) 전면 재작성. shared 패키지 구조 추가 | PM |
 | v1.3 | 2025년 | fastapi/full-stack-fastapi-template 기반으로 전환. Frontend: Next.js App Router → Vite+React+TanStack Router. Backend: 디렉토리 구조를 템플릿 기준으로 재정렬 (models.py, crud.py 방식 채택). shared/ 패키지 구조 제거, exchange_adapters를 backend/app 내부로 통합. 템플릿 제공 항목과 신규 추가 항목 명시 | PM |
 | v1.4 | 2025년 | 인프라 전략 변경 — AWS 단일 구성 → On-premise 우선 + 클라우드 단계적 전환. Phase 1: 홈서버 + Docker Compose + Nginx + Certbot. Phase 2: AWS ECS/RDS/ElastiCache (사용자 증가 시). 네트워크 보안 다이어그램 Phase별 분리 기술 | PM |
+| v2.0 | 2026-03-13 | Phase 2 아키텍처 추가 — 시장 데이터 인프라(TimescaleDB 별도 인스턴스) 시스템 구성도 추가. Symbol은 앱 DB, OHLCV는 TimescaleDB 분리 원칙 명시. Market Data Collector(Celery Beat) 및 BacktestEngine 레이어 추가. bot_engine/backtesting/ 디렉토리 추가. market_db.py 별도 엔진 구조 기술. Phase 2 배포 목표 섹션 추가 | Dev |
 
 ---
 

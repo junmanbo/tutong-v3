@@ -1,10 +1,10 @@
 # 데이터베이스 설계서 (Database Design)
 
 **프로젝트명:** AutoTrade Platform  
-**문서 버전:** v1.0  
+**문서 버전:** v1.2
 **작성일:** 2025년  
 **작성자:** PM / Tech Lead  
-**DBMS:** PostgreSQL 16+
+**DBMS:** PostgreSQL 16+ (앱 DB) + TimescaleDB (마켓 DB, Phase 2)
 
 ---
 
@@ -58,7 +58,24 @@ bots (공통 정보)
 
 `bot_snapshots` 테이블에 주기적 스냅샷(기본 1시간 간격)을 저장합니다.
 
-**이유:** TimescaleDB 확장은 인프라 복잡도 증가, 실시간 계산은 조회 시 부하 증가. 스냅샷 방식이 1인 MVP에 가장 현실적이며, 추후 데이터가 쌓이면 TimescaleDB로 마이그레이션 가능.
+**이유:** 실시간 계산은 조회 시 부하 증가. 스냅샷 방식이 현실적이며 수익 차트에 충분.
+
+### 1.4 시장 데이터(OHLCV) DB 분리 결정 (Phase 2)
+
+OHLCV 가격 데이터는 **TimescaleDB(별도 인스턴스)**에 저장합니다. 앱 DB(PostgreSQL)는 변경 없이 유지합니다.
+
+**분리 이유:**
+
+| 항목 | 앱 DB (PostgreSQL) | 마켓 DB (TimescaleDB) |
+|------|-------------------|----------------------|
+| 데이터 특성 | 트랜잭션·관계형 | 시계열·append-only |
+| 예상 행 수 | 수십만 | 수억+ (1분봉 3년치) |
+| 장애 영향 | 서비스 전체 | 차트·백테스팅만 |
+| 복구 방법 | 백업 필수 | 거래소 API로 재수집 |
+
+**저장 위치 규칙:**
+- `symbols` (종목 메타): 앱 DB — 봇 config와 논리적 연관, 행 수 적음
+- `ohlcv_bar` (캔들 데이터): TimescaleDB — 시계열 hypertable
 
 ### 1.4 소셜 로그인
 
@@ -67,6 +84,8 @@ MVP에서 **이메일/비밀번호 전용**으로 구현. `users` 테이블에 `
 ---
 
 ## 2. ERD 다이어그램 (텍스트)
+
+**앱 DB (PostgreSQL):**
 
 ```
 [users] 1 ──── N [exchange_accounts]
@@ -85,11 +104,21 @@ MVP에서 **이메일/비밀번호 전용**으로 구현. `users` 테이블에 `
 [users] 1 ──── N [notifications]
 [users] 1 ──── 1 [notification_settings]
 [announcements] (독립)
+[symbols] (독립 — Phase 2 추가, 거래소별 종목 메타)
+```
+
+**마켓 DB (TimescaleDB — Phase 2 별도 인스턴스):**
+
+```
+[ohlcv_bar] (hypertable, time 기준 자동 파티셔닝)
+  PK: (time, exchange, symbol, timeframe)
 ```
 
 ---
 
-## 3. 테이블 목록 및 역할 (총 20개)
+## 3. 테이블 목록 및 역할
+
+### 3.1 앱 DB (PostgreSQL) — 총 21개
 
 | 테이블 | 역할 | 주요 관계 |
 |--------|------|-----------|
@@ -113,6 +142,13 @@ MVP에서 **이메일/비밀번호 전용**으로 구현. `users` 테이블에 `
 | `notifications` | 발송된 알림 내역 | users 1:N |
 | `notification_settings` | 사용자별 알림 수신 설정 | users 1:1 |
 | `announcements` | 시스템 공지사항 (관리자 작성) | 독립 |
+| `symbols` | 거래소별 종목 메타 (Phase 2) | 독립 — 봇 폼 자동완성 |
+
+### 3.2 마켓 DB (TimescaleDB — Phase 2 별도 인스턴스) — 총 1개
+
+| 테이블 | 역할 | 비고 |
+|--------|------|------|
+| `ohlcv_bar` | OHLCV 캔들 데이터 hypertable | time 기준 자동 파티셔닝 |
 
 ---
 
@@ -530,6 +566,79 @@ MVP에서 **이메일/비밀번호 전용**으로 구현. `users` 테이블에 `
 | `created_at` | `TIMESTAMPTZ` | NN, DEF `now()` | |
 | `updated_at` | `TIMESTAMPTZ` | NN, DEF `now()` | |
 
+### 4.21 `symbols` — 거래소별 종목 메타 (Phase 2)
+
+> 봇 생성 폼의 트레이딩 페어 자동완성에 사용됩니다. Celery Beat `sync_symbols` 태스크가 매일 거래소 API에서 갱신합니다.
+
+| 컬럼명 | 타입 | 제약 | 설명 |
+|--------|------|------|------|
+| `id` | `UUID` | PK, DEF `gen_random_uuid()` | 고유 ID |
+| `exchange` | `VARCHAR(30)` | NN | 거래소 식별자 (binance, upbit, kis, kiwoom) |
+| `symbol` | `VARCHAR(30)` | NN | CCXT 표준 심볼 (BTC/USDT, ETH/KRW 등) |
+| `base_asset` | `VARCHAR(20)` | NN | 기준 자산 (BTC, ETH …) |
+| `quote_asset` | `VARCHAR(20)` | NN | 견적 자산 (USDT, KRW …) |
+| `market_type` | `VARCHAR(20)` | NN, DEF `'spot'` | 시장 유형 (spot, futures) |
+| `is_active` | `BOOLEAN` | NN, DEF `true` | 현재 거래 가능 여부 |
+| `price_precision` | `SMALLINT` | | 가격 소수점 자리수 |
+| `qty_precision` | `SMALLINT` | | 수량 소수점 자리수 |
+| `min_order_qty` | `NUMERIC(36,18)` | | 최소 주문 수량 |
+| `min_notional` | `NUMERIC(36,18)` | | 최소 주문 금액 |
+| `extra` | `JSONB` | DEF `'{}'` | 거래소별 추가 메타 |
+| `synced_at` | `TIMESTAMPTZ` | NN, DEF `now()` | 마지막 동기화 시각 |
+
+**인덱스:**
+- `UQ symbols_exchange_symbol` on `(exchange, symbol)` — 거래소+심볼 조합 고유
+- `IDX symbols_exchange_active` on `(exchange, is_active)` — 활성 종목 필터링
+- `IDX symbols_base_asset` on `(base_asset)` — 자산명 검색
+
+---
+
+## 4-A. TimescaleDB 테이블 상세 정의 (Phase 2)
+
+> **연결 설정:** `MARKET_DATABASE_URL` 환경변수로 별도 연결. `backend/app/core/market_db.py` 참조.
+
+### 4-A.1 `ohlcv_bar` — OHLCV 캔들 hypertable
+
+> TimescaleDB `create_hypertable('ohlcv_bar', 'time', chunk_time_interval => INTERVAL '1 month')` 으로 생성합니다.
+
+| 컬럼명 | 타입 | 제약 | 설명 |
+|--------|------|------|------|
+| `time` | `TIMESTAMPTZ` | PK (복합), NN | 캔들 시작 시각 (UTC) |
+| `exchange` | `VARCHAR(30)` | PK (복합), NN | 거래소 식별자 |
+| `symbol` | `VARCHAR(30)` | PK (복합), NN | CCXT 표준 심볼 (BTC/USDT) |
+| `timeframe` | `VARCHAR(5)` | PK (복합), NN | 타임프레임 (1m, 5m, 15m, 1h, 4h, 1d) |
+| `open` | `DOUBLE PRECISION` | NN | 시가 |
+| `high` | `DOUBLE PRECISION` | NN | 고가 |
+| `low` | `DOUBLE PRECISION` | NN | 저가 |
+| `close` | `DOUBLE PRECISION` | NN | 종가 |
+| `volume` | `DOUBLE PRECISION` | NN | 거래량 |
+
+> **DOUBLE PRECISION 사용 이유:** OHLCV는 표시/분석 용도이므로 `NUMERIC`의 저장 오버헤드 없이 `DOUBLE PRECISION`으로 충분합니다. Python에서 `Decimal(str(value))`로 변환하여 계산합니다.
+
+**TimescaleDB 설정:**
+```sql
+-- hypertable 생성
+SELECT create_hypertable('ohlcv_bar', 'time', chunk_time_interval => INTERVAL '1 month');
+
+-- 압축 정책 (7일 이상 된 청크 압축)
+SELECT add_compression_policy('ohlcv_bar', INTERVAL '7 days');
+
+-- 보존 정책 (3년 이상 된 데이터 자동 삭제 — 필요 시 조정)
+SELECT add_retention_policy('ohlcv_bar', INTERVAL '3 years');
+```
+
+**인덱스:**
+- 기본 PK: `(time DESC, exchange, symbol, timeframe)` — TimescaleDB가 자동 생성
+- `IDX ohlcv_symbol_timeframe_time` on `(exchange, symbol, timeframe, time DESC)` — 백테스팅 범위 조회
+
+**예상 데이터 볼륨:**
+
+| 심볼 | 타임프레임 | 기간 | 예상 행 수 |
+|------|-----------|------|-----------|
+| BTC/USDT (Binance) | 1m | 3년 | ~1.6M |
+| ETH/USDT (Binance) | 1m | 3년 | ~1.6M |
+| 주요 10개 심볼 × 6 타임프레임 | 혼합 | 3년 | ~50M |
+
 ---
 
 ## 5. 인덱스 전략
@@ -545,6 +654,8 @@ MVP에서 **이메일/비밀번호 전용**으로 구현. `users` 테이블에 `
 | 봇 수익 차트용 스냅샷 조회 | `bot_snapshots` | `(bot_id, snapshot_at DESC)` |
 | 봇 오류 로그만 필터링 | `bot_logs` | `(bot_id, level)` WHERE `level = 'error'` |
 | 사용자 미읽은 알림 목록 | `notifications` | `(user_id, is_read)` WHERE `is_read = false` |
+| 종목 자동완성 검색 | `symbols` | `(exchange, is_active)`, `(base_asset)` |
+| OHLCV 백테스팅 범위 조회 | `ohlcv_bar` (TimescaleDB) | `(exchange, symbol, timeframe, time DESC)` |
 
 ### 5.2 인덱스 주의사항
 
@@ -812,6 +923,7 @@ select(Bot).where(Bot.user_id == user_id)
 |------|------|-----------|--------|
 | v1.0 | 2025년 | 최초 작성 — 20개 테이블 정의, UUID PK, Soft Delete, NUMERIC(36,18) 금융 정밀도, 봇 타입별 설정 테이블 분리 | PM |
 | v1.1 | 2025년 | fastapi/full-stack-fastapi-template 기반 전환 — 섹션 9 "SQLAlchemy 모델 매핑 가이드"를 "SQLModel 모델 매핑 가이드"로 전면 교체. DeclarativeBase/Mapped 방식 → SQLModel(table=True) 방식으로 변경. SQLModel 테이블명 자동 생성 규칙, JSONB 컬럼, Soft Delete 패턴 SQLModel 문법으로 재작성 | PM |
+| v1.2 | 2026년 | Phase 2 마켓 데이터 설계 반영 — 섹션 1.4 DB 분리 결정 추가, ERD에 앱 DB/마켓 DB 분리 표기, 섹션 3 테이블 목록에 `symbols`(앱 DB) 추가(21개), 섹션 4.21 symbols 테이블 정의, 섹션 4-A TimescaleDB `ohlcv_bar` hypertable 정의(복합 PK, 압축/보존 정책), 인덱스 전략에 symbols/ohlcv_bar 항목 추가 | PM |
 
 ---
 

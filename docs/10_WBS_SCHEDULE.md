@@ -1,7 +1,7 @@
 # WBS / 개발 일정표 (Work Breakdown Structure)
 
 **프로젝트명:** AutoTrade Platform
-**문서 버전:** v1.0
+**문서 버전:** v3.0
 **작성일:** 2025년
 **작성자:** PM
 
@@ -9,14 +9,26 @@
 
 ## 전체 일정 개요
 
+### Phase 1 (완료 ✅)
+
+| 단계 | 기간 | 내용 | 상태 |
+|------|------|------|------|
+| **Phase 0: 착수 및 설계** | 1~2주차 | 문서 완성, 개발 환경 구축, DB 설계 | ✅ 완료 |
+| **Phase 1-1: 기반 개발** | 3~6주차 | 인증, 계좌 연동, 기본 대시보드 | ✅ 완료 |
+| **Phase 1-2: 봇 엔진 개발** | 5~10주차 | 5가지 봇 전략 구현, 바이낸스·업비트 연동 | ✅ 완료 |
+| **Phase 1-3: API 완성** | 9~12주차 | 알림·Admin·Subscription API, KIS 연동 | ✅ 완료 |
+| **Phase 1-4: QA 및 UI 정합** | 12~14주차 | 통합 테스트, UI 정합, 계좌 검증 강화 | 🔄 진행 중 |
+| **MVP 베타 론칭** | 14주차 | 홈서버 배포 완료 | 예정 |
+
+### Phase 2 (예정)
+
 | 단계 | 기간 | 내용 |
 |------|------|------|
-| **Phase 0: 착수 및 설계** | 1~2주차 | 문서 완성, 개발 환경 구축, DB 설계 |
-| **Phase 1-1: 기반 개발** | 3~6주차 | 인증, 계좌 연동, 기본 대시보드 |
-| **Phase 1-2: 봇 엔진 개발** | 5~10주차 | 5가지 봇 전략 구현, 바이낸스 연동 |
-| **Phase 1-3: 업비트 / KIS 연동** | 9~12주차 | 업비트, 한국투자증권 연동 |
-| **Phase 1-4: 완성 및 QA** | 12~14주차 | 통합 테스트, 버그 수정, 배포 |
-| **MVP 출시** | 14주차 | 베타 론칭 |
+| **Phase 2-1: 인프라 & 배포** | MVP+1~4주 | Nginx/SSL, CI/CD, Prometheus/Grafana, 운영 환경 구성 |
+| **Phase 2-2: 시장 데이터** | MVP+3~6주 | TimescaleDB, Symbol Registry, OHLCV 수집, 차트 연동 |
+| **Phase 2-3: 백테스팅** | MVP+5~8주 | 백테스팅 엔진, 결과 페이지, 봇 생성 연동 |
+| **Phase 2-4: 결제 & 계정** | MVP+7~10주 | 토스페이먼츠 PG 연동, 소셜 로그인, 이용약관 |
+| **Phase 2-5: 고도화** | MVP+9~14주 | KIS/Kiwoom WebSocket, Telegram 알림, 전략 마켓플레이스 |
 
 ---
 
@@ -206,11 +218,119 @@ Week 13-14: 배포 준비 및 론칭
 └── 🚀 베타 론칭
 ```
 
+### Phase 2-1: 인프라 & 운영 환경 (MVP 이후 1~4주)
+
+```
+Week MVP+1-2: 운영 환경 구성
+├── [DevOps] compose.prod.yml 작성 (adminer·mailcatcher 제거)
+├── [DevOps] Nginx 리버스 프록시 설정 + SSL/TLS (Certbot Let's Encrypt)
+├── [DevOps] GitHub Actions CI/CD — 홈서버 자동 배포 파이프라인 구성
+├── [DevOps] Prometheus + Grafana + Loki 모니터링 스택 구성
+├── [DevOps] Sentry 에러 트래킹 설정
+└── [DevOps] PostgreSQL 자동 백업 스크립트 (cron + pg_dump)
+
+Week MVP+3-4: 안정화
+├── [DevOps] 부하 테스트 (동시 봇 100개 이상)
+├── [QA] 보안 테스트 (API Key 암호화 검증, Rate Limit)
+├── [Dev] 성능 병목 분석 및 쿼리 최적화
+└── [PM] 서비스 약관 / 개인정보처리방침 작성
+```
+
+### Phase 2-2: 시장 데이터 (MVP 이후 3~6주)
+
+```
+Week MVP+3-4: TimescaleDB 기반 구축
+├── [DevOps] compose.yml — timescaledb 서비스 추가 (포트 5433)
+├── [DevOps] scripts/init_timescaledb.sql — ohlcv_bar hypertable 초기화
+├── [BE] backend/app/core/market_db.py — 별도 엔진 + MarketSessionDep
+├── [BE] backend/app/core/config.py — MARKET_DATABASE_URL 추가
+├── [BE] backend/app/core/market_models.py — ohlcv_bar SQLAlchemy Table
+└── [Bot] bot_engine/workers/market_data.py — 기본 구조
+
+Week MVP+4-5: Symbol Registry
+├── [BE] Alembic 마이그레이션 — symbols 테이블 추가 (앱 DB)
+├── [BE] models.py — Symbol SQLModel 모델 추가
+├── [BE] crud.py — upsert_symbol(), get_symbols() 추가
+├── [BE] routes/market.py — GET /market/symbols/search?q= 자동완성 API
+├── [Bot] workers/market_data.py — sync_symbols() Celery 태스크
+├── [Bot] celery_app.py — beat_schedule sync_symbols 등록 (매일 00:30)
+└── [FE] 봇 생성 폼 트레이딩 페어 — 자동완성 Combobox UI 연동
+
+Week MVP+5-6: OHLCV 수집 & 차트
+├── [Bot] workers/market_data.py — collect_ohlcv(1m/1h/1d) 태스크
+├── [Bot] workers/market_data.py — backfill_ohlcv() 온디맨드 태스크
+├── [Bot] celery_app.py — beat_schedule OHLCV 수집 주기 등록
+├── [BE] routes/market.py — GET /market/ohlcv 차트 데이터 API
+├── [FE] components/Charts/ — TradingView Lightweight Charts OHLCV 연동
+├── [FE] 봇 상세 페이지 — 실시간 캔들 차트 (1m/1h/1d 전환)
+└── [Test] TimescaleDB OHLCV 수집/조회 통합 테스트
+```
+
+### Phase 2-3: 백테스팅 (MVP 이후 5~8주)
+
+```
+Week MVP+5-6: 백테스팅 엔진 구현
+├── [Bot] bot_engine/backtesting/engine.py — BacktestEngine 클래스
+│   ├── OHLCV 캔들 반복 → 전략 순수 함수 호출
+│   ├── 가상 주문/체결 시뮬레이션 (슬리피지·수수료 설정 지원)
+│   └── 결과 집계: 총수익률, MDD, 승률, 손익비, 최대연속손실
+├── [Bot] bot_engine/backtesting/metrics.py — 지표 계산 (pandas DataFrame)
+└── [BE] models.py — BacktestResult, BacktestTrade SQLModel 추가
+
+Week MVP+6-7: 백테스팅 API & 프론트엔드
+├── [BE] routes/backtests.py — POST /backtests/ (실행), GET /backtests/{id}
+├── [BE] Alembic 마이그레이션 — backtest_results 테이블 추가
+├── [FE] routes/_layout/backtest.tsx — 백테스팅 설정 페이지
+│   ├── 봇 타입·파라미터 설정
+│   ├── 기간 선택, 초기 자본 설정, 수수료율 입력
+│   └── 실행 버튼 → 결과 페이지로 이동
+├── [FE] routes/_layout/backtest/$id.tsx — 백테스팅 결과 페이지
+│   ├── 핵심 지표 카드 (수익률, MDD, 승률, 손익비)
+│   ├── 에쿼티 커브 차트 (Recharts)
+│   └── 체결 내역 테이블
+└── [FE] 봇 생성 폼 — "먼저 백테스트 해보기" 버튼 연동
+```
+
+### Phase 2-4: 결제 & 계정 고도화 (MVP 이후 7~10주)
+
+```
+Week MVP+7-8: 결제 연동
+├── [BE] 토스페이먼츠 결제 API 연동 (구독 업그레이드/갱신)
+├── [BE] 결제 웹훅 처리 + 구독 상태 자동 갱신
+├── [FE] /billing/plans — 플랜 선택 + 결제 위젯 UI
+└── [FE] /billing/history — 결제 내역 페이지
+
+Week MVP+8-10: 소셜 로그인
+├── [BE] OAuth 2.0 — Google·Kakao 로그인 구현
+├── [BE] users 테이블 oauth_provider/oauth_id 활성화
+├── [FE] 로그인·회원가입 — Google·Kakao 버튼 연동 (현재 UI에서 활성화)
+└── [PM] 서비스 이용약관·개인정보처리방침 최종 검토
+```
+
+### Phase 2-5: 고도화 (MVP 이후 9~14주)
+
+```
+Week MVP+9-11: WebSocket 완성 및 Telegram
+├── [Bot] KIS order_update_stream WebSocket 실제 구현
+├── [Bot] Kiwoom price_stream / order_update_stream WebSocket 구현
+├── [BE] Telegram Bot API 연동 (notification_settings telegram_chat_id 활성화)
+├── [FE] 알림 설정 — Telegram Chat ID 입력 + 테스트 발송 버튼
+└── [Test] WebSocket 실시간 데이터 통합 테스트
+
+Week MVP+11-14: 전략 고도화 및 운영
+├── [Bot] 추가 전략 검토 (AI 기반, 기술 지표)
+├── [BE] 전략 마켓플레이스 API (커뮤니티 전략 공유 — 선택)
+├── [FE] 전략 마켓플레이스 페이지 (선택)
+├── [DevOps] AWS 이전 검토 (트래픽 기준 — 선택)
+└── 🚀 Phase 2 정식 출시
+```
+
 ---
 
 ## 마일스톤 요약
 
 ```
+── Phase 1 ──────────────────────────────────────────────────────────
 Week  1-2  │ ✅ 설계 문서 완성 / 개발 환경 구축
 Week  4    │ ✅ 회원 인증 / 계좌 연동 API 완성
 Week  6    │ ✅ 기본 대시보드 + Exchange Adapter 완성 (백엔드 + 프론트 완료)
@@ -218,6 +338,13 @@ Week  8    │ ✅ Spot Grid + DCA 봇 동작 확인
 Week 10    │ ✅ 전체 봇 5종 구현 완료
 Week 12    │ ✅ Phase 1-3 완료 — 알림/Admin/Subscription API, Worker 버그 수정, Bot.config 완성
 Week 14    │ 🚀 MVP 베타 론칭
+
+── Phase 2 ──────────────────────────────────────────────────────────
+MVP +4주   │ Phase 2-1 완료 — Nginx/SSL, CI/CD, Prometheus 모니터링 구성
+MVP +6주   │ Phase 2-2 완료 — TimescaleDB, OHLCV 수집, Symbol 자동완성
+MVP +8주   │ Phase 2-3 완료 — 백테스팅 엔진, 결과 페이지
+MVP +10주  │ Phase 2-4 완료 — 토스페이먼츠 결제, 소셜 로그인
+MVP +14주  │ 🚀 Phase 2 정식 출시
 ```
 
 ---
@@ -257,6 +384,7 @@ Week 14    │ 🚀 MVP 베타 론칭
 | v2.3 | 2026-03-08 | 리밸런싱 후속 완료 — worker mode(time/deviation) 실제 반영, interval_seconds 주기 반영, 리밸런싱 생성 UI(전용 페이지/모달) 다중 자산 입력 강화 및 모달 스크롤 개선 | Dev |
 | v2.4 | 2026-03-08 | Phase 1-4 QA 착수 — 계좌 4개 기관 balance API 자동화 테스트, 봇 5종 생성/시작/중지 통합 API 테스트, 5개 전략 테스트 통합 실행(140 pass) 반영 | Dev |
 | v2.5 | 2026-03-12 | UI/운영 정합 업데이트 — 인증 경로 `/auth/*` 정합, 로그인/회원가입 UI 보강(소셜 버튼/필수 동의), 상단 헤더 bell/profile 반영, 계좌 `test-connection` API + 저장 전 검증 플로우 추가, 봇 상세 최근 주문을 실제 체결 매매내역 테이블로 전환 | Dev |
+| v3.0 | 2026-03-12 | Phase 2 계획 반영 — 전체 일정 개요에 Phase 1 완료 상태 및 Phase 2 5단계 추가, 상세 WBS에 Phase 2-1(인프라) / 2-2(시장데이터·TimescaleDB·Symbol) / 2-3(백테스팅) / 2-4(결제·소셜로그인) / 2-5(WebSocket·Telegram·마켓플레이스) WBS 추가, 마일스톤 Phase 2 일정 추가 | PM |
 
 ---
 

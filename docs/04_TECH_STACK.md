@@ -126,14 +126,15 @@ class UserCreate(UserBase):            # API 요청 스키마
 
 ## 4. Bot Engine
 
-| 기술 | 버전 | 선택 이유 |
-|------|------|-----------|
-| **Python** | 3.12+ | API 서버와 언어 통일 — 어댑터·모델·유틸리티 패키지 직접 공유 |
-| **Celery** | 5+ | 분산 Worker 기반 봇 명령 처리, Redis Broker 연동 |
-| **CCXT** | 최신 | Binance·Upbit REST + WebSocket 통합 래퍼. 서명·Rate Limit·심볼 정규화 자동 처리 — **신규 추가** |
-| **APScheduler** | 3.x+ | DCA·Rebalancing 주기적 스케줄링 (AsyncIOScheduler) |
-| **decimal (내장)** | Python 표준 | 금융 계산 부동소수점 오류 방지 |
-| **httpx** | 최신 | KIS·키움증권 REST API 호출 (CCXT 미지원 거래소) |
+| 기술 | 버전 | 선택 이유 | 단계 |
+|------|------|-----------|------|
+| **Python** | 3.12+ | API 서버와 언어 통일 — 어댑터·모델·유틸리티 패키지 직접 공유 | Phase 1 |
+| **Celery** | 5+ | 분산 Worker 기반 봇 명령 처리, Redis Broker 연동 | Phase 1 |
+| **CCXT** | 최신 | Binance·Upbit REST + WebSocket 통합 래퍼. 서명·Rate Limit·심볼 정규화 자동 처리 | Phase 1 |
+| **APScheduler** | 3.x+ | DCA·Rebalancing·OHLCV 수집 주기적 스케줄링 | Phase 1 |
+| **decimal (내장)** | Python 표준 | 금융 계산 부동소수점 오류 방지 | Phase 1 |
+| **httpx** | 최신 | KIS·키움증권 REST API 호출 (CCXT 미지원 거래소) | Phase 1 |
+| **pandas** | 2.x+ | 백테스팅 엔진 — OHLCV DataFrame 처리, 수익 지표 계산 | **Phase 2** |
 
 ### 거래소별 구현 방식
 
@@ -150,22 +151,52 @@ class UserCreate(UserBase):            # API 요청 스키마
 
 ## 5. 데이터베이스 및 캐시
 
-| 기술 | 용도 | 선택 이유 |
-|------|------|-----------|
-| **PostgreSQL** | 메인 데이터베이스 | ACID 트랜잭션, JSON 지원, 강력한 쿼리 |
-| **Redis** | 캐시 / 세션 / 큐 | 인메모리 고속 처리, Celery Broker 및 Result Backend |
-| **TimescaleDB** | 시계열 데이터 (선택) | 가격 데이터, 수익 이력 시계열 최적화 저장 |
+| 기술 | 용도 | 선택 이유 | 단계 |
+|------|------|-----------|------|
+| **PostgreSQL 16+** | 메인 앱 데이터베이스 | ACID 트랜잭션, JSONB 지원, 강력한 쿼리 | Phase 1 |
+| **Redis 7** | 캐시 / 세션 / 큐 | 인메모리 고속 처리, Celery Broker 및 Result Backend | Phase 1 |
+| **TimescaleDB** | 시계열 마켓 데이터 전용 (별도 인스턴스) | 시계열 최적화 hypertable, 자동 파티셔닝·압축, 수억 행 쿼리 성능 | Phase 2 |
 
-### 주요 테이블 목록 (상세는 DB 설계서 참조)
+### 5.1 PostgreSQL — 앱 DB 주요 테이블
 
-- `users` — 사용자 계정
+- `users`, `user_sessions` — 사용자 계정·세션
 - `exchange_accounts` — 거래소 연동 계좌 (API Key 암호화 저장)
-- `bots` — 봇 정보 및 설정
-- `bot_orders` — 봇이 발행한 주문 내역
-- `bot_trades` — 봇 체결 내역
-- `bot_logs` — 봇 실행 로그
-- `subscriptions` — 구독 정보
-- `notifications` — 알림 발송 내역
+- `bots`, `bot_config_*` — 봇 정보 및 타입별 설정
+- `bot_orders`, `bot_trades`, `bot_logs`, `bot_snapshots` — 봇 운영 데이터
+- `subscriptions`, `subscription_plans`, `payment_history` — 구독·결제
+- `notifications`, `notification_settings` — 알림
+- `announcements` — 공지사항
+- `symbols` — **[Phase 2 추가]** 종목/티커 메타 정보 (거래소별)
+
+### 5.2 TimescaleDB — 마켓 DB (Phase 2)
+
+- `ohlcv_bar` — OHLCV 캔들 데이터 (hypertable, `time` 기준 자동 파티셔닝)
+
+**앱 DB와 분리하는 이유:**
+
+| 항목 | 앱 DB (PostgreSQL) | 마켓 DB (TimescaleDB) |
+|------|-------------------|----------------------|
+| 데이터 특성 | 트랜잭션·관계형 | 시계열·append-only |
+| 예상 행 수 | 수십만 | 수억+ |
+| 장애 시 영향 | 서비스 전체 | 차트·백테스팅만 |
+| 복구 방법 | 백업 필수 | 거래소 API로 재수집 가능 |
+
+**compose.yml 추가:**
+```yaml
+tsdb:
+  image: timescale/timescaledb:latest-pg16
+  environment:
+    POSTGRES_DB: marketdata
+    POSTGRES_USER: ${POSTGRES_USER}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  volumes:
+    - tsdb-data:/var/lib/postgresql/data
+```
+
+**환경변수 추가:**
+```bash
+MARKET_DATABASE_URL=postgresql+psycopg://user:pass@tsdb:5432/marketdata
+```
 
 ---
 
@@ -241,14 +272,14 @@ services:
 
 ## 8. 외부 서비스
 
-| 서비스 | 용도 | 비고 |
-|--------|------|------|
-| **Gmail SMTP** | 이메일 발송 — App Password 사용 | Phase 1 무료 |
-| **SendGrid** | 이메일 발송 대안 (월 100건 무료 티어) | Phase 1 가능 |
-| **AWS SES** | 이메일 발송 (대량 발송 시) | Phase 2 전환 시 |
-| **Telegram Bot API** | Telegram 알림 (Phase 2) | |
-| **토스페이먼츠 / 아임포트** | 국내 카드 결제 PG 연동 | |
-| **Google OAuth / Kakao OAuth** | 소셜 로그인 | |
+| 서비스 | 용도 | 단계 | 비고 |
+|--------|------|------|------|
+| **Gmail SMTP** | 이메일 발송 | Phase 1 ✅ | App Password 사용, 무료 |
+| **SendGrid** | 이메일 발송 대안 | Phase 1 가능 | 월 100건 무료 티어 |
+| **AWS SES** | 이메일 발송 (대량) | Phase 3 | 클라우드 전환 시 |
+| **Telegram Bot API** | Telegram 알림 연동 | Phase 2 | python-telegram-bot 또는 httpx 직접 호출 |
+| **토스페이먼츠** | 국내 카드 결제 PG | Phase 2 | 구독 실결제 연동 |
+| **Google OAuth / Kakao OAuth** | 소셜 로그인 | Phase 2 | authlib 또는 직접 구현 |
 
 ---
 
@@ -323,6 +354,7 @@ services:
 | v1.3 | 2025년 | fastapi/full-stack-fastapi-template 기반으로 개발 방식 전환. Frontend: Next.js → Vite+React+TanStack Router. Backend ORM: SQLAlchemy(async) → SQLModel(동기). 추가: OpenAPI 클라이언트 자동생성, Biome, pwdlib, Mailcatcher, Adminer, Traefik. 제거: Zustand, Axios, Socket.io-client, pytest-asyncio | PM |
 | v1.4 | 2025년 | 인프라 전략 변경 — AWS 단독 구성 → On-premise 우선 + 클라우드 단계적 전환. Phase 1: Docker Compose + Nginx + Certbot + Prometheus/Grafana/Loki. Phase 2: AWS ECS/RDS/ElastiCache. 이메일: AWS SES → Gmail SMTP / SendGrid 무료 티어 우선 | PM |
 | v1.5 | 2025년 | Binance·Upbit 거래소 연동 방식 변경 — 직접 REST/WebSocket 구현 → CCXT 라이브러리(`ccxt.async_support`) 사용. httpx 용도를 KIS·키움 전용으로 변경. Bot Engine 기술 스택에 CCXT 추가, websockets 제거. 거래소별 구현 방식 테이블 추가 | PM |
+| v2.0 | 2026-03-13 | Phase 2 기술 스택 추가 — TimescaleDB(별도 인스턴스, OHLCV 전용) 섹션 상세화: 앱DB와 분리 이유·compose.yml·환경변수 기술. pandas(백테스팅) Bot Engine에 추가. 외부서비스: Telegram Bot API·토스페이먼츠·Google/Kakao OAuth Phase 2 명시 | Dev |
 
 ---
 

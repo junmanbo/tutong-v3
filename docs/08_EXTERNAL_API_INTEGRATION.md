@@ -1,7 +1,7 @@
 # 외부 API 연동 명세서 (External API Integration Spec)
 
 **프로젝트명:** AutoTrade Platform  
-**문서 버전:** v1.0  
+**문서 버전:** v1.4
 **작성일:** 2025년  
 **작성자:** PM / 개발자
 
@@ -16,7 +16,8 @@
 5. [키움증권 REST API](#5-키움증권-rest-api)
 6. [거래소 공통 데이터 정규화](#6-거래소-공통-데이터-정규화)
 7. [Rate Limit 관리 전략](#7-rate-limit-관리-전략)
-8. [변경 이력](#8-변경-이력)
+8. [시장 데이터 수집 — OHLCV & Symbol Registry (Phase 2)](#8-시장-데이터-수집--ohlcv--symbol-registry-phase-2)
+9. [변경 이력](#9-변경-이력)
 
 ---
 
@@ -897,7 +898,233 @@ async def call_with_retry(coro):
 
 ---
 
-## 8. 변경 이력
+## 8. 시장 데이터 수집 — OHLCV & Symbol Registry (Phase 2)
+
+### 8.1 CCXT `fetch_ohlcv()` 기본 사용법
+
+CCXT는 `fetch_ohlcv(symbol, timeframe, since, limit)` 메서드로 OHLCV 캔들 데이터를 반환합니다.
+
+```python
+import ccxt.async_support as ccxt
+from decimal import Decimal
+
+exchange = ccxt.binance({"enableRateLimit": True})
+
+# 기본 조회 (가장 최근 500개)
+ohlcv = await exchange.fetch_ohlcv("BTC/USDT", "1m")
+# [[timestamp_ms, open, high, low, close, volume], ...]
+
+# 특정 시점부터 조회 (since: Unix ms)
+import time
+since = exchange.parse8601("2024-01-01T00:00:00Z")
+ohlcv = await exchange.fetch_ohlcv("BTC/USDT", "1m", since=since, limit=1000)
+
+# float → Decimal 변환 (정밀도 보장)
+for bar in ohlcv:
+    ts, o, h, l, c, v = bar
+    close_price = Decimal(str(c))   # ✅ str 경유 변환
+
+await exchange.close()
+```
+
+### 8.2 대량 백필(Backfill) 전략
+
+과거 수년치 1분봉 수집 시 거래소별 `fetch_ohlcv` 최대 반환 건수를 고려하여 pagination 처리합니다.
+
+| 거래소 | `fetch_ohlcv` 최대 limit | 1분봉 3년치 예상 요청 횟수 |
+|--------|------------------------|--------------------------|
+| Binance | 1,000 | ~1,580회 |
+| Upbit | 200 | ~7,900회 |
+
+```python
+# bot_engine/workers/market_data.py — backfill 로직 예시
+async def backfill_ohlcv(
+    exchange_id: str,
+    symbol: str,
+    timeframe: str,
+    start_dt: datetime,
+    end_dt: datetime,
+) -> int:
+    """과거 OHLCV를 TimescaleDB에 배치 삽입. 삽입된 행 수 반환."""
+    exchange = _create_exchange(exchange_id)
+    try:
+        since_ms = int(start_dt.timestamp() * 1000)
+        end_ms = int(end_dt.timestamp() * 1000)
+        rows_inserted = 0
+
+        while since_ms < end_ms:
+            bars = await exchange.fetch_ohlcv(
+                symbol, timeframe, since=since_ms, limit=1000
+            )
+            if not bars:
+                break
+
+            # TimescaleDB에 INSERT (중복 시 무시)
+            await _bulk_insert_ohlcv(exchange_id, symbol, timeframe, bars)
+            rows_inserted += len(bars)
+
+            # 다음 배치 시작점 = 마지막 캔들 다음 ms
+            since_ms = bars[-1][0] + _timeframe_to_ms(timeframe)
+
+        return rows_inserted
+    finally:
+        await exchange.close()
+
+
+def _timeframe_to_ms(timeframe: str) -> int:
+    """'1m' → 60000, '1h' → 3600000"""
+    units = {"m": 60_000, "h": 3_600_000, "d": 86_400_000}
+    return int(timeframe[:-1]) * units[timeframe[-1]]
+```
+
+### 8.3 TimescaleDB 배치 삽입 패턴
+
+```python
+# bot_engine/workers/market_data.py
+from sqlalchemy import text
+from bot_engine.market_db import get_market_session
+
+async def _bulk_insert_ohlcv(
+    exchange: str,
+    symbol: str,
+    timeframe: str,
+    bars: list[list],
+) -> None:
+    """OHLCV 배열을 TimescaleDB에 배치 삽입 (중복 시 UPDATE — upsert)."""
+    rows = [
+        {
+            "time": datetime.fromtimestamp(bar[0] / 1000, tz=timezone.utc),
+            "exchange": exchange,
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "open": bar[1],
+            "high": bar[2],
+            "low": bar[3],
+            "close": bar[4],
+            "volume": bar[5],
+        }
+        for bar in bars
+    ]
+
+    upsert_sql = text("""
+        INSERT INTO ohlcv_bar (time, exchange, symbol, timeframe, open, high, low, close, volume)
+        VALUES (:time, :exchange, :symbol, :timeframe, :open, :high, :low, :close, :volume)
+        ON CONFLICT (time, exchange, symbol, timeframe) DO UPDATE
+            SET open   = EXCLUDED.open,
+                high   = EXCLUDED.high,
+                low    = EXCLUDED.low,
+                close  = EXCLUDED.close,
+                volume = EXCLUDED.volume
+    """)
+
+    with get_market_session() as session:
+        session.execute(upsert_sql, rows)
+        session.commit()
+```
+
+### 8.4 Symbol Registry 동기화
+
+Celery Beat 태스크 `sync_symbols`가 매일 거래소 API에서 심볼 목록을 갱신하여 앱 DB의 `symbols` 테이블에 저장합니다.
+
+```python
+# bot_engine/workers/market_data.py
+import ccxt.async_support as ccxt
+from app.core.db import get_session
+from app.models import Symbol
+
+async def sync_symbols_for_exchange(exchange_id: str) -> int:
+    """거래소 종목 메타를 symbols 테이블에 동기화. 갱신된 행 수 반환."""
+    exchange = _create_exchange(exchange_id)
+    try:
+        markets = await exchange.load_markets(reload=True)
+        synced = 0
+        now = datetime.now(timezone.utc)
+
+        with get_session() as session:
+            for symbol_str, market in markets.items():
+                if not market.get("active", True):
+                    continue
+                if market.get("type") != "spot":
+                    continue
+
+                upsert_symbol(
+                    session=session,
+                    exchange=exchange_id,
+                    symbol=symbol_str,
+                    base_asset=market["base"],
+                    quote_asset=market["quote"],
+                    price_precision=market.get("precision", {}).get("price"),
+                    qty_precision=market.get("precision", {}).get("amount"),
+                    min_order_qty=market.get("limits", {}).get("amount", {}).get("min"),
+                    min_notional=market.get("limits", {}).get("cost", {}).get("min"),
+                    synced_at=now,
+                )
+                synced += 1
+
+        return synced
+    finally:
+        await exchange.close()
+```
+
+### 8.5 KIS·키움 — 주가 데이터 조회
+
+KIS와 키움증권은 CCXT 미지원이므로 REST API를 직접 호출합니다.
+
+**한국투자증권 (KIS) — 국내주식 일봉 조회:**
+
+```
+GET /uapi/domestic-stock/v1/quotations/inquire-daily-price
+tr_id: FHKST01010400
+Params: FID_COND_MRKT_DIV_CODE=J (주식)
+        FID_INPUT_ISCD=005930 (종목코드)
+        FID_PERIOD_DIV_CODE=D (일/주/월)
+        FID_ORG_ADJ_PRC=0 (수정주가 적용)
+```
+
+> KIS는 과거 1년치 이상 일봉은 별도 과거 데이터 API 또는 조회 범위 제한이 있습니다. 확인 필요.
+
+**키움증권 — 주식일봉차트조회 (opt10081):**
+
+키움 REST API `GET /api/dostk/chart` 를 통해 일봉 데이터를 조회합니다.
+
+> 국내 주식 OHLCV는 거래소별 정책에 따라 제공 범위가 다르므로, 구현 전 API 문서를 확인합니다.
+
+### 8.6 OHLCV 조회 API — 백엔드 라우터
+
+백엔드 `GET /market/ohlcv` 엔드포인트가 TimescaleDB에서 캔들 데이터를 조회합니다.
+
+```python
+# backend/app/api/routes/market.py
+from app.core.market_db import MarketSessionDep
+
+@router.get("/ohlcv")
+def get_ohlcv(
+    exchange: str,
+    symbol: str,
+    timeframe: str = "1h",
+    limit: int = 200,
+    market_session: MarketSessionDep = ...,
+    current_user: CurrentUser = ...,
+) -> list[OHLCVBarPublic]:
+    stmt = text("""
+        SELECT time, open, high, low, close, volume
+        FROM ohlcv_bar
+        WHERE exchange = :exchange
+          AND symbol = :symbol
+          AND timeframe = :timeframe
+        ORDER BY time DESC
+        LIMIT :limit
+    """)
+    rows = market_session.execute(stmt, {
+        "exchange": exchange, "symbol": symbol,
+        "timeframe": timeframe, "limit": limit,
+    }).fetchall()
+    return [OHLCVBarPublic.model_validate(dict(r._mapping)) for r in reversed(rows)]
+```
+
+---
+
+## 9. 변경 이력
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
@@ -905,6 +1132,7 @@ async def call_with_retry(coro):
 | v1.1 | 2025년 | 키움증권 연동 구조 변경 — Windows Bridge Server 제거, 키움 REST API 직접 연동으로 전면 수정 | PM |
 | v1.2 | 2025년 | Binance·Upbit 연동 방식 변경 — 직접 REST/WebSocket 구현 → CCXT(`ccxt.async_support`) 사용. 섹션 2·3 전면 재작성. 공통 베이스 클래스 `CcxtExchangeAdapter` 추가. 데이터 정규화 섹션 CCXT 기준으로 재작성 | PM |
 | v1.3 | 2025년 | ccxt 라이브러리 설명 보강 — 섹션 1.0에 CCXT 소개·설치 방법·임포트 패턴(v4 이후 async_support 통합) 추가. Binance 어댑터에 get_balance() 구현 및 price_stream/order_update_stream 패턴 명시. 테스트넷 set_sandbox_mode() 방식 문서화. orjson·coincurve 성능 최적화 옵션 추가 | PM |
+| v1.4 | 2026년 | Phase 2 시장 데이터 수집 섹션(8) 추가 — CCXT `fetch_ohlcv()` 사용법, 대량 백필 pagination 전략, TimescaleDB upsert 패턴, Symbol Registry 동기화 로직, KIS·키움 주가 조회 방법, 백엔드 `/market/ohlcv` 라우터 예시 | PM |
 
 ---
 

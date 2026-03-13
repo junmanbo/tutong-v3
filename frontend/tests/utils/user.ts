@@ -6,28 +6,30 @@ export async function signUpNewUser(
   email: string,
   password: string,
 ) {
-  await page.goto("/signup")
+  await page.goto("/auth/register")
 
   await page.getByTestId("full-name-input").fill(name)
   await page.getByTestId("email-input").fill(email)
   await page.getByTestId("password-input").fill(password)
   await page.getByTestId("confirm-password-input").fill(password)
-  await page.getByRole("button", { name: "Sign Up" }).click()
-  await page.goto("/login")
+  await page.getByLabel("이용약관에 동의합니다 (필수)").click()
+  await page.getByLabel("투자 위험 고지에 동의합니다 (필수)").click()
+  await page.getByRole("button", { name: "회원가입", exact: true }).click()
+  await page.goto("/auth/login")
 }
 
 export async function logInUser(page: Page, email: string, password: string) {
-  await page.goto("/login")
+  await page.goto("/auth/login")
 
   await page.getByTestId("email-input").fill(email)
   await page.getByTestId("password-input").fill(password)
-  await page.getByRole("button", { name: "Log In" }).click()
+  await page.getByRole("button", { name: "로그인", exact: true }).click()
   await page.waitForURL("/")
-  await expect(page.getByRole("heading", { name: /^Hi,/ })).toBeVisible()
+  await expect(page.getByText("대시보드")).toBeVisible()
 }
 
 export async function logOutUser(page: Page) {
-  await page.getByTestId("user-menu").click()
-  await page.getByRole("menuitem", { name: "Log Out" }).click()
-  await page.waitForURL("/login")
+  await page.getByRole("button", { name: "알림" }).locator("..").locator("button").last().click()
+  await page.getByRole("menuitem", { name: "로그아웃" }).click()
+  await page.waitForURL("/auth/login")
 }

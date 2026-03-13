@@ -17,6 +17,7 @@
 6. [FastAPI 라우터 작성 규칙](#6-fastapi-라우터-작성-규칙)
 7. [Celery 봇 엔진 규칙](#7-celery-봇-엔진-규칙)
 8. [금융 계산 규칙](#8-금융-계산-규칙)
+8-A. [TimescaleDB 연동 패턴 (Phase 2)](#8-a-timescaledb-연동-패턴-phase-2)
 9. [보안 규칙](#9-보안-규칙)
 10. [오류 처리 규칙](#10-오류-처리-규칙)
 11. [프론트엔드 규칙](#11-프론트엔드-규칙)
@@ -809,6 +810,165 @@ total_profit: Decimal = Field(
 
 ---
 
+## 8-A. TimescaleDB 연동 패턴 (Phase 2)
+
+### 8-A.1 별도 엔진 설정 — `market_db.py`
+
+TimescaleDB는 앱 DB와 **별도 연결**입니다. `backend/app/core/market_db.py`에 전용 엔진과 세션 의존성을 정의합니다.
+
+```python
+# backend/app/core/market_db.py
+from collections.abc import Generator
+from typing import Annotated
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from app.core.config import settings
+
+# 별도 엔진 — 앱 DB 엔진(core/db.py)과 독립
+_market_engine = create_engine(str(settings.MARKET_DATABASE_URL))
+
+def get_market_session() -> Generator[Session, None, None]:
+    with Session(_market_engine) as session:
+        yield session
+
+MarketSessionDep = Annotated[Session, Depends(get_market_session)]
+```
+
+> **절대 금지:** `app/core/db.py`의 `engine`에 TimescaleDB URL을 혼합하거나, 동일 세션 객체를 공유하지 마세요. 두 DB는 완전히 독립적으로 연결해야 합니다.
+
+### 8-A.2 환경변수
+
+`.env`에 아래 변수를 추가합니다. `compose.yml`의 `timescaledb` 서비스와 일치해야 합니다.
+
+```bash
+# .env
+MARKET_DATABASE_URL=postgresql+psycopg://postgres:password@timescaledb:5432/marketdb
+```
+
+`config.py`에 필드 추가:
+
+```python
+# backend/app/core/config.py
+class Settings(BaseSettings):
+    # ... 기존 필드 ...
+    MARKET_DATABASE_URL: PostgresDsn | None = None
+```
+
+### 8-A.3 TimescaleDB Docker Compose 설정
+
+```yaml
+# compose.yml 추가
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: marketdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${TIMESCALE_PASSWORD}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"   # 앱 DB(5432)와 포트 충돌 방지
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d marketdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  timescaledb_data:
+```
+
+### 8-A.4 OHLCVBar 모델 (SQLAlchemy Core)
+
+`ohlcv_bar`는 SQLModel을 사용하지 않고 SQLAlchemy `Table` 객체로 정의합니다. TimescaleDB hypertable이므로 ORM 관계가 없으며, raw SQL INSERT/SELECT가 더 효율적입니다.
+
+```python
+# backend/app/core/market_models.py
+from sqlalchemy import Table, Column, MetaData, String, Float, TIMESTAMP
+
+metadata = MetaData()
+
+ohlcv_bar = Table(
+    "ohlcv_bar",
+    metadata,
+    Column("time", TIMESTAMP(timezone=True), primary_key=True),
+    Column("exchange", String(30), primary_key=True),
+    Column("symbol", String(30), primary_key=True),
+    Column("timeframe", String(5), primary_key=True),
+    Column("open", Float, nullable=False),
+    Column("high", Float, nullable=False),
+    Column("low", Float, nullable=False),
+    Column("close", Float, nullable=False),
+    Column("volume", Float, nullable=False),
+)
+```
+
+### 8-A.5 TimescaleDB 마이그레이션
+
+TimescaleDB 스키마는 **Alembic으로 관리하지 않습니다.** 초기 테이블 생성은 별도 SQL 스크립트로 수행합니다.
+
+```bash
+# scripts/init_timescaledb.sql
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+CREATE TABLE IF NOT EXISTS ohlcv_bar (
+    time        TIMESTAMPTZ     NOT NULL,
+    exchange    VARCHAR(30)     NOT NULL,
+    symbol      VARCHAR(30)     NOT NULL,
+    timeframe   VARCHAR(5)      NOT NULL,
+    open        DOUBLE PRECISION NOT NULL,
+    high        DOUBLE PRECISION NOT NULL,
+    low         DOUBLE PRECISION NOT NULL,
+    close       DOUBLE PRECISION NOT NULL,
+    volume      DOUBLE PRECISION NOT NULL,
+    PRIMARY KEY (time, exchange, symbol, timeframe)
+);
+
+SELECT create_hypertable(
+    'ohlcv_bar', 'time',
+    chunk_time_interval => INTERVAL '1 month',
+    if_not_exists => TRUE
+);
+
+CREATE INDEX IF NOT EXISTS idx_ohlcv_sym_tf_time
+    ON ohlcv_bar (exchange, symbol, timeframe, time DESC);
+
+SELECT add_compression_policy('ohlcv_bar', INTERVAL '7 days');
+```
+
+```bash
+# 실행 방법
+docker exec -i tutong-v3-timescaledb-1 \
+    psql -U postgres -d marketdb < scripts/init_timescaledb.sql
+```
+
+### 8-A.6 Celery Beat — 시장 데이터 태스크
+
+```python
+# bot_engine/celery_app.py — beat_schedule에 추가
+app.conf.beat_schedule = {
+    # ... 기존 스케줄 ...
+    "sync-symbols-daily": {
+        "task": "bot_engine.workers.market_data.sync_symbols",
+        "schedule": crontab(hour=0, minute=30),    # 매일 00:30 KST
+    },
+    "collect-ohlcv-1m": {
+        "task": "bot_engine.workers.market_data.collect_ohlcv",
+        "schedule": 60.0,                          # 1분 간격
+        "kwargs": {"timeframe": "1m"},
+    },
+    "collect-ohlcv-1h": {
+        "task": "bot_engine.workers.market_data.collect_ohlcv",
+        "schedule": 3600.0,                        # 1시간 간격
+        "kwargs": {"timeframe": "1h"},
+    },
+}
+```
+
+---
+
 ## 9. 보안 규칙
 
 ### 9.1 API Key 암복호화 — AES-256-GCM
@@ -1069,4 +1229,5 @@ def test_calculate_pnl():
 |------|------|-----------|
 | v1.0 | 2025년 | 최초 작성 (처음부터 개발 기준) |
 | v2.0 | 2025년 | fastapi/full-stack-fastapi-template 기반으로 전면 재작성. SQLModel 패턴, 동기 세션, prek, uv, TanStack Router, OpenAPI 클라이언트 자동생성 등 템플릿 방식 반영 |
+| v2.1 | 2026년 | Phase 2 TimescaleDB 연동 섹션(8-A) 추가 — market_db.py 별도 엔진 패턴, MARKET_DATABASE_URL 환경변수, Docker Compose timescaledb 서비스, ohlcv_bar SQLAlchemy Core Table, TimescaleDB SQL 초기화 스크립트, Celery Beat 시장 데이터 스케줄 |
 | v2.1 | 2025년 | 섹션 7-A 추가 — CCXT(`ccxt.async_support`) 사용 규칙. Binance·Upbit 어댑터 구현 가이드라인: 임포트 방식, 인스턴스 생성, Decimal 변환, 심볼 형식, Celery Task 내 asyncio 패턴, WebSocket 스트리밍, 예외 처리, 리소스 정리 |

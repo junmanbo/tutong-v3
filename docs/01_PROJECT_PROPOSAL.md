@@ -104,10 +104,10 @@
 
 > ℹ️ **키움증권 REST API:** 2025년 키움증권은 기존 Windows COM(OCX) 기반의 OpenAPI+를 대체하는 **키움 REST API**를 공식 출시했습니다 (포털: https://openapi.kiwoom.com). 별도 프로그램 설치 없이 Windows·Mac·Linux 모든 OS에서 HTTP 호출로 주식 매매 및 시세 조회가 가능하며, App Key / Secret Key 기반 인증을 사용합니다. 기존 OpenAPI+와 달리 서버 환경에서 직접 연동 가능하여 브릿지 서버 없이 표준 어댑터 패턴으로 구현할 수 있습니다.
 
-### Phase 2 (확장)
+### Phase 2 (확장 — 진행 예정)
 
-- 빗썸, 코인원 (국내 거래소)
-- 바이비트, OKX (해외 거래소)
+- 빗썸, 코인원 (국내 거래소) — CCXT 지원으로 어댑터 추가만 필요
+- 바이비트, OKX (해외 거래소) — CCXT 지원
 - 미래에셋증권, NH투자증권 (국내 증권사)
 
 ---
@@ -247,12 +247,13 @@
 - 사용자 인증/계정 관리
 - 알림 기능 (이메일, 추후 푸시)
 
-### Out of Scope (제외)
+### Out of Scope (제외 — Phase 1)
 
-- 모바일 앱 (iOS/Android) — Phase 2
-- 선물/마진 거래 봇 — Phase 2
+- 모바일 앱 (iOS/Android) — Phase 3
+- 선물/마진 거래 봇 — Phase 3
 - AI 기반 자동 전략 생성 — Phase 3
 - 소셜 트레이딩 / 팔로우 기능 — Phase 3
+- 시장 데이터 수집·백테스팅 — Phase 2에서 구현
 
 ### 제약사항
 
@@ -268,26 +269,51 @@
 ## 10. 로드맵 (단계별 출시 계획)
 
 ```
-Phase 1 — MVP (목표: 3~4개월)
-├── 바이낸스 연동
-├── 업비트 연동
-├── 한국투자증권 연동
-├── 5가지 봇 전략 구현
-├── 기본 대시보드
-└── 이메일 알림
+Phase 1 — MVP ✅ 완료 (2026-03 기준)
+├── 바이낸스·업비트·한국투자증권·키움증권 연동 ✅
+├── 5가지 봇 전략 구현 (Grid·Snowball·Rebalancing·DCA·AlgoOrders) ✅
+├── 기본 대시보드 + 봇 목록/상세 UI ✅
+├── 이메일 알림·알림 설정 ✅
+├── 구독 플랜 API (결제 연동 제외) ✅
+└── 관리자 기능 ✅
 
-Phase 2 — 확장 (목표: MVP 이후 3개월)
-├── 키움증권 연동 (브릿지 서버)
-├── 모바일 웹 최적화
-├── 고급 분석 대시보드
-├── 푸시 알림 (Telegram/Discord)
-└── 전략 마켓플레이스 Beta
+Phase 2 — 안정화 및 확장 (MVP 이후 3~4개월)
+│
+├── [2-1] 운영 환경 구성
+│   ├── compose.prod.yml (Nginx + Certbot SSL)
+│   ├── GitHub Actions CI/CD 자동 배포 파이프라인
+│   └── Prometheus + Grafana + Loki + Sentry 모니터링
+│
+├── [2-2] 핵심 기능 완성
+│   ├── 결제 PG 연동 (토스페이먼츠) — 실구독 결제
+│   ├── 플랜 업그레이드/다운그레이드·결제 내역
+│   ├── KIS order_update_stream WebSocket 완성
+│   ├── Kiwoom price_stream / order_update_stream WebSocket 완성
+│   └── 봇 생성 시 플랜 한도 체크 적용
+│
+├── [2-3] 시장 데이터 인프라 (신규)
+│   ├── TimescaleDB 별도 구성 (OHLCV 전용)
+│   ├── Symbol Registry — 종목/티커 메타 정보 수집·검색 API
+│   ├── OHLCV 수집기 (Celery Beat — 1분/1시간/1일봉)
+│   └── 봇 생성 폼 종목 검색 자동완성 + TradingView 차트 연동
+│
+├── [2-4] 대시보드·분석 고도화
+│   ├── 기간별 수익 차트 (일/주/월)
+│   ├── MDD(최대 낙폭) 계산 및 표시
+│   ├── Telegram 봇 알림 연동
+│   └── 백테스팅 엔진 (저장된 OHLCV로 전략 시뮬레이션)
+│
+└── [2-5] 거래소·기능 확장
+    ├── 추가 거래소 연동 (빗썸, 바이비트)
+    ├── 소셜 로그인 (Google, Kakao OAuth)
+    ├── 봇 복제 기능
+    └── 전략 마켓플레이스 Beta (전략 공유·복제)
 
-Phase 3 — 성장 (목표: Phase 2 이후)
-├── 모바일 앱 (iOS/Android)
-├── 추가 거래소 연동
+Phase 3 — 성장 (Phase 2 이후)
+├── 모바일 앱 (iOS/Android) 또는 PWA
+├── 선물/마진 거래 봇
 ├── AI 전략 추천
-└── 소셜 트레이딩
+└── 소셜 트레이딩 (팔로우·Copy Trading)
 ```
 
 ---
@@ -326,6 +352,7 @@ Phase 3 — 성장 (목표: Phase 2 이후)
 |------|------|-----------|--------|
 | v1.0 | 2025년 | 최초 작성 | PM |
 | v1.1 | 2025년 | 키움증권 REST API 출시 반영 — Windows 브릿지 서버 제약 제거, 표준 REST 연동으로 변경 | PM |
+| v1.2 | 2026-03-13 | Phase 1 완료 반영 + Phase 2 로드맵 구체화 — 시장 데이터(Symbol Registry·OHLCV/TimescaleDB)·백테스팅·PG 결제·추가 거래소·전략 마켓플레이스 포함. Phase 2 5단계로 세분화 | Dev |
 
 ---
 
