@@ -6,16 +6,24 @@ Celery·Redis 외부 의존성은 mock으로 대체합니다.
 """
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app import crud
 from app.core.config import settings
 from app.models import BotStatusEnum, UserCreate
-from app.models import BotOrder, BotSnapshot, BotTrade
+from app.models import (
+    BotCreate,
+    BotOrder,
+    BotSnapshot,
+    BotTrade,
+    BotTypeEnum,
+    ExchangeAccountCreate,
+    ExchangeTypeEnum,
+)
 from tests.utils.account import create_random_account, create_random_bot
 from tests.utils.user import user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
@@ -118,6 +126,23 @@ def _setup_user_with_account(
     """
     user, headers = _user_and_headers(client, db)
     account = create_random_account(db, user.id)
+    return user, headers, str(account.id)
+
+
+def _setup_user_with_upbit_account(
+    client: TestClient, db: Session
+) -> tuple:
+    user, headers = _user_and_headers(client, db)
+    account = crud.create_exchange_account(
+        session=db,
+        account_in=ExchangeAccountCreate(
+            exchange=ExchangeTypeEnum.upbit,
+            label="test-upbit",
+            api_key="test-key",
+            api_secret="test-secret",
+        ),
+        owner_id=user.id,
+    )
     return user, headers, str(account.id)
 
 
@@ -327,6 +352,32 @@ class TestCreateBot:
             json=_bot_payload("some-id"),
         )
         assert r.status_code == 401
+
+    def test_create_upbit_grid_bot_rejects_amount_below_min_krw(
+        self, client: TestClient, db: Session
+    ) -> None:
+        _, headers, account_id = _setup_user_with_upbit_account(client, db)
+
+        r = client.post(
+            f"{settings.API_V1_STR}/bots/",
+            headers=headers,
+            json=_bot_payload(
+                account_id,
+                bot_type="spot_grid",
+                symbol="XRP/KRW",
+                config={
+                    "upper": "3000",
+                    "lower": "1500",
+                    "grid_count": 20,
+                    "arithmetic": True,
+                    "amount_per_grid": "2500",
+                },
+            ),
+        )
+
+        assert r.status_code == 400
+        assert "amount_per_grid" in r.json()["detail"]
+        assert "5000 KRW" in r.json()["detail"]
 
     def test_create_all_bot_types(
         self, client: TestClient, db: Session
@@ -658,6 +709,40 @@ class TestStartBot:
             )
         assert r.status_code == 404
 
+    def test_start_upbit_grid_bot_rejects_existing_invalid_config(
+        self, client: TestClient, db: Session
+    ) -> None:
+        user, headers, account_id = _setup_user_with_upbit_account(client, db)
+        bot = crud.create_bot(
+            session=db,
+            owner_id=user.id,
+            bot_in=BotCreate(
+                name="invalid-grid",
+                bot_type=BotTypeEnum.spot_grid,
+                symbol="XRP/KRW",
+                investment_amount="50000",
+                account_id=uuid.UUID(account_id),
+                config={
+                    "upper": "3000",
+                    "lower": "1500",
+                    "grid_count": 20,
+                    "arithmetic": True,
+                    "amount_per_grid": "2500",
+                },
+            ),
+        )
+
+        mock_celery = MagicMock()
+        with patch("app.api.routes.bots.Celery", return_value=mock_celery):
+            r = client.post(
+                f"{settings.API_V1_STR}/bots/{bot.id}/start",
+                headers=headers,
+            )
+
+        assert r.status_code == 400
+        assert "5000 KRW" in r.json()["detail"]
+        mock_celery.send_task.assert_not_called()
+
     def test_start_pending_bot_returns_409(
         self, client: TestClient, db: Session
     ) -> None:
@@ -746,7 +831,110 @@ class TestStopBot:
                 headers=headers,
             )
 
-        mock_redis.set.assert_called_once_with(f"bot:{bot_id}:stop", "1")
+        mock_redis.set.assert_any_call(f"bot:{bot_id}:stop", "1")
+
+    def test_stop_bot_cancels_open_orders_by_default(
+        self, client: TestClient, db: Session
+    ) -> None:
+        user, headers, account_id = _setup_user_with_upbit_account(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/bots/",
+            headers=headers,
+            json=_strategy_bot_payload(account_id, "spot_grid"),
+        )
+        bot_id = uuid.UUID(create_r.json()["id"])
+
+        bot = crud.get_bot(session=db, bot_id=bot_id, user_id=user.id)
+        assert bot is not None
+        bot.status = BotStatusEnum.running
+        db.add(bot)
+        db.add(
+            BotOrder(
+                bot_id=bot_id,
+                exchange_order_id="ord-open-1",
+                symbol="XRP/KRW",
+                side="buy",
+                order_type="limit",
+                status="open",
+                quantity="10",
+                price="1500",
+                placed_at=datetime.now(timezone.utc),
+            )
+        )
+        db.commit()
+
+        mock_adapter = MagicMock()
+        mock_adapter.cancel_order = AsyncMock(return_value=True)
+        mock_adapter.close = AsyncMock(return_value=None)
+        mock_redis = MagicMock()
+        with (
+            patch("redis.from_url", return_value=mock_redis),
+            patch("app.bot_stop.get_adapter", return_value=mock_adapter),
+        ):
+            r = client.post(
+                f"{settings.API_V1_STR}/bots/{bot_id}/stop",
+                headers=headers,
+            )
+
+        assert r.status_code == 200
+        assert r.json()["status"] == "stopped"
+        mock_adapter.cancel_order.assert_awaited_once_with("ord-open-1", "XRP/KRW")
+        mock_redis.set.assert_any_call(f"bot:{bot_id}:cancel_open_orders", "1")
+
+        db.expire_all()
+        order = db.exec(
+            select(BotOrder).where(BotOrder.bot_id == bot_id)
+        ).first()
+        assert order is not None
+        assert order.status == "canceled"
+
+    def test_stop_bot_can_leave_open_orders_when_requested(
+        self, client: TestClient, db: Session
+    ) -> None:
+        user, headers, account_id = _setup_user_with_account(client, db)
+        create_r = client.post(
+            f"{settings.API_V1_STR}/bots/",
+            headers=headers,
+            json=_bot_payload(account_id),
+        )
+        bot_id = uuid.UUID(create_r.json()["id"])
+
+        bot = crud.get_bot(session=db, bot_id=bot_id, user_id=user.id)
+        assert bot is not None
+        bot.status = BotStatusEnum.running
+        db.add(bot)
+        db.add(
+            BotOrder(
+                bot_id=bot_id,
+                exchange_order_id="ord-open-2",
+                symbol="BTC/USDT",
+                side="buy",
+                order_type="limit",
+                status="open",
+                quantity="0.01",
+                price="10000",
+                placed_at=datetime.now(timezone.utc),
+            )
+        )
+        db.commit()
+
+        mock_redis = MagicMock()
+        with patch("redis.from_url", return_value=mock_redis):
+            r = client.post(
+                f"{settings.API_V1_STR}/bots/{bot_id}/stop",
+                headers=headers,
+                json={"cancel_open_orders": False},
+            )
+
+        assert r.status_code == 200
+        mock_redis.delete.assert_called_once_with(f"bot:{bot_id}:cancel_open_orders")
+
+        db.expire_all()
+        order = db.exec(
+            select(BotOrder).where(BotOrder.bot_id == bot_id)
+        ).first()
+        assert order is not None
+        assert order.status == "open"
 
     def test_stop_bot_triggers_notification(
         self, client: TestClient, db: Session

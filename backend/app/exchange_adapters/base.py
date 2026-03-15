@@ -155,6 +155,10 @@ class CcxtExchangeAdapter(AbstractExchangeAdapter):
             return Decimal("0")
         return Decimal(str(value))
 
+    async def _validate_order_request(self, order: OrderRequest) -> None:
+        """거래소별 주문 전 검증 훅."""
+        return None
+
     # ── 공통 구현 ─────────────────────────────────────────────────────────────
 
     async def validate_credentials(self) -> bool:
@@ -181,6 +185,8 @@ class CcxtExchangeAdapter(AbstractExchangeAdapter):
         return result
 
     async def place_order(self, order: OrderRequest) -> OrderResponse:
+        await self._validate_order_request(order)
+
         params: dict = {}
         amount = float(order.qty) if order.qty is not None else None
         price = float(order.price) if order.price is not None else None

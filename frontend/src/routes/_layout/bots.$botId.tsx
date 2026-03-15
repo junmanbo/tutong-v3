@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { type BotStatusEnum, BotsService, OpenAPI } from "@/client"
+import { StopBotDialog } from "@/components/Bots/StopBotDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -224,17 +225,6 @@ function BotDetailPage() {
     },
   })
 
-  const stopMutation = useMutation({
-    mutationFn: () => BotsService.stopBot({ id: botId }),
-    onSuccess: () => {
-      showSuccessToast("봇 중지를 요청했습니다.")
-      queryClient.invalidateQueries({ queryKey: ["bot", botId] })
-    },
-    onError: (error) => {
-      showErrorToast(error instanceof Error ? error.message : "봇 중지에 실패했습니다.")
-    },
-  })
-
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6">
@@ -329,15 +319,15 @@ function BotDetailPage() {
             <Play className="mr-2 size-4" />
             실행
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => stopMutation.mutate()}
-            disabled={!canStop || stopMutation.isPending}
-          >
-            <Pause className="mr-2 size-4" />
-            중지
-          </Button>
+          <StopBotDialog
+            bot={bot}
+            trigger={
+              <Button variant="outline" size="sm" disabled={!canStop}>
+                <Pause className="mr-2 size-4" />
+                중지
+              </Button>
+            }
+          />
           <Button
             variant="outline"
             size="sm"

@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _cancel_open_orders_for_bot,
     _create_bot_log,
     _get_db_session,
     _record_order_and_trade,
@@ -27,9 +28,11 @@ from bot_engine.workers.base import (
     _update_bot_status_stopped,
     _update_bot_total_pnl_pct,
     calc_change_pct,
+    clear_cancel_open_orders_flag,
     clear_stop_signal,
     evaluate_risk_limits,
     get_redis,
+    should_cancel_open_orders,
     should_stop,
 )
 
@@ -141,7 +144,18 @@ def run_spot_dca(self, *, bot_id: str) -> None:
             while True:
                 if should_stop(bot_id):
                     logger.info("Stop signal received: bot_id=%s", bot_id)
+                    if should_cancel_open_orders(bot_id):
+                        canceled_count = await _cancel_open_orders_for_bot(
+                            bot_id=bot_id,
+                            adapter=adapter,
+                        )
+                        logger.info(
+                            "Open orders canceled on stop: bot_id=%s canceled=%d",
+                            bot_id,
+                            canceled_count,
+                        )
                     clear_stop_signal(bot_id)
+                    clear_cancel_open_orders_flag(bot_id)
                     break
 
                 if is_completed(order_count, config.total_orders):

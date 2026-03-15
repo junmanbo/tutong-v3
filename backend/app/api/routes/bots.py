@@ -13,6 +13,8 @@ from sqlmodel import select
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep
+from app.bot_stop import cancel_open_orders_for_bot
+from app.bot_validations import BotValidationError, validate_bot_configuration
 from app.core.config import settings
 from app.core.crypto import decrypt
 from app.exchange_adapters.factory import get_adapter
@@ -24,6 +26,7 @@ from app.models import (
     BotOrdersPublic,
     BotPublic,
     BotSnapshotsPublic,
+    BotStopRequest,
     BotTradesPublic,
     BotsPublic,
     BotStatusEnum,
@@ -305,6 +308,16 @@ def create_bot(
     if not account:
         raise HTTPException(status_code=404, detail="Exchange account not found")
 
+    try:
+        validate_bot_configuration(
+            bot_type=bot_in.bot_type,
+            exchange=account.exchange,
+            symbol=bot_in.symbol,
+            config=bot_in.config,
+        )
+    except BotValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     return crud.create_bot(session=session, bot_in=bot_in, owner_id=current_user.id)
 
 
@@ -362,6 +375,24 @@ def start_bot(
             detail=f"Bot cannot be started from status '{bot.status}'",
         )
 
+    account = crud.get_exchange_account(
+        session=session,
+        account_id=bot.account_id,
+        user_id=current_user.id,
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Exchange account not found")
+
+    try:
+        validate_bot_configuration(
+            bot_type=bot.bot_type,
+            exchange=account.exchange,
+            symbol=bot.symbol,
+            config=bot.config,
+        )
+    except BotValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     bot = crud.start_bot(session=session, bot=bot)  # → pending
     crud.create_bot_log(
         session=session,
@@ -397,6 +428,7 @@ def stop_bot(
     current_user: CurrentUser,
     background_tasks: BackgroundTasks,
     id: uuid.UUID,
+    stop_request: BotStopRequest = BotStopRequest(),
 ) -> Any:
     """봇 중지 요청 — Redis 중지 신호 설정 후 DB 상태 즉시 stopped 업데이트."""
     bot = crud.get_bot(session=session, bot_id=id, user_id=current_user.id)
@@ -408,9 +440,29 @@ def stop_bot(
             detail=f"Bot cannot be stopped from status '{bot.status}'",
         )
 
+    account = crud.get_exchange_account(
+        session=session,
+        account_id=bot.account_id,
+        user_id=current_user.id,
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Exchange account not found")
+
+    cancel_result = None
+    if stop_request.cancel_open_orders:
+        cancel_result = cancel_open_orders_for_bot(
+            session=session,
+            bot=bot,
+            account=account,
+        )
+
     # Redis 중지 신호 → Worker가 다음 루프에서 감지하고 정상 종료
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     r = redis_lib.from_url(redis_url, decode_responses=True)
+    if stop_request.cancel_open_orders:
+        r.set(f"bot:{str(bot.id)}:cancel_open_orders", "1")
+    else:
+        r.delete(f"bot:{str(bot.id)}:cancel_open_orders")
     r.set(f"bot:{str(bot.id)}:stop", "1")
     stopped_bot = crud.stop_bot(session=session, bot=bot)  # DB 즉시 stopped
     crud.create_bot_log(
@@ -419,8 +471,24 @@ def stop_bot(
         event_type="bot_stop_requested",
         level="info",
         message="Bot stop requested by user",
-        payload={"status": stopped_bot.status.value},
+        payload={
+            "status": stopped_bot.status.value,
+            "cancel_open_orders": stop_request.cancel_open_orders,
+        },
     )
+    if cancel_result and cancel_result.attempted > 0:
+        crud.create_bot_log(
+            session=session,
+            bot_id=stopped_bot.id,
+            event_type="open_orders_canceled",
+            level="warning" if cancel_result.failed else "info",
+            message="Open orders were processed during bot stop",
+            payload={
+                "attempted": cancel_result.attempted,
+                "canceled": cancel_result.canceled,
+                "failed": cancel_result.failed,
+            },
+        )
     queue_notification_event(
         session=session,
         user_id=current_user.id,
@@ -428,7 +496,11 @@ def stop_bot(
         event_type=EVENT_BOT_STOP,
         title=f"[AutoTrade] Bot stop requested: {stopped_bot.name}",
         body=f"Bot '{stopped_bot.name}' stop was requested and status is now stopped.",
-        payload={"status": stopped_bot.status.value},
+        payload={
+            "status": stopped_bot.status.value,
+            "cancel_open_orders": stop_request.cancel_open_orders,
+            "canceled_orders": cancel_result.canceled if cancel_result else 0,
+        },
         background_tasks=background_tasks,
     )
     return stopped_bot

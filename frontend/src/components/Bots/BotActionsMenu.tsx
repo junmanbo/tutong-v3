@@ -15,6 +15,7 @@ import {
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 import DeleteBot from "./DeleteBot"
+import { StopBotDialog } from "./StopBotDialog"
 
 interface BotActionsMenuProps {
   bot: BotPublic
@@ -34,18 +35,6 @@ export const BotActionsMenu = ({ bot }: BotActionsMenuProps) => {
     mutationFn: () => BotsService.startBot({ id: bot.id }),
     onSuccess: () => {
       showSuccessToast("봇이 시작되었습니다")
-      setOpen(false)
-    },
-    onError: handleError.bind(showErrorToast),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["bots"] })
-    },
-  })
-
-  const stopMutation = useMutation({
-    mutationFn: () => BotsService.stopBot({ id: bot.id }),
-    onSuccess: () => {
-      showSuccessToast("봇이 중지되었습니다")
       setOpen(false)
     },
     onError: handleError.bind(showErrorToast),
@@ -83,13 +72,16 @@ export const BotActionsMenu = ({ bot }: BotActionsMenuProps) => {
           </DropdownMenuItem>
         )}
         {canStop && (
-          <DropdownMenuItem
-            onClick={() => stopMutation.mutate()}
-            disabled={stopMutation.isPending}
-          >
-            <Square />
-            중지
-          </DropdownMenuItem>
+          <StopBotDialog
+            bot={bot}
+            onStopped={() => setOpen(false)}
+            trigger={
+              <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+                <Square />
+                중지
+              </DropdownMenuItem>
+            }
+          />
         )}
         {canDelete && (
           <DeleteBot id={bot.id} onSuccess={() => setOpen(false)} />

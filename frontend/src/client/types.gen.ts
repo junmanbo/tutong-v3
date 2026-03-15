@@ -82,6 +82,10 @@ export type BotUpdate = {
     take_profit_pct?: (number | string | null);
 };
 
+export type BotStopRequest = {
+    cancel_open_orders?: boolean;
+};
+
 export type ExchangeAccountCreate = {
     exchange: ExchangeTypeEnum;
     label: string;
@@ -397,6 +401,7 @@ export type BotsStartBotResponse = (BotPublic);
 
 export type BotsStopBotData = {
     id: string;
+    body?: BotStopRequest;
 };
 
 export type BotsStopBotResponse = (BotPublic);

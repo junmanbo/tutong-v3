@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Plus, Trash2 } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -32,6 +32,10 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import {
+  getUpbitMinOrderMessage,
+  isUpbitKrwMarket,
+} from "@/lib/upbit-order-rules"
 import {
   Select,
   SelectContent,
@@ -310,6 +314,41 @@ const AddBot = () => {
     },
   })
   const botType = form.watch("bot_type")
+  const watchedAccountId = form.watch("account_id")
+  const watchedSymbol = form.watch("symbol") ?? ""
+  const watchedInvestmentAmount = form.watch("investment_amount") ?? ""
+  const watchedGridCount = form.watch("grid_count") ?? "20"
+  const selectedAccount = useMemo(
+    () => accounts?.data.find((acc) => acc.id === watchedAccountId),
+    [accounts, watchedAccountId],
+  )
+  const upbitMinOrderMessage = useMemo(() => {
+    if (!botType || !isUpbitKrwMarket(selectedAccount?.exchange, watchedSymbol)) {
+      return null
+    }
+
+    const investmentAmount = Number(watchedInvestmentAmount)
+    if (botType === "spot_grid") {
+      const gridCount = Number(watchedGridCount)
+      const perGrid =
+        investmentAmount / Math.max(1, Number.isFinite(gridCount) ? gridCount : 1)
+      return getUpbitMinOrderMessage(perGrid, "그리드당 투자금")
+    }
+    if (botType === "spot_dca") {
+      return getUpbitMinOrderMessage(investmentAmount, "1회 매수 금액")
+    }
+    if (botType === "position_snowball") {
+      return getUpbitMinOrderMessage(investmentAmount, "기본 매수 금액")
+    }
+
+    return null
+  }, [
+    botType,
+    selectedAccount?.exchange,
+    watchedGridCount,
+    watchedInvestmentAmount,
+    watchedSymbol,
+  ])
 
   const mutation = useMutation({
     mutationFn: (data: BotCreate) =>
@@ -335,6 +374,11 @@ const AddBot = () => {
     value?.trim() ? value.trim() : undefined
 
   const onSubmit = (data: FormData) => {
+    if (upbitMinOrderMessage) {
+      showErrorToast(upbitMinOrderMessage)
+      return
+    }
+
     let baseCurrency = toOptionalString(data.base_currency)?.toUpperCase()
     const quoteCurrency = toOptionalString(data.quote_currency)?.toUpperCase()
     const symbol =
@@ -516,6 +560,14 @@ const AddBot = () => {
                 <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
                   {BOT_TYPE_DESCRIPTIONS[botType]}
                 </div>
+              )}
+              {botType && isUpbitKrwMarket(selectedAccount?.exchange, watchedSymbol) && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  업비트 KRW 마켓 주문은 모두 최소 5,000 KRW 이상이어야 합니다.
+                </div>
+              )}
+              {upbitMinOrderMessage && (
+                <div className="text-sm text-destructive">{upbitMinOrderMessage}</div>
               )}
 
               {botType === "rebalancing" ? (
@@ -981,7 +1033,11 @@ const AddBot = () => {
                   취소
                 </Button>
               </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
+              <LoadingButton
+                type="submit"
+                loading={mutation.isPending}
+                disabled={Boolean(upbitMinOrderMessage)}
+              >
                 생성
               </LoadingButton>
             </DialogFooter>

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { getUpbitMinOrderMessage, isUpbitKrwMarket } from "@/lib/upbit-order-rules"
 import {
   Select,
   SelectContent,
@@ -45,6 +46,10 @@ function SpotGridBotPage() {
   const [investmentAmount, setInvestmentAmount] = useState("1000000")
   const [stopLossPct, setStopLossPct] = useState("")
   const [takeProfitPct, setTakeProfitPct] = useState("")
+  const selectedAccount = useMemo(
+    () => accounts?.data.find((acc) => acc.id === accountId),
+    [accounts, accountId],
+  )
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -95,6 +100,10 @@ function SpotGridBotPage() {
       showErrorToast("상한가는 하한가보다 커야 합니다.")
       return
     }
+    if (upbitMinOrderMessage) {
+      showErrorToast(upbitMinOrderMessage)
+      return
+    }
     mutation.mutate()
   }
 
@@ -107,6 +116,10 @@ function SpotGridBotPage() {
     if (count <= 0) return 0
     return Number(investmentAmount) / count
   }, [gridCount, investmentAmount])
+  const upbitMinOrderMessage = useMemo(() => {
+    if (!isUpbitKrwMarket(selectedAccount?.exchange, symbol)) return null
+    return getUpbitMinOrderMessage(perGrid, "그리드당 투자금")
+  }, [perGrid, selectedAccount?.exchange, symbol])
 
   return (
     <div className="flex flex-col gap-6">
@@ -237,9 +250,21 @@ function SpotGridBotPage() {
               예상 정보: 가격 범위 {spread.toLocaleString()} KRW / 그리드당 투자금 {" "}
               {Math.round(perGrid).toLocaleString()} KRW
             </div>
+            {isUpbitKrwMarket(selectedAccount?.exchange, symbol) && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                업비트 KRW 마켓에서는 각 주문 금액이 최소 5,000 KRW 이상이어야 합니다.
+              </div>
+            )}
+            {upbitMinOrderMessage && (
+              <div className="text-sm text-destructive">{upbitMinOrderMessage}</div>
+            )}
 
             <div className="flex justify-end">
-              <LoadingButton type="submit" loading={mutation.isPending}>
+              <LoadingButton
+                type="submit"
+                loading={mutation.isPending}
+                disabled={Boolean(upbitMinOrderMessage)}
+              >
                 봇 생성
               </LoadingButton>
             </div>

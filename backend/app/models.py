@@ -312,6 +312,10 @@ class BotUpdate(SQLModel):
     take_profit_pct: Decimal | None = None
 
 
+class BotStopRequest(SQLModel):
+    cancel_open_orders: bool = True
+
+
 class BotPublic(BotBase):
     id: uuid.UUID
     account_id: uuid.UUID

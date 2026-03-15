@@ -417,6 +417,7 @@ export class BotsService {
      * 봇 중지 요청 — Redis 중지 신호 설정 후 DB 상태 즉시 stopped 업데이트.
      * @param data The data for the request.
      * @param data.id
+     * @param data.body
      * @returns BotPublic Successful Response
      * @throws ApiError
      */
@@ -427,6 +428,8 @@ export class BotsService {
             path: {
                 id: data.id
             },
+            body: data.body,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }

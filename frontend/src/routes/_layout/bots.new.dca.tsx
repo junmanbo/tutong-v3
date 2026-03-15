@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoadingButton } from "@/components/ui/loading-button"
+import { getUpbitMinOrderMessage, isUpbitKrwMarket } from "@/lib/upbit-order-rules"
 import {
   Select,
   SelectContent,
@@ -45,6 +46,10 @@ function DcaBotPage() {
   const [cycles, setCycles] = useState("30")
   const [endDate, setEndDate] = useState("")
   const [takeProfitPct, setTakeProfitPct] = useState("20")
+  const selectedAccount = useMemo(
+    () => accounts?.data.find((acc) => acc.id === accountId),
+    [accounts, accountId],
+  )
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -101,6 +106,10 @@ function DcaBotPage() {
       showErrorToast("날짜 지정 모드에서는 종료일이 필요합니다.")
       return
     }
+    if (upbitMinOrderMessage) {
+      showErrorToast(upbitMinOrderMessage)
+      return
+    }
 
     mutation.mutate()
   }
@@ -109,6 +118,10 @@ function DcaBotPage() {
     if (runMode !== "count") return Number(buyAmount || 0)
     return Number(buyAmount || 0) * Number(cycles || 0)
   }, [buyAmount, cycles, runMode])
+  const upbitMinOrderMessage = useMemo(() => {
+    if (!isUpbitKrwMarket(selectedAccount?.exchange, symbol)) return null
+    return getUpbitMinOrderMessage(Number(buyAmount), "1회 매수 금액")
+  }, [buyAmount, selectedAccount?.exchange, symbol])
 
   return (
     <div className="flex flex-col gap-6">
@@ -239,9 +252,21 @@ function DcaBotPage() {
             <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
               계획 투자금(대략): {Math.round(totalPlanned).toLocaleString()} KRW
             </div>
+            {isUpbitKrwMarket(selectedAccount?.exchange, symbol) && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                업비트 KRW 마켓에서는 매수 주문 금액이 최소 5,000 KRW 이상이어야 합니다.
+              </div>
+            )}
+            {upbitMinOrderMessage && (
+              <div className="text-sm text-destructive">{upbitMinOrderMessage}</div>
+            )}
 
             <div className="flex justify-end">
-              <LoadingButton type="submit" loading={mutation.isPending}>
+              <LoadingButton
+                type="submit"
+                loading={mutation.isPending}
+                disabled={Boolean(upbitMinOrderMessage)}
+              >
                 봇 생성
               </LoadingButton>
             </div>

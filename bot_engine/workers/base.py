@@ -119,6 +119,18 @@ def clear_stop_signal(bot_id: str) -> None:
     r.delete(f"bot:{bot_id}:stop")
 
 
+def should_cancel_open_orders(bot_id: str) -> bool:
+    """Redis에서 열린 주문 취소 여부 확인."""
+    r = get_redis()
+    return bool(r.get(f"bot:{bot_id}:cancel_open_orders"))
+
+
+def clear_cancel_open_orders_flag(bot_id: str) -> None:
+    """Redis 열린 주문 취소 플래그 삭제."""
+    r = get_redis()
+    r.delete(f"bot:{bot_id}:cancel_open_orders")
+
+
 # ── DB 상태 업데이트 헬퍼 ─────────────────────────────────────────────────────
 
 
@@ -482,6 +494,38 @@ def _record_order_and_trade(
                         session.commit()
     except Exception as e:
         logger.error("Failed to record order/trade: %s", e)
+
+
+async def _cancel_open_orders_for_bot(*, bot_id: uuid.UUID | str, adapter: Any) -> int:
+    """DB 기준 미체결 주문을 취소하고 canceled 상태로 동기화."""
+    try:
+        from app.bot_stop import cancel_open_orders_with_adapter
+
+        resolved_bot_id = (
+            bot_id if isinstance(bot_id, uuid.UUID) else uuid.UUID(str(bot_id))
+        )
+        with _get_db_session() as session:
+            result = await cancel_open_orders_with_adapter(
+                session=session,
+                bot_id=resolved_bot_id,
+                adapter=adapter,
+            )
+        if result.attempted > 0:
+            _create_bot_log(
+                bot_id=resolved_bot_id,
+                event_type="open_orders_canceled",
+                level="warning" if result.failed else "info",
+                message="Open orders were processed during bot stop",
+                payload={
+                    "attempted": result.attempted,
+                    "canceled": result.canceled,
+                    "failed": result.failed,
+                },
+            )
+        return result.canceled
+    except Exception as e:
+        logger.error("Failed to cancel open orders for bot %s: %s", bot_id, e)
+        return 0
 
 
 async def _resolve_order_fill(

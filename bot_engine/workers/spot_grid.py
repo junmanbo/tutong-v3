@@ -19,6 +19,7 @@ from decimal import Decimal
 from bot_engine.celery_app import celery_app
 from bot_engine.workers.base import (
     AsyncBotTask,
+    _cancel_open_orders_for_bot,
     _create_bot_log,
     _get_db_session,
     _record_order_and_trade,
@@ -27,9 +28,11 @@ from bot_engine.workers.base import (
     _update_bot_status_stopped,
     _update_bot_total_pnl_pct,
     calc_change_pct,
+    clear_cancel_open_orders_flag,
     clear_stop_signal,
     evaluate_risk_limits,
     get_redis,
+    should_cancel_open_orders,
     should_stop,
 )
 
@@ -105,19 +108,6 @@ def run_spot_grid(self, *, bot_id: str) -> None:
             extra_params=extra_params,
         )
 
-        _update_bot_status_running(bot_id=bot_id, celery_task_id=self.request.id)
-        logger.info(
-            "Spot Grid bot started: bot_id=%s symbol=%s grid_count=%d",
-            bot_id, symbol, config.grid_count,
-        )
-        _create_bot_log(
-            bot_id=bot_id,
-            event_type="grid_started",
-            level="info",
-            message="Spot Grid bot started",
-            payload={"symbol": symbol, "grid_count": config.grid_count},
-        )
-
         # ── 그리드 초기화 ────────────────────────────────────────────────────
         r = get_redis()
         state_key = f"bot:{bot_id}:grid_state"
@@ -151,12 +141,15 @@ def run_spot_grid(self, *, bot_id: str) -> None:
             levels = build_grid(config)
             ticker = await adapter.get_ticker(symbol)
             current_price = ticker.price
+            eligible_buy_levels = 0
+            placed_initial_orders = 0
             if initial_price is None and current_price > Decimal("0"):
                 initial_price = current_price
                 r.set(risk_key, json.dumps({"initial_price": str(initial_price)}))
 
             for level in levels:
                 if level.price < current_price:  # 현재가 이하 레벨만 매수 주문
+                    eligible_buy_levels += 1
                     try:
                         order = await adapter.place_order(
                             OrderRequest(
@@ -173,6 +166,7 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                             qty_hint=level.qty,
                             price_hint=level.price,
                         )
+                        placed_initial_orders += 1
                         level.order_id = order.exchange_order_id
                         logger.debug(
                             "Grid buy order placed: price=%s qty=%s order_id=%s",
@@ -218,13 +212,47 @@ def run_spot_grid(self, *, bot_id: str) -> None:
                 "Grid initialized: bot_id=%s levels=%d current_price=%s",
                 bot_id, len(levels), current_price,
             )
+            if eligible_buy_levels == 0:
+                raise RuntimeError(
+                    "Spot Grid initialization produced no active buy orders. "
+                    "Check that the current price is inside the configured range."
+                )
+            if placed_initial_orders == 0:
+                raise RuntimeError(
+                    "Spot Grid initialization failed: no initial orders were placed. "
+                    "Check the exchange minimum order amount and the bot configuration."
+                )
+
+        _update_bot_status_running(bot_id=bot_id, celery_task_id=self.request.id)
+        logger.info(
+            "Spot Grid bot started: bot_id=%s symbol=%s grid_count=%d",
+            bot_id, symbol, config.grid_count,
+        )
+        _create_bot_log(
+            bot_id=bot_id,
+            event_type="grid_started",
+            level="info",
+            message="Spot Grid bot started",
+            payload={"symbol": symbol, "grid_count": config.grid_count},
+        )
 
         try:
             # ── 메인 루프: 체결 확인 폴링 ───────────────────────────────────
             while True:
                 if should_stop(bot_id):
                     logger.info("Stop signal received: bot_id=%s", bot_id)
+                    if should_cancel_open_orders(bot_id):
+                        canceled_count = await _cancel_open_orders_for_bot(
+                            bot_id=bot_id,
+                            adapter=adapter,
+                        )
+                        logger.info(
+                            "Open orders canceled on stop: bot_id=%s canceled=%d",
+                            bot_id,
+                            canceled_count,
+                        )
                     clear_stop_signal(bot_id)
+                    clear_cancel_open_orders_flag(bot_id)
                     break
 
                 try:

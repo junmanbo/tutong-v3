@@ -5,9 +5,13 @@
 """
 from __future__ import annotations
 
+from decimal import Decimal
+
 import ccxt.async_support as ccxt
 
+from app.bot_validations import UPBIT_MIN_ORDER_KRW, get_quote_currency
 from app.exchange_adapters.base import CcxtExchangeAdapter
+from app.exchange_adapters.base import OrderRequest
 
 
 class UpbitAdapter(CcxtExchangeAdapter):
@@ -26,3 +30,30 @@ class UpbitAdapter(CcxtExchangeAdapter):
                 },
             }
         )
+
+    async def _validate_order_request(self, order: OrderRequest) -> None:
+        quote_currency = get_quote_currency(order.symbol)
+        if quote_currency != "KRW":
+            return
+
+        notional = await self._estimate_order_notional(order)
+        if notional < UPBIT_MIN_ORDER_KRW:
+            raise ValueError(
+                "Upbit orders must be at least "
+                f"{UPBIT_MIN_ORDER_KRW} KRW. "
+                f"Computed order value: {notional.normalize()} KRW."
+            )
+
+    async def _estimate_order_notional(self, order: OrderRequest) -> Decimal:
+        if order.order_type == "market" and order.side == "buy" and order.amount is not None:
+            return order.amount
+
+        if order.qty is None:
+            return Decimal("0")
+
+        if order.price is not None:
+            return order.qty * order.price
+
+        ticker = await self.get_ticker(order.symbol)
+        reference_price = ticker.bid if order.side == "sell" else ticker.ask or ticker.price
+        return order.qty * reference_price
